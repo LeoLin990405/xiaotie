@@ -11,7 +11,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Optional, List, Dict
+import sys
+from typing import Any, Optional, List, Dict, Callable
 
 try:
     import tiktoken
@@ -35,12 +36,16 @@ class Agent:
         max_steps: int = 50,
         token_limit: int = 100000,
         workspace_dir: str = ".",
+        stream: bool = True,
+        enable_thinking: bool = True,
     ):
         self.llm = llm_client
         self.tools: dict[str, Tool] = {t.name: t for t in tools}
         self.max_steps = max_steps
         self.token_limit = token_limit
         self.workspace_dir = workspace_dir
+        self.stream = stream
+        self.enable_thinking = enable_thinking
 
         # 消息历史
         self.messages: list[Message] = [
@@ -60,6 +65,10 @@ class Agent:
                 self._encoding = tiktoken.get_encoding("cl100k_base")
             except Exception:
                 pass
+
+        # 输出回调
+        self.on_thinking: Optional[Callable[[str], None]] = None
+        self.on_content: Optional[Callable[[str], None]] = None
 
     def _check_cancelled(self) -> bool:
         """检查是否被取消"""
@@ -149,7 +158,7 @@ class Agent:
         self.messages = new_messages
         print(f"✅ 摘要完成，消息数: {len(self.messages)}")
 
-    async def run(self, user_input: str | None = None) -> str:
+    async def run(self, user_input: Optional[str] = None) -> str:
         """运行 Agent"""
         # 添加用户输入
         if user_input:
@@ -169,24 +178,24 @@ class Agent:
 
             # 调用 LLM
             try:
-                response = await self.llm.generate(
-                    messages=self.messages,
-                    tools=tool_schemas if tool_schemas else None,
-                )
+                if self.stream:
+                    response = await self._stream_generate(tool_schemas)
+                else:
+                    response = await self.llm.generate(
+                        messages=self.messages,
+                        tools=tool_schemas if tool_schemas else None,
+                    )
+                    # 非流式模式下显示输出
+                    if response.thinking:
+                        print(f"\n💭 思考:\n{response.thinking[:500]}...")
+                    if response.content:
+                        print(f"\n🤖 小铁:\n{response.content}")
             except Exception as e:
                 return f"❌ LLM 调用失败: {e}"
 
             # 更新 token 统计
             if response.usage:
                 self.api_total_tokens = response.usage.total_tokens
-
-            # 显示思考过程
-            if response.thinking:
-                print(f"\n💭 思考:\n{response.thinking[:500]}...")
-
-            # 显示回复
-            if response.content:
-                print(f"\n🤖 小铁:\n{response.content}")
 
             # 添加 assistant 消息
             self.messages.append(Message(
@@ -240,6 +249,39 @@ class Agent:
                 ))
 
         return "⚠️ 达到最大步数限制"
+
+    async def _stream_generate(self, tool_schemas: list) -> LLMResponse:
+        """流式生成响应"""
+        thinking_started = False
+        content_started = False
+
+        def on_thinking(text: str):
+            nonlocal thinking_started
+            if not thinking_started:
+                print("\n💭 思考中...", flush=True)
+                thinking_started = True
+            # 可选：显示思考过程
+            # print(text, end="", flush=True)
+
+        def on_content(text: str):
+            nonlocal content_started
+            if not content_started:
+                print("\n🤖 小铁:", flush=True)
+                content_started = True
+            print(text, end="", flush=True)
+
+        response = await self.llm.generate_stream(
+            messages=self.messages,
+            tools=tool_schemas if tool_schemas else None,
+            on_thinking=on_thinking,
+            on_content=on_content,
+            enable_thinking=self.enable_thinking,
+        )
+
+        if content_started:
+            print()  # 换行
+
+        return response
 
     def reset(self):
         """重置 Agent 状态"""

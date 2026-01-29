@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, Callable
 
 from .base import LLMClientBase
 from .anthropic_client import AnthropicClient
@@ -74,7 +74,23 @@ class LLMClient:
     async def generate(
         self,
         messages: list[Message],
-        tools: list[Any] | None = None,
+        tools: Optional[list[Any]] = None,
     ) -> LLMResponse:
         """生成响应"""
+        return await self._client.generate(messages, tools)
+
+    async def generate_stream(
+        self,
+        messages: list[Message],
+        tools: Optional[list[Any]] = None,
+        on_thinking: Optional[Callable[[str], None]] = None,
+        on_content: Optional[Callable[[str], None]] = None,
+        enable_thinking: bool = True,
+    ) -> LLMResponse:
+        """流式生成响应"""
+        if hasattr(self._client, "generate_stream"):
+            return await self._client.generate_stream(
+                messages, tools, on_thinking, on_content, enable_thinking
+            )
+        # 回退到非流式
         return await self._client.generate(messages, tools)

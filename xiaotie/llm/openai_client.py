@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Tuple, Optional, AsyncIterator, Callable
 
 from openai import AsyncOpenAI
 
@@ -20,7 +20,7 @@ class OpenAIClient(LLMClientBase):
         api_key: str,
         api_base: str = "https://api.openai.com/v1",
         model: str = "gpt-4o",
-        retry_config: RetryConfig | None = None,
+        retry_config: Optional[RetryConfig] = None,
     ):
         super().__init__(api_key, api_base, model, retry_config)
         self.client = AsyncOpenAI(api_key=api_key, base_url=api_base)
@@ -158,7 +158,7 @@ class OpenAIClient(LLMClientBase):
     async def generate(
         self,
         messages: list[Message],
-        tools: list[Any] | None = None,
+        tools: Optional[list[Any]] = None,
     ) -> LLMResponse:
         """生成响应"""
         _, api_messages = self._convert_messages(messages)
@@ -175,3 +175,107 @@ class OpenAIClient(LLMClientBase):
             response = await self._make_api_request(api_messages, api_tools)
 
         return self._parse_response(response)
+
+    async def generate_stream(
+        self,
+        messages: list[Message],
+        tools: Optional[list[Any]] = None,
+        on_thinking: Optional[Callable[[str], None]] = None,
+        on_content: Optional[Callable[[str], None]] = None,
+        enable_thinking: bool = True,
+    ) -> LLMResponse:
+        """流式生成响应
+
+        Args:
+            messages: 消息列表
+            tools: 工具列表
+            on_thinking: 思考内容回调
+            on_content: 回复内容回调
+            enable_thinking: 是否启用深度思考 (GLM-4.7)
+        """
+        _, api_messages = self._convert_messages(messages)
+        api_tools = self._convert_tools(tools) if tools else None
+
+        params = {
+            "model": self.model,
+            "messages": api_messages,
+            "stream": True,
+        }
+
+        if api_tools:
+            params["tools"] = api_tools
+            params["tool_stream"] = True  # GLM-4.7 工具流式输出
+
+        # GLM-4.7 深度思考
+        if enable_thinking:
+            params["thinking"] = {"type": "enabled"}
+
+        stream = await self.client.chat.completions.create(**params)
+
+        # 收集流式内容
+        reasoning_content = ""
+        content = ""
+        tool_calls_dict = {}
+
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+
+            delta = chunk.choices[0].delta
+
+            # 处理思考过程 (reasoning_content)
+            if hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                reasoning_content += delta.reasoning_content
+                if on_thinking:
+                    on_thinking(delta.reasoning_content)
+
+            # 处理回复内容
+            if hasattr(delta, "content") and delta.content:
+                content += delta.content
+                if on_content:
+                    on_content(delta.content)
+
+            # 处理工具调用 (流式拼接)
+            if hasattr(delta, "tool_calls") and delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_calls_dict:
+                        tool_calls_dict[idx] = {
+                            "id": tc.id or "",
+                            "name": tc.function.name if tc.function and tc.function.name else "",
+                            "arguments": tc.function.arguments if tc.function and tc.function.arguments else "",
+                        }
+                    else:
+                        if tc.id:
+                            tool_calls_dict[idx]["id"] = tc.id
+                        if tc.function:
+                            if tc.function.name:
+                                tool_calls_dict[idx]["name"] = tc.function.name
+                            if tc.function.arguments:
+                                tool_calls_dict[idx]["arguments"] += tc.function.arguments
+
+        # 构建工具调用列表
+        tool_calls = []
+        for idx in sorted(tool_calls_dict.keys()):
+            tc_data = tool_calls_dict[idx]
+            if tc_data["name"] and tc_data["arguments"]:
+                try:
+                    arguments = json.loads(tc_data["arguments"])
+                except json.JSONDecodeError:
+                    arguments = {}
+                tool_calls.append(ToolCall(
+                    id=tc_data["id"],
+                    type="function",
+                    function=FunctionCall(
+                        name=tc_data["name"],
+                        arguments=arguments,
+                    ),
+                ))
+
+        return LLMResponse(
+            content=content,
+            thinking=reasoning_content if reasoning_content else None,
+            tool_calls=tool_calls if tool_calls else None,
+            finish_reason="stop",
+            usage=None,
+        )

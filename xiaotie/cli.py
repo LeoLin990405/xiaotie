@@ -14,8 +14,9 @@ from .agent import Agent
 from .config import Config
 from .llm import LLMClient, LLMProvider
 from .retry import RetryConfig
-from .tools import ReadTool, WriteTool, EditTool, BashTool
+from .tools import ReadTool, WriteTool, EditTool, BashTool, PythonTool, CalculatorTool
 from .banner import print_banner, print_status, print_ready, VERSION
+from .session import SessionManager
 
 
 def create_tools(config: Config, workspace: Path) -> list:
@@ -31,6 +32,10 @@ def create_tools(config: Config, workspace: Path) -> list:
 
     if config.tools.enable_bash:
         tools.append(BashTool())
+
+    # 新增工具
+    tools.append(PythonTool())
+    tools.append(CalculatorTool())
 
     return tools
 
@@ -50,11 +55,13 @@ def load_system_prompt(config: Config) -> str:
 - write_file: 写入文件
 - edit_file: 编辑文件（精确替换）
 - bash: 执行 shell 命令
+- python: 执行 Python 代码
+- calculator: 数学计算
 
 请用中文回复用户，保持简洁专业。"""
 
 
-async def interactive_loop(agent: Agent):
+async def interactive_loop(agent: Agent, session_mgr: SessionManager):
     """交互循环"""
     print("\n输入 /help 查看帮助，/quit 退出\n")
 
@@ -68,19 +75,32 @@ async def interactive_loop(agent: Agent):
 
             # 处理命令
             if user_input.startswith("/"):
-                cmd = user_input.lower()
+                cmd_parts = user_input.split()
+                cmd = cmd_parts[0].lower()
 
                 if cmd in ("/quit", "/exit", "/q"):
+                    # 自动保存会话
+                    if session_mgr.current_session:
+                        session_mgr.save_session(
+                            session_mgr.current_session,
+                            agent.messages
+                        )
                     print("\n👋 再见！")
                     break
 
                 elif cmd == "/help":
                     print("""
 可用命令:
-  /help   - 显示帮助
-  /quit   - 退出程序
-  /reset  - 重置对话
-  /tools  - 显示可用工具
+  /help     - 显示帮助
+  /quit     - 退出程序
+  /reset    - 重置对话
+  /tools    - 显示可用工具
+  /save     - 保存当前会话
+  /load     - 加载会话
+  /sessions - 列出所有会话
+  /new      - 创建新会话
+  /stream   - 切换流式输出
+  /think    - 切换深度思考
 """)
                     continue
 
@@ -93,6 +113,64 @@ async def interactive_loop(agent: Agent):
                     print("\n可用工具:")
                     for name, tool in agent.tools.items():
                         print(f"  - {name}: {tool.description[:50]}...")
+                    continue
+
+                elif cmd == "/save":
+                    if not session_mgr.current_session:
+                        session_mgr.create_session()
+                    session_mgr.save_session(
+                        session_mgr.current_session,
+                        agent.messages
+                    )
+                    print(f"✅ 会话已保存: {session_mgr.current_session}")
+                    continue
+
+                elif cmd == "/sessions":
+                    sessions = session_mgr.list_sessions()
+                    if not sessions:
+                        print("📭 暂无保存的会话")
+                    else:
+                        print("\n📚 保存的会话:")
+                        for s in sessions[:10]:
+                            marker = "→" if s["id"] == session_mgr.current_session else " "
+                            print(f"  {marker} {s['id']}: {s['title']} ({s['message_count']} 条消息)")
+                    continue
+
+                elif cmd == "/load":
+                    if len(cmd_parts) < 2:
+                        sessions = session_mgr.list_sessions()
+                        if sessions:
+                            print("用法: /load <session_id>")
+                            print("可用会话:")
+                            for s in sessions[:5]:
+                                print(f"  - {s['id']}: {s['title']}")
+                        continue
+                    session_id = cmd_parts[1]
+                    messages = session_mgr.load_session(session_id)
+                    if messages:
+                        agent.messages = messages
+                        print(f"✅ 已加载会话: {session_id}")
+                    else:
+                        print(f"❌ 会话不存在: {session_id}")
+                    continue
+
+                elif cmd == "/new":
+                    title = " ".join(cmd_parts[1:]) if len(cmd_parts) > 1 else None
+                    session_id = session_mgr.create_session(title)
+                    agent.reset()
+                    print(f"✅ 新会话已创建: {session_id}")
+                    continue
+
+                elif cmd == "/stream":
+                    agent.stream = not agent.stream
+                    status = "开启" if agent.stream else "关闭"
+                    print(f"✅ 流式输出已{status}")
+                    continue
+
+                elif cmd == "/think":
+                    agent.enable_thinking = not agent.enable_thinking
+                    status = "开启" if agent.enable_thinking else "关闭"
+                    print(f"✅ 深度思考已{status}")
                     continue
 
                 else:
@@ -176,6 +254,9 @@ provider: anthropic
         retry_config=retry_config,
     )
 
+    # 创建会话管理器
+    session_mgr = SessionManager()
+
     # 创建 Agent
     agent = Agent(
         llm_client=llm_client,
@@ -183,12 +264,14 @@ provider: anthropic
         tools=tools,
         max_steps=config.agent.max_steps,
         workspace_dir=str(workspace),
+        stream=True,
+        enable_thinking=True,
     )
 
     print_ready()
 
     # 进入交互循环
-    await interactive_loop(agent)
+    await interactive_loop(agent, session_mgr)
 
 
 def main():
