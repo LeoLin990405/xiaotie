@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import time
 from typing import Any, Optional, List, Dict, Callable
 
 try:
@@ -46,6 +47,7 @@ class Agent:
         self.workspace_dir = workspace_dir
         self.stream = stream
         self.enable_thinking = enable_thinking
+        self.parallel_tools = True  # 并行执行工具
 
         # 消息历史
         self.messages: list[Message] = [
@@ -209,38 +211,11 @@ class Agent:
             if not response.tool_calls:
                 return response.content
 
-            # 执行工具调用
-            for tool_call in response.tool_calls:
-                if self._check_cancelled():
-                    self._cleanup_incomplete_messages()
-                    return "⚠️ 任务已取消"
+            # 执行工具调用（并行执行）
+            tool_results = await self._execute_tools_parallel(response.tool_calls)
 
-                tool_call_id = tool_call.id
-                function_name = tool_call.function.name
-                arguments = tool_call.function.arguments
-
-                print(f"\n🔧 调用工具: {function_name}")
-                print(f"   参数: {arguments}")
-
-                # 查找工具
-                tool = self.tools.get(function_name)
-                if not tool:
-                    result_content = f"错误: 未知工具 '{function_name}'"
-                    print(f"   ❌ {result_content}")
-                else:
-                    try:
-                        result = await tool.execute(**arguments)
-                        if result.success:
-                            result_content = result.content
-                            print(f"   ✅ 成功")
-                        else:
-                            result_content = f"错误: {result.error}"
-                            print(f"   ❌ {result.error}")
-                    except Exception as e:
-                        result_content = f"执行异常: {e}"
-                        print(f"   ❌ {result_content}")
-
-                # 添加工具结果
+            # 添加工具结果到消息历史
+            for tool_call_id, function_name, result_content in tool_results:
                 self.messages.append(Message(
                     role="tool",
                     content=result_content,
@@ -249,6 +224,77 @@ class Agent:
                 ))
 
         return "⚠️ 达到最大步数限制"
+
+    async def _execute_tools_parallel(
+        self, tool_calls: list
+    ) -> list[tuple[str, str, str]]:
+        """并行执行多个工具调用
+
+        Returns:
+            list of (tool_call_id, function_name, result_content)
+        """
+        if self._check_cancelled():
+            self._cleanup_incomplete_messages()
+            return []
+
+        async def execute_single_tool(tool_call) -> tuple[str, str, str]:
+            """执行单个工具"""
+            tool_call_id = tool_call.id
+            function_name = tool_call.function.name
+            arguments = tool_call.function.arguments
+
+            print(f"\n🔧 调用工具: {function_name}")
+            print(f"   参数: {arguments}")
+
+            tool = self.tools.get(function_name)
+            if not tool:
+                result_content = f"错误: 未知工具 '{function_name}'"
+                print(f"   ❌ {result_content}")
+                return (tool_call_id, function_name, result_content)
+
+            try:
+                result = await tool.execute(**arguments)
+                if result.success:
+                    result_content = result.content
+                    print(f"   ✅ {function_name} 成功")
+                else:
+                    result_content = f"错误: {result.error}"
+                    print(f"   ❌ {function_name}: {result.error}")
+            except Exception as e:
+                result_content = f"执行异常: {e}"
+                print(f"   ❌ {function_name}: {result_content}")
+
+            return (tool_call_id, function_name, result_content)
+
+        # 并行或串行执行工具调用
+        if self.parallel_tools and len(tool_calls) > 1:
+            print(f"\n⚡ 并行执行 {len(tool_calls)} 个工具调用...")
+            start_time = time.time()
+            tasks = [execute_single_tool(tc) for tc in tool_calls]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            elapsed = time.time() - start_time
+            print(f"   ⏱️ 并行执行完成，耗时 {elapsed:.2f}s")
+        else:
+            # 串行执行
+            results = []
+            for tc in tool_calls:
+                result = await execute_single_tool(tc)
+                results.append(result)
+
+        # 处理结果
+        final_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                tc = tool_calls[i]
+                final_results.append((
+                    tc.id,
+                    tc.function.name,
+                    f"执行异常: {result}"
+                ))
+            else:
+                final_results.append(result)
+
+        return final_results
 
     async def _stream_generate(self, tool_schemas: list) -> LLMResponse:
         """流式生成响应"""

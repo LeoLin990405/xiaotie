@@ -3,25 +3,47 @@
 轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现。
 
 ```
- ▄███▄     小铁 XiaoTie v0.1.0
+ ▄███▄     小铁 XiaoTie v0.3.1
  █ ⚙ █    GLM-4.7 · OpenAI
  ▀███▀     ~/workspace
 ```
 
 ## 特性
 
+### 核心功能
 - 🔄 **Agent 执行循环** - 自动工具调用与任务完成
-- 🔧 **多工具支持** - 文件操作、Bash 命令执行
-- 🤖 **多 LLM Provider** - 支持 Anthropic Claude 和 OpenAI 兼容 API
-- 🔁 **自动重试** - 指数退避重试机制
+- 🌊 **流式输出** - 实时显示思考过程和回复
+- 💭 **深度思考** - 支持 GLM-4.7 thinking 模式
+- 💾 **会话管理** - 保存/加载对话历史
 - 📝 **Token 管理** - 自动摘要历史消息
 - ⚡ **优雅取消** - 支持 Ctrl+C 中断
+- 🚀 **并行工具执行** - 多工具调用并行执行，提升效率
+
+### 工具系统
+- 📁 **文件操作** - 读取、写入、编辑文件
+- 🖥️ **Bash 命令** - 执行 shell 命令
+- 🐍 **Python 执行** - 运行 Python 代码
+- 🔢 **计算器** - 数学计算
+- 🌿 **Git 操作** - 版本控制（status/diff/log/commit）
+- 🔍 **Web 搜索** - DuckDuckGo 搜索
+- 🌐 **网页获取** - 获取网页内容
+
+### 代码库感知 (RepoMap)
+- 📂 **目录树** - 可视化项目结构
+- 🗺️ **代码映射** - 提取类、函数定义
+- 🔎 **智能搜索** - 按关键词查找相关文件
+
+### 多 LLM 支持
+- 🤖 **Anthropic Claude** - Claude 3.5/4 系列
+- 🧠 **OpenAI GPT** - GPT-4o 等
+- 🔮 **智谱 GLM-4.7** - 深度思考 + 工具流式
+- 🌈 **MiniMax** - abab 系列
 
 ## 安装
 
 ```bash
 # 克隆项目
-git clone https://github.com/leo/xiaotie.git
+git clone https://github.com/LeoLin990405/xiaotie.git
 cd xiaotie
 
 # 安装依赖
@@ -39,10 +61,17 @@ cp config/config.yaml.example config/config.yaml
 2. 编辑 `config/config.yaml`，填入你的 API Key：
 
 ```yaml
-api_key: YOUR_API_KEY_HERE
+# Anthropic Claude
+api_key: YOUR_API_KEY
 api_base: https://api.anthropic.com
 model: claude-sonnet-4-20250514
 provider: anthropic
+
+# 或者 智谱 GLM-4.7
+api_key: YOUR_API_KEY
+api_base: https://open.bigmodel.cn/api/coding/paas/v4
+model: GLM-4.7
+provider: openai
 ```
 
 ## 使用
@@ -57,13 +86,35 @@ xiaotie
 python -m xiaotie.cli
 ```
 
+### CLI 命令
+
+| 命令 | 说明 |
+|------|------|
+| `/help` | 显示帮助 |
+| `/quit` | 退出程序 |
+| `/reset` | 重置对话 |
+| `/tools` | 显示可用工具 |
+| `/save` | 保存当前会话 |
+| `/load <id>` | 加载会话 |
+| `/sessions` | 列出所有会话 |
+| `/new [标题]` | 创建新会话 |
+| `/stream` | 切换流式输出 |
+| `/think` | 切换深度思考 |
+| `/parallel` | 切换工具并行执行 |
+| `/tokens` | 显示 Token 使用 |
+| `/tree [深度]` | 显示目录结构 |
+| `/map [tokens]` | 显示代码库概览 |
+| `/find <关键词>` | 搜索相关文件 |
+| `/history` | 显示对话历史 |
+| `/clear` | 清屏 |
+
 ### 代码调用
 
 ```python
 import asyncio
 from xiaotie import Agent
 from xiaotie.llm import LLMClient
-from xiaotie.tools import ReadTool, WriteTool, BashTool
+from xiaotie.tools import ReadTool, WriteTool, BashTool, GitTool
 
 async def main():
     # 创建 LLM 客户端
@@ -79,6 +130,7 @@ async def main():
         ReadTool(workspace_dir="."),
         WriteTool(workspace_dir="."),
         BashTool(),
+        GitTool(workspace_dir="."),
     ]
 
     # 创建 Agent
@@ -86,6 +138,8 @@ async def main():
         llm_client=llm,
         system_prompt="你是小铁，一个智能助手。",
         tools=tools,
+        stream=True,
+        enable_thinking=True,
     )
 
     # 运行
@@ -106,20 +160,28 @@ xiaotie/
 │   ├── config.py         # 配置管理
 │   ├── schema.py         # 数据模型
 │   ├── retry.py          # 重试机制
+│   ├── banner.py         # 启动动画
+│   ├── session.py        # 会话管理
+│   ├── commands.py       # 命令系统
+│   ├── display.py        # 显示增强
+│   ├── repomap.py        # 代码库映射
 │   ├── llm/
-│   │   ├── __init__.py
 │   │   ├── base.py       # LLM 客户端基类
 │   │   ├── wrapper.py    # 统一包装器
 │   │   ├── anthropic_client.py
 │   │   └── openai_client.py
 │   └── tools/
-│       ├── __init__.py
 │       ├── base.py       # 工具基类
 │       ├── file_tools.py # 文件工具
-│       └── bash_tool.py  # Bash 工具
+│       ├── bash_tool.py  # Bash 工具
+│       ├── python_tool.py # Python/计算器
+│       ├── git_tool.py   # Git 工具
+│       └── web_tool.py   # Web 工具
 ├── config/
 │   ├── config.yaml.example
 │   └── system_prompt.md
+├── docs/
+│   └── v0.3.0-plan.md    # 迭代计划
 ├── pyproject.toml
 └── README.md
 ```
@@ -130,23 +192,45 @@ xiaotie/
 |----------|----------|------|
 | Anthropic | https://api.anthropic.com | Claude 官方 API |
 | OpenAI | https://api.openai.com/v1 | GPT 系列 |
+| 智谱 GLM | https://open.bigmodel.cn/api/coding/paas/v4 | GLM-4.7 深度思考 |
 | MiniMax | https://api.minimax.io | 自动处理 URL 后缀 |
 | 其他 | 自定义 | OpenAI 兼容 API |
 
-## CLI 命令
+## 版本历史
 
-| 命令 | 说明 |
-|------|------|
-| `/help` | 显示帮助 |
-| `/quit` | 退出程序 |
-| `/reset` | 重置对话 |
-| `/tools` | 显示可用工具 |
+### v0.3.1
+- 🚀 **工具并行执行** - 多工具调用使用 asyncio.gather 并行执行
+- 新命令：/parallel 切换并行执行模式
+- 执行时间统计
+
+### v0.3.0
+- 命令系统重构（约定优于配置）
+- 显示增强（rich 库支持）
+- 代码库感知（RepoMap）
+- Git 工具
+- Web 搜索/获取工具
+- 新命令：/tree, /map, /find, /tokens, /history
+
+### v0.2.0
+- 流式输出 + 深度思考
+- 会话管理
+- Python/计算器工具
+- GLM-4.7/MiniMax 适配
+
+### v0.1.0
+- 初始版本
+- Agent 执行循环
+- 文件/Bash 工具
+- 多 LLM Provider 支持
 
 ## 致谢
 
 本项目基于 [MiniMax-AI/Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，感谢原作者的开源贡献！
 
-Mini-Agent 是一个优秀的轻量级 AI Agent 框架，提供了清晰的架构设计和完整的功能实现。小铁在其基础上进行了学习和复现，并添加了一些个性化功能。
+同时学习借鉴了以下优秀项目的设计模式：
+- [Aider](https://github.com/Aider-AI/aider) - 命令系统、RepoMap
+- [Open Interpreter](https://github.com/openinterpreter/open-interpreter) - 流式处理、显示
+- [Devika](https://github.com/stitionai/devika) - 多 Agent 架构
 
 ## License
 

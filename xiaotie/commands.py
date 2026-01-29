@@ -205,6 +205,12 @@ class Commands:
         status = "开启" if self.agent.enable_thinking else "关闭"
         return True, f"✅ 深度思考已{status}"
 
+    def cmd_parallel(self, args: str) -> tuple[bool, str]:
+        """切换工具并行执行模式"""
+        self.agent.parallel_tools = not self.agent.parallel_tools
+        status = "开启" if self.agent.parallel_tools else "关闭"
+        return True, f"✅ 工具并行执行已{status}"
+
     def cmd_model(self, args: str) -> tuple[bool, str]:
         """显示或切换模型 (用法: /model [模型名])"""
         if not args:
