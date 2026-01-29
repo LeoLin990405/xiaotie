@@ -16,7 +16,11 @@ from .agent import Agent
 from .config import Config
 from .llm import LLMClient, LLMProvider
 from .retry import RetryConfig
-from .tools import ReadTool, WriteTool, EditTool, BashTool, PythonTool, CalculatorTool
+from .tools import (
+    ReadTool, WriteTool, EditTool, BashTool,
+    PythonTool, CalculatorTool, GitTool,
+    WebSearchTool, WebFetchTool,
+)
 from .banner import print_banner, print_status, print_ready, VERSION
 from .session import SessionManager
 from .commands import Commands
@@ -37,9 +41,16 @@ def create_tools(config: Config, workspace: Path) -> list:
     if config.tools.enable_bash:
         tools.append(BashTool())
 
-    # 新增工具
+    # 代码工具
     tools.append(PythonTool())
     tools.append(CalculatorTool())
+
+    # Git 工具
+    tools.append(GitTool(workspace_dir=str(workspace)))
+
+    # Web 工具
+    tools.append(WebSearchTool())
+    tools.append(WebFetchTool())
 
     return tools
 
@@ -61,6 +72,9 @@ def load_system_prompt(config: Config) -> str:
 - bash: 执行 shell 命令
 - python: 执行 Python 代码
 - calculator: 数学计算
+- git: Git 版本控制操作
+- web_search: 网络搜索
+- web_fetch: 获取网页内容
 
 请用中文回复用户，保持简洁专业。"""
 
