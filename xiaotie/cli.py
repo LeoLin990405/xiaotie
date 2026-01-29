@@ -1,15 +1,19 @@
 """
 小铁 CLI 入口
 
-交互式命令行界面 v0.3.1
+交互式命令行界面 v0.4.0
 - 新命令系统（约定优于配置）
 - 增强显示（Markdown 渲染、代码高亮）
 - 插件系统支持
+- TUI 模式支持
+- 非交互模式支持
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -141,7 +145,7 @@ async def interactive_loop(
             break
 
 
-async def main_async():
+async def main_async(stream: bool = True, thinking: bool = True):
     """异步主函数"""
     # 初始化显示
     display = Display()
@@ -221,8 +225,8 @@ provider: anthropic
         tools=tools,
         max_steps=config.agent.max_steps,
         workspace_dir=str(workspace),
-        stream=True,
-        enable_thinking=True,
+        stream=stream,
+        enable_thinking=thinking,
     )
 
     print_ready()
@@ -233,7 +237,175 @@ provider: anthropic
 
 def main():
     """主入口"""
-    asyncio.run(main_async())
+    parser = argparse.ArgumentParser(
+        description="小铁 - AI 编程助手",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  xiaotie                    # 启动交互式 CLI
+  xiaotie --tui              # 启动 TUI 模式
+  xiaotie -p "你好"          # 非交互模式
+  xiaotie -p "分析代码" -f json  # JSON 输出
+        """,
+    )
+
+    parser.add_argument(
+        "-p", "--prompt",
+        type=str,
+        help="非交互模式：直接执行提示词",
+    )
+    parser.add_argument(
+        "-f", "--format",
+        type=str,
+        choices=["text", "json"],
+        default="text",
+        help="输出格式 (默认: text)",
+    )
+    parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="安静模式：只输出结果",
+    )
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="启动 TUI 模式",
+    )
+    parser.add_argument(
+        "--no-stream",
+        action="store_true",
+        help="禁用流式输出",
+    )
+    parser.add_argument(
+        "--no-thinking",
+        action="store_true",
+        help="禁用深度思考",
+    )
+    parser.add_argument(
+        "-v", "--version",
+        action="version",
+        version=f"小铁 XiaoTie v{VERSION}",
+    )
+
+    args = parser.parse_args()
+
+    # TUI 模式
+    if args.tui:
+        try:
+            from .tui.main import run_tui
+            run_tui()
+        except ImportError as e:
+            print(f"❌ TUI 模式需要安装 textual: pip install textual")
+            print(f"   错误: {e}")
+            sys.exit(1)
+        return
+
+    # 非交互模式
+    if args.prompt:
+        asyncio.run(run_non_interactive(
+            prompt=args.prompt,
+            output_format=args.format,
+            quiet=args.quiet,
+            stream=not args.no_stream,
+            thinking=not args.no_thinking,
+        ))
+        return
+
+    # 交互模式
+    asyncio.run(main_async(
+        stream=not args.no_stream,
+        thinking=not args.no_thinking,
+    ))
+
+
+async def run_non_interactive(
+    prompt: str,
+    output_format: str = "text",
+    quiet: bool = False,
+    stream: bool = True,
+    thinking: bool = True,
+):
+    """非交互模式"""
+    # 加载配置
+    try:
+        config = Config.load()
+    except (FileNotFoundError, ValueError) as e:
+        if output_format == "json":
+            print(json.dumps({"error": str(e)}, ensure_ascii=False))
+        else:
+            print(f"❌ 配置错误: {e}")
+        sys.exit(1)
+
+    # 创建工作目录
+    workspace = Path(config.agent.workspace_dir).absolute()
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    # 创建工具
+    tools = create_tools(config, workspace)
+
+    # 加载插件
+    plugin_mgr = PluginManager()
+    plugin_tools = plugin_mgr.load_all_plugins()
+    if plugin_tools:
+        tools.extend(plugin_tools)
+
+    # 加载系统提示词
+    system_prompt = load_system_prompt(config)
+
+    # 创建 LLM 客户端
+    retry_config = RetryConfig(
+        enabled=config.llm.retry.enabled,
+        max_retries=config.llm.retry.max_retries,
+        initial_delay=config.llm.retry.initial_delay,
+        max_delay=config.llm.retry.max_delay,
+        exponential_base=config.llm.retry.exponential_base,
+    )
+
+    llm_client = LLMClient(
+        api_key=config.llm.api_key,
+        api_base=config.llm.api_base,
+        model=config.llm.model,
+        provider=config.llm.provider,
+        retry_config=retry_config,
+    )
+
+    # 创建 Agent
+    agent = Agent(
+        llm_client=llm_client,
+        system_prompt=system_prompt,
+        tools=tools,
+        max_steps=config.agent.max_steps,
+        workspace_dir=str(workspace),
+        stream=stream and not quiet,
+        enable_thinking=thinking,
+    )
+
+    # 运行
+    try:
+        result = await agent.run(prompt)
+
+        if output_format == "json":
+            output = {
+                "success": True,
+                "result": result,
+                "tokens": agent.api_total_tokens,
+                "model": config.llm.model,
+            }
+            print(json.dumps(output, ensure_ascii=False, indent=2))
+        else:
+            if not quiet:
+                print()
+            print(result)
+
+    except Exception as e:
+        if output_format == "json":
+            print(json.dumps({"error": str(e)}, ensure_ascii=False))
+        else:
+            print(f"❌ 错误: {e}")
+        sys.exit(1)
+
+
+async def main_async(stream: bool = True, thinking: bool = True):
 
 
 if __name__ == "__main__":

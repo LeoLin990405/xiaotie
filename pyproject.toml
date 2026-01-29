@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xiaotie"
-version = "0.3.1"
+version = "0.4.0"
 description = "小铁 - 轻量级 AI Agent 框架"
 readme = "README.md"
 license = "MIT"
@@ -34,15 +34,22 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+tui = [
+    "textual>=0.50.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
     "black>=23.0",
     "ruff>=0.1.0",
 ]
+all = [
+    "xiaotie[tui]",
+]
 
 [project.scripts]
 xiaotie = "xiaotie.cli:main"
+xiaotie-tui = "xiaotie.tui.main:run_tui"
 
 [project.urls]
 Homepage = "https://github.com/leo/xiaotie"
