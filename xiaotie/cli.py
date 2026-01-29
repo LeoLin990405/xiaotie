@@ -24,7 +24,7 @@ from .retry import RetryConfig
 from .tools import (
     ReadTool, WriteTool, EditTool, BashTool,
     PythonTool, CalculatorTool, GitTool,
-    WebSearchTool, WebFetchTool,
+    WebSearchTool, WebFetchTool, CodeAnalysisTool,
 )
 from .banner import print_banner, print_status, print_ready, VERSION
 from .session import SessionManager
@@ -57,6 +57,9 @@ def create_tools(config: Config, workspace: Path) -> list:
     # Web 工具
     tools.append(WebSearchTool())
     tools.append(WebFetchTool())
+
+    # 代码分析工具
+    tools.append(CodeAnalysisTool(workspace_dir=str(workspace)))
 
     return tools
 
