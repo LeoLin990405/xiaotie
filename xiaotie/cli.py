@@ -1,7 +1,9 @@
 """
 小铁 CLI 入口
 
-交互式命令行界面
+交互式命令行界面 v0.3.0
+- 新命令系统（约定优于配置）
+- 增强显示（Markdown 渲染、代码高亮）
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ from .retry import RetryConfig
 from .tools import ReadTool, WriteTool, EditTool, BashTool, PythonTool, CalculatorTool
 from .banner import print_banner, print_status, print_ready, VERSION
 from .session import SessionManager
+from .commands import Commands
+from .display import Display, StreamDisplay, get_display, set_display
 
 
 def create_tools(config: Config, workspace: Path) -> list:
@@ -61,128 +65,49 @@ def load_system_prompt(config: Config) -> str:
 请用中文回复用户，保持简洁专业。"""
 
 
-async def interactive_loop(agent: Agent, session_mgr: SessionManager):
+async def interactive_loop(agent: Agent, session_mgr: SessionManager, display: Display):
     """交互循环"""
-    print("\n输入 /help 查看帮助，/quit 退出\n")
+    # 创建命令管理器
+    commands = Commands(agent, session_mgr)
+
+    display.info("输入 /help 查看帮助，/quit 退出")
+    print()
 
     while True:
         try:
             # 获取用户输入
-            user_input = input("\n👤 你: ").strip()
+            try:
+                user_input = display.user_prompt().strip()
+            except EOFError:
+                break
 
             if not user_input:
                 continue
 
             # 处理命令
             if user_input.startswith("/"):
-                cmd_parts = user_input.split()
-                cmd = cmd_parts[0].lower()
-
-                if cmd in ("/quit", "/exit", "/q"):
-                    # 自动保存会话
-                    if session_mgr.current_session:
-                        session_mgr.save_session(
-                            session_mgr.current_session,
-                            agent.messages
-                        )
-                    print("\n👋 再见！")
+                cmd_line = user_input[1:]  # 去掉 /
+                should_continue, message = await commands.execute(cmd_line)
+                if message:
+                    print(message)
+                if not should_continue:
                     break
-
-                elif cmd == "/help":
-                    print("""
-可用命令:
-  /help     - 显示帮助
-  /quit     - 退出程序
-  /reset    - 重置对话
-  /tools    - 显示可用工具
-  /save     - 保存当前会话
-  /load     - 加载会话
-  /sessions - 列出所有会话
-  /new      - 创建新会话
-  /stream   - 切换流式输出
-  /think    - 切换深度思考
-""")
-                    continue
-
-                elif cmd == "/reset":
-                    agent.reset()
-                    print("✅ 对话已重置")
-                    continue
-
-                elif cmd == "/tools":
-                    print("\n可用工具:")
-                    for name, tool in agent.tools.items():
-                        print(f"  - {name}: {tool.description[:50]}...")
-                    continue
-
-                elif cmd == "/save":
-                    if not session_mgr.current_session:
-                        session_mgr.create_session()
-                    session_mgr.save_session(
-                        session_mgr.current_session,
-                        agent.messages
-                    )
-                    print(f"✅ 会话已保存: {session_mgr.current_session}")
-                    continue
-
-                elif cmd == "/sessions":
-                    sessions = session_mgr.list_sessions()
-                    if not sessions:
-                        print("📭 暂无保存的会话")
-                    else:
-                        print("\n📚 保存的会话:")
-                        for s in sessions[:10]:
-                            marker = "→" if s["id"] == session_mgr.current_session else " "
-                            print(f"  {marker} {s['id']}: {s['title']} ({s['message_count']} 条消息)")
-                    continue
-
-                elif cmd == "/load":
-                    if len(cmd_parts) < 2:
-                        sessions = session_mgr.list_sessions()
-                        if sessions:
-                            print("用法: /load <session_id>")
-                            print("可用会话:")
-                            for s in sessions[:5]:
-                                print(f"  - {s['id']}: {s['title']}")
-                        continue
-                    session_id = cmd_parts[1]
-                    messages = session_mgr.load_session(session_id)
-                    if messages:
-                        agent.messages = messages
-                        print(f"✅ 已加载会话: {session_id}")
-                    else:
-                        print(f"❌ 会话不存在: {session_id}")
-                    continue
-
-                elif cmd == "/new":
-                    title = " ".join(cmd_parts[1:]) if len(cmd_parts) > 1 else None
-                    session_id = session_mgr.create_session(title)
-                    agent.reset()
-                    print(f"✅ 新会话已创建: {session_id}")
-                    continue
-
-                elif cmd == "/stream":
-                    agent.stream = not agent.stream
-                    status = "开启" if agent.stream else "关闭"
-                    print(f"✅ 流式输出已{status}")
-                    continue
-
-                elif cmd == "/think":
-                    agent.enable_thinking = not agent.enable_thinking
-                    status = "开启" if agent.enable_thinking else "关闭"
-                    print(f"✅ 深度思考已{status}")
-                    continue
-
-                else:
-                    print(f"❓ 未知命令: {user_input}")
-                    continue
+                continue
 
             # 运行 Agent
             cancel_event = asyncio.Event()
             agent.cancel_event = cancel_event
 
+            # 创建流式显示器
+            stream_display = StreamDisplay(display)
+
+            # 设置回调
+            agent.on_thinking = stream_display.on_thinking
+            agent.on_content = stream_display.on_content
+
             try:
                 await agent.run(user_input)
+                stream_display.finish()
             except KeyboardInterrupt:
                 cancel_event.set()
                 print("\n⚠️ 已取消")
@@ -197,6 +122,10 @@ async def interactive_loop(agent: Agent, session_mgr: SessionManager):
 
 async def main_async():
     """异步主函数"""
+    # 初始化显示
+    display = Display()
+    set_display(display)
+
     # 加载配置
     try:
         config = Config.load()
@@ -271,7 +200,7 @@ provider: anthropic
     print_ready()
 
     # 进入交互循环
-    await interactive_loop(agent, session_mgr)
+    await interactive_loop(agent, session_mgr, display)
 
 
 def main():

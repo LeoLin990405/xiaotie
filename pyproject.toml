@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xiaotie"
-version = "0.1.0"
+version = "0.3.0"
 description = "小铁 - 轻量级 AI Agent 框架"
 readme = "README.md"
 license = "MIT"
@@ -30,6 +30,7 @@ dependencies = [
     "pydantic>=2.0",
     "tiktoken>=0.7.0",
     "pyyaml>=6.0",
+    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
