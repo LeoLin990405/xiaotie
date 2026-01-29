@@ -1,4 +1,4 @@
-"""OpenAI LLM 客户端"""
+"""OpenAI LLM 客户端 - 支持 GLM-4.7 / MiniMax / OpenAI"""
 
 from __future__ import annotations
 
@@ -13,7 +13,19 @@ from ..schema import Message, LLMResponse, ToolCall, FunctionCall, TokenUsage
 
 
 class OpenAIClient(LLMClientBase):
-    """OpenAI 兼容客户端"""
+    """OpenAI 兼容客户端
+
+    支持:
+    - OpenAI GPT 系列
+    - 智谱 GLM-4.7 (深度思考 + 工具流式)
+    - MiniMax abab 系列
+    - 其他 OpenAI 兼容 API
+    """
+
+    # 智谱 GLM 域名
+    GLM_DOMAINS = ("bigmodel.cn", "z.ai")
+    # MiniMax 域名
+    MINIMAX_DOMAINS = ("minimax.io", "minimaxi.com")
 
     def __init__(
         self,
@@ -24,6 +36,10 @@ class OpenAIClient(LLMClientBase):
     ):
         super().__init__(api_key, api_base, model, retry_config)
         self.client = AsyncOpenAI(api_key=api_key, base_url=api_base)
+
+        # 检测 API 类型
+        self.is_glm = any(d in api_base for d in self.GLM_DOMAINS)
+        self.is_minimax = any(d in api_base for d in self.MINIMAX_DOMAINS)
 
     def _convert_messages(
         self,
@@ -204,13 +220,31 @@ class OpenAIClient(LLMClientBase):
 
         if api_tools:
             params["tools"] = api_tools
-            params["tool_stream"] = True  # GLM-4.7 工具流式输出
 
-        # GLM-4.7 深度思考
-        if enable_thinking:
-            params["thinking"] = {"type": "enabled"}
+        # GLM-4.7 特殊参数
+        if self.is_glm:
+            if api_tools:
+                params["tool_stream"] = True  # 工具流式输出
+            if enable_thinking:
+                params["thinking"] = {"type": "enabled"}  # 深度思考
+            # GLM 推荐参数
+            params["temperature"] = 1.0
+            params["top_p"] = 0.95
 
-        stream = await self.client.chat.completions.create(**params)
+        # MiniMax 特殊参数
+        if self.is_minimax:
+            # MiniMax 使用 reasoning_details
+            pass
+
+        try:
+            stream = await self.client.chat.completions.create(**params)
+        except Exception as e:
+            # 如果 thinking 参数不支持，回退到普通模式
+            if "thinking" in str(e) and "thinking" in params:
+                del params["thinking"]
+                stream = await self.client.chat.completions.create(**params)
+            else:
+                raise
 
         # 收集流式内容
         reasoning_content = ""
@@ -223,7 +257,9 @@ class OpenAIClient(LLMClientBase):
 
             delta = chunk.choices[0].delta
 
-            # 处理思考过程 (reasoning_content)
+            # 处理思考过程
+            # GLM-4.7: delta.reasoning_content
+            # MiniMax: delta.reasoning_details
             if hasattr(delta, "reasoning_content") and delta.reasoning_content:
                 reasoning_content += delta.reasoning_content
                 if on_thinking:
@@ -258,9 +294,9 @@ class OpenAIClient(LLMClientBase):
         tool_calls = []
         for idx in sorted(tool_calls_dict.keys()):
             tc_data = tool_calls_dict[idx]
-            if tc_data["name"] and tc_data["arguments"]:
+            if tc_data["name"]:
                 try:
-                    arguments = json.loads(tc_data["arguments"])
+                    arguments = json.loads(tc_data["arguments"]) if tc_data["arguments"] else {}
                 except json.JSONDecodeError:
                     arguments = {}
                 tool_calls.append(ToolCall(
