@@ -1,0 +1,26 @@
+# 小铁配置文件示例
+# 复制此文件为 config.yaml 并填入你的 API Key
+
+# API 配置
+api_key: YOUR_API_KEY_HERE
+api_base: https://api.anthropic.com
+model: claude-sonnet-4-20250514
+provider: anthropic  # anthropic 或 openai
+
+# Agent 配置
+max_steps: 50
+workspace_dir: ./workspace
+system_prompt_path: system_prompt.md
+
+# 重试配置
+retry:
+  enabled: true
+  max_retries: 3
+  initial_delay: 1.0
+  max_delay: 60.0
+  exponential_base: 2.0
+
+# 工具配置
+tools:
+  enable_file_tools: true
+  enable_bash: true

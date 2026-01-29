@@ -1,0 +1,36 @@
+# 忽略 Python 编译文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 配置文件（包含敏感信息）
+config/config.yaml
+
+# 工作目录
+workspace/
+
+# 日志
+*.log
+logs/
+
+# 构建产物
+dist/
+build/
+*.egg-info/
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
