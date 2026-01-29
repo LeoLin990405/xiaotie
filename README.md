@@ -114,7 +114,8 @@ xiaotie --no-thinking
 
 | 快捷键 | 说明 |
 |--------|------|
-| `Ctrl+P` | 打开命令面板 |
+| `Ctrl+K` | 打开命令面板 |
+| `Ctrl+B` | 切换侧边栏 |
 | `Ctrl+N` | 新建会话 |
 | `Ctrl+S` | 保存会话 |
 | `Ctrl+L` | 清屏 |
@@ -184,6 +185,7 @@ async def main():
         tools=tools,
         stream=True,
         enable_thinking=True,
+        parallel_tools=True,  # 并行执行工具
     )
 
     # 运行
@@ -191,6 +193,40 @@ async def main():
     print(result)
 
 asyncio.run(main())
+```
+
+### 事件订阅
+
+```python
+import asyncio
+from xiaotie import Agent, EventBroker, EventType, get_event_broker
+
+async def main():
+    # 获取事件代理
+    broker = get_event_broker()
+
+    # 订阅事件
+    queue = await broker.subscribe([
+        EventType.AGENT_START,
+        EventType.TOOL_START,
+        EventType.TOOL_COMPLETE,
+        EventType.MESSAGE_DELTA,
+    ])
+
+    # 创建 Agent 并运行...
+    agent = Agent(...)
+
+    # 在另一个任务中处理事件
+    async def handle_events():
+        while True:
+            event = await queue.get()
+            if event.type == EventType.TOOL_START:
+                print(f"工具开始: {event.data.get('tool_name')}")
+            elif event.type == EventType.MESSAGE_DELTA:
+                print(event.data.get('content'), end='')
+
+    asyncio.create_task(handle_events())
+    await agent.run("你好")
 ```
 
 ## 插件系统
@@ -294,6 +330,18 @@ xiaotie/
 | 其他 | 自定义 | OpenAI 兼容 API |
 
 ## 版本历史
+
+### v0.4.2
+- 🎨 **TUI 重构** - 完全参考 OpenCode 设计重构 TUI
+- 📐 **分割布局** - 消息区 + 会话侧边栏分割布局
+- ⌨️ **Ctrl+K 命令面板** - 支持搜索过滤的命令面板
+- 📱 **侧边栏切换** - Ctrl+B 切换会话侧边栏显示
+- 🎯 **状态行优化** - 显示模型、Token、会话、状态、模式
+- 💭 **思考指示器** - 动画显示 AI 思考状态
+- 📡 **事件驱动架构** - Pub/Sub 事件系统，实时 UI 更新
+- 🔒 **会话状态管理** - 防止并发请求冲突
+- 📊 **智能摘要优化** - 阈值触发、保留关键消息
+- ⚡ **工具执行优化** - 支持顺序/并行模式切换
 
 ### v0.4.1
 - ⌨️ **增强输入** - 命令自动补全、历史记录、Ctrl+R 搜索
