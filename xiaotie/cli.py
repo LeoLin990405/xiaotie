@@ -1,9 +1,10 @@
 """
 小铁 CLI 入口
 
-交互式命令行界面 v0.3.0
+交互式命令行界面 v0.3.1
 - 新命令系统（约定优于配置）
 - 增强显示（Markdown 渲染、代码高亮）
+- 插件系统支持
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from .banner import print_banner, print_status, print_ready, VERSION
 from .session import SessionManager
 from .commands import Commands
 from .display import Display, StreamDisplay, get_display, set_display
+from .plugins import PluginManager
 
 
 def create_tools(config: Config, workspace: Path) -> list:
@@ -79,10 +81,15 @@ def load_system_prompt(config: Config) -> str:
 请用中文回复用户，保持简洁专业。"""
 
 
-async def interactive_loop(agent: Agent, session_mgr: SessionManager, display: Display):
+async def interactive_loop(
+    agent: Agent,
+    session_mgr: SessionManager,
+    plugin_mgr: PluginManager,
+    display: Display,
+):
     """交互循环"""
     # 创建命令管理器
-    commands = Commands(agent, session_mgr)
+    commands = Commands(agent, session_mgr, plugin_mgr)
 
     display.info("输入 /help 查看帮助，/quit 退出")
     print()
@@ -175,7 +182,14 @@ provider: anthropic
 
     # 创建工具
     tools = create_tools(config, workspace)
-    print_status(f"已加载 {len(tools)} 个工具", "ok")
+    print_status(f"已加载 {len(tools)} 个内置工具", "ok")
+
+    # 加载插件
+    plugin_mgr = PluginManager()
+    plugin_tools = plugin_mgr.load_all_plugins()
+    if plugin_tools:
+        tools.extend(plugin_tools)
+        print_status(f"已加载 {len(plugin_tools)} 个插件工具", "ok")
 
     # 加载系统提示词
     system_prompt = load_system_prompt(config)
@@ -214,7 +228,7 @@ provider: anthropic
     print_ready()
 
     # 进入交互循环
-    await interactive_loop(agent, session_mgr, display)
+    await interactive_loop(agent, session_mgr, plugin_mgr, display)
 
 
 def main():

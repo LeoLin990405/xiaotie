@@ -106,6 +106,9 @@ python -m xiaotie.cli
 | `/map [tokens]` | 显示代码库概览 |
 | `/find <关键词>` | 搜索相关文件 |
 | `/history` | 显示对话历史 |
+| `/plugins` | 显示已加载插件 |
+| `/plugin-new <名称>` | 创建插件模板 |
+| `/plugin-reload <名称>` | 重新加载插件 |
 | `/clear` | 清屏 |
 
 ### 代码调用
@@ -149,6 +152,53 @@ async def main():
 asyncio.run(main())
 ```
 
+## 插件系统
+
+小铁支持通过插件扩展功能。插件是放置在 `~/.xiaotie/plugins/` 目录下的 Python 文件。
+
+### 创建插件
+
+```bash
+# 使用命令创建插件模板
+/plugin-new my_tool
+```
+
+或手动创建 `~/.xiaotie/plugins/my_tool.py`:
+
+```python
+from xiaotie.tools import Tool, ToolResult
+
+class MyTool(Tool):
+    @property
+    def name(self) -> str:
+        return "my_tool"
+
+    @property
+    def description(self) -> str:
+        return "我的自定义工具"
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "input": {"type": "string", "description": "输入参数"}
+            },
+            "required": ["input"]
+        }
+
+    async def execute(self, input: str) -> ToolResult:
+        return ToolResult(success=True, content=f"结果: {input}")
+```
+
+### 管理插件
+
+| 命令 | 说明 |
+|------|------|
+| `/plugins` | 查看已加载的插件 |
+| `/plugin-new <名称>` | 创建插件模板 |
+| `/plugin-reload <名称>` | 热重载插件 |
+
 ## 项目结构
 
 ```
@@ -165,6 +215,7 @@ xiaotie/
 │   ├── commands.py       # 命令系统
 │   ├── display.py        # 显示增强
 │   ├── repomap.py        # 代码库映射
+│   ├── plugins.py        # 插件系统
 │   ├── llm/
 │   │   ├── base.py       # LLM 客户端基类
 │   │   ├── wrapper.py    # 统一包装器
@@ -200,7 +251,8 @@ xiaotie/
 
 ### v0.3.1
 - 🚀 **工具并行执行** - 多工具调用使用 asyncio.gather 并行执行
-- 新命令：/parallel 切换并行执行模式
+- 🔌 **插件系统** - 支持自定义工具热加载
+- 新命令：/parallel, /plugins, /plugin-new, /plugin-reload
 - 执行时间统计
 
 ### v0.3.0
