@@ -221,12 +221,15 @@ class OpenAIClient(LLMClientBase):
         if api_tools:
             params["tools"] = api_tools
 
-        # GLM-4.7 特殊参数
+        # GLM-4.7 特殊参数 (通过 extra_body 传递)
         if self.is_glm:
+            extra_body = {}
             if api_tools:
-                params["tool_stream"] = True  # 工具流式输出
+                extra_body["tool_stream"] = True  # 工具流式输出
             if enable_thinking:
-                params["thinking"] = {"type": "enabled"}  # 深度思考
+                extra_body["thinking"] = {"type": "enabled"}  # 深度思考
+            if extra_body:
+                params["extra_body"] = extra_body
             # GLM 推荐参数
             params["temperature"] = 1.0
             params["top_p"] = 0.95
@@ -239,10 +242,13 @@ class OpenAIClient(LLMClientBase):
         try:
             stream = await self.client.chat.completions.create(**params)
         except Exception as e:
-            # 如果 thinking 参数不支持，回退到普通模式
-            if "thinking" in str(e) and "thinking" in params:
-                del params["thinking"]
-                stream = await self.client.chat.completions.create(**params)
+            # 如果 extra_body 参数不支持，回退到普通模式
+            if "extra_body" in params:
+                del params["extra_body"]
+                try:
+                    stream = await self.client.chat.completions.create(**params)
+                except Exception:
+                    raise e
             else:
                 raise
 

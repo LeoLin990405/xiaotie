@@ -31,6 +31,7 @@ from .session import SessionManager
 from .commands import Commands
 from .display import Display, StreamDisplay, get_display, set_display
 from .plugins import PluginManager
+from .input import EnhancedInput
 
 
 def create_tools(config: Config, workspace: Path) -> list:
@@ -98,14 +99,19 @@ async def interactive_loop(
     # 创建命令管理器
     commands = Commands(agent, session_mgr, plugin_mgr)
 
+    # 创建增强输入（支持自动补全和历史记录）
+    enhanced_input = EnhancedInput(commands=commands)
+
     display.info("输入 /help 查看帮助，/quit 退出")
+    if enhanced_input.use_prompt_toolkit:
+        display.info("支持 Tab 补全、↑↓ 历史记录、Ctrl+R 搜索历史")
     print()
 
     while True:
         try:
             # 获取用户输入
             try:
-                user_input = display.user_prompt().strip()
+                user_input = enhanced_input.prompt("\n👤 你: ").strip()
             except EOFError:
                 break
 
@@ -373,14 +379,18 @@ async def run_non_interactive(
     )
 
     # 创建 Agent
+    # JSON 输出模式下禁用流式输出和工具打印
+    use_stream = stream and not quiet and output_format != "json"
+    use_quiet = quiet or output_format == "json"
     agent = Agent(
         llm_client=llm_client,
         system_prompt=system_prompt,
         tools=tools,
         max_steps=config.agent.max_steps,
         workspace_dir=str(workspace),
-        stream=stream and not quiet,
+        stream=use_stream,
         enable_thinking=thinking,
+        quiet=use_quiet,
     )
 
     # 运行
@@ -396,9 +406,11 @@ async def run_non_interactive(
             }
             print(json.dumps(output, ensure_ascii=False, indent=2))
         else:
-            if not quiet:
-                print()
-            print(result)
+            # 流式模式下内容已经通过回调打印，不需要再打印
+            if not use_stream:
+                if not quiet:
+                    print()
+                print(result)
 
     except Exception as e:
         if output_format == "json":
@@ -406,9 +418,6 @@ async def run_non_interactive(
         else:
             print(f"❌ 错误: {e}")
         sys.exit(1)
-
-
-async def main_async(stream: bool = True, thinking: bool = True):
 
 
 if __name__ == "__main__":

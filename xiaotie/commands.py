@@ -27,6 +27,14 @@ class Commands:
         "exit": "quit",
         "?": "help",
         "h": "help",
+        "c": "clear",
+        "r": "reset",
+        "s": "save",
+        "l": "load",
+        "t": "tools",
+        "tok": "tokens",
+        "hist": "history",
+        "cfg": "config",
     }
 
     def __init__(
@@ -377,3 +385,126 @@ class Commands:
             return True, f"✅ 插件 {name} 已重新加载"
         else:
             return True, f"❌ 插件 {name} 重新加载失败"
+
+    def cmd_config(self, args: str) -> tuple[bool, str]:
+        """显示当前配置"""
+        lines = [
+            "\n⚙️ 当前配置:\n",
+            f"  模型: {self.agent.llm._client.model}",
+            f"  流式输出: {'开启' if self.agent.stream else '关闭'}",
+            f"  深度思考: {'开启' if self.agent.enable_thinking else '关闭'}",
+            f"  并行工具: {'开启' if self.agent.parallel_tools else '关闭'}",
+            f"  最大步数: {self.agent.max_steps}",
+            f"  Token 限制: {self.agent.token_limit:,}",
+            f"  工作目录: {self.agent.workspace_dir}",
+            "",
+            "  切换选项:",
+            "    /stream   - 切换流式输出",
+            "    /think    - 切换深度思考",
+            "    /parallel - 切换并行工具",
+        ]
+        return True, "\n".join(lines)
+
+    async def cmd_compact(self, args: str) -> tuple[bool, str]:
+        """手动压缩对话历史"""
+        before_tokens = self.agent._estimate_tokens()
+        before_messages = len(self.agent.messages)
+
+        # 强制触发摘要
+        old_limit = self.agent.token_limit
+        self.agent.token_limit = 0  # 临时设为 0 触发摘要
+        await self.agent._summarize_messages()
+        self.agent.token_limit = old_limit
+
+        after_tokens = self.agent._estimate_tokens()
+        after_messages = len(self.agent.messages)
+
+        return True, (
+            f"✅ 对话历史已压缩\n"
+            f"   消息: {before_messages} → {after_messages}\n"
+            f"   Token: {before_tokens:,} → {after_tokens:,}"
+        )
+
+    def cmd_status(self, args: str) -> tuple[bool, str]:
+        """显示系统状态"""
+        import platform
+
+        lines = [
+            "\n📊 系统状态:\n",
+            f"  Python: {platform.python_version()}",
+            f"  系统: {platform.system()} {platform.release()}",
+            "",
+            "  Agent 状态:",
+            f"    消息数: {len(self.agent.messages)}",
+            f"    工具数: {len(self.agent.tools)}",
+            f"    Token 使用: {self.agent._estimate_tokens():,} / {self.agent.token_limit:,}",
+            "",
+            "  会话:",
+            f"    当前会话: {self.session_mgr.current_session or '未保存'}",
+            f"    保存会话数: {len(self.session_mgr.list_sessions())}",
+        ]
+
+        if self.plugin_mgr:
+            plugin_count = len(self.plugin_mgr.get_loaded_tools())
+            lines.append(f"    插件工具数: {plugin_count}")
+
+        return True, "\n".join(lines)
+
+    def cmd_copy(self, args: str) -> tuple[bool, str]:
+        """复制最后一条回复到剪贴板"""
+        # 找到最后一条 assistant 消息
+        for msg in reversed(self.agent.messages):
+            if msg.role == "assistant" and msg.content:
+                try:
+                    import subprocess
+                    # macOS
+                    process = subprocess.Popen(
+                        ["pbcopy"],
+                        stdin=subprocess.PIPE,
+                    )
+                    process.communicate(msg.content.encode("utf-8"))
+                    return True, "✅ 已复制到剪贴板"
+                except Exception:
+                    try:
+                        # Linux (xclip)
+                        process = subprocess.Popen(
+                            ["xclip", "-selection", "clipboard"],
+                            stdin=subprocess.PIPE,
+                        )
+                        process.communicate(msg.content.encode("utf-8"))
+                        return True, "✅ 已复制到剪贴板"
+                    except Exception:
+                        return True, "❌ 无法访问剪贴板"
+
+        return True, "❌ 没有可复制的回复"
+
+    def cmd_undo(self, args: str) -> tuple[bool, str]:
+        """撤销最后一轮对话"""
+        # 找到最后一条 user 消息的位置
+        user_idx = -1
+        for i in range(len(self.agent.messages) - 1, -1, -1):
+            if self.agent.messages[i].role == "user":
+                user_idx = i
+                break
+
+        if user_idx <= 0:  # 0 是 system 消息
+            return True, "❌ 没有可撤销的对话"
+
+        # 删除从 user 消息开始的所有消息
+        removed = len(self.agent.messages) - user_idx
+        self.agent.messages = self.agent.messages[:user_idx]
+
+        return True, f"✅ 已撤销 {removed} 条消息"
+
+    def cmd_retry(self, args: str) -> tuple[bool, str]:
+        """重试最后一次请求"""
+        # 找到最后一条 user 消息
+        for i in range(len(self.agent.messages) - 1, -1, -1):
+            if self.agent.messages[i].role == "user":
+                user_msg = self.agent.messages[i].content
+                # 删除这条消息之后的所有消息
+                self.agent.messages = self.agent.messages[:i]
+                return True, f"🔄 重试: {user_msg[:50]}..."
+
+        return True, "❌ 没有可重试的请求"
+

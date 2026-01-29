@@ -7,7 +7,7 @@ import time
 from typing import List, Optional
 
 # 版本号
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 # 小铁 Logo - 8球风格像素图案
 LOGO_FRAMES = [

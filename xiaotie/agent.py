@@ -39,6 +39,7 @@ class Agent:
         workspace_dir: str = ".",
         stream: bool = True,
         enable_thinking: bool = True,
+        quiet: bool = False,  # 静默模式，不打印工具执行信息
     ):
         self.llm = llm_client
         self.tools: dict[str, Tool] = {t.name: t for t in tools}
@@ -47,6 +48,7 @@ class Agent:
         self.workspace_dir = workspace_dir
         self.stream = stream
         self.enable_thinking = enable_thinking
+        self.quiet = quiet
         self.parallel_tools = True  # 并行执行工具
 
         # 消息历史
@@ -187,11 +189,6 @@ class Agent:
                         messages=self.messages,
                         tools=tool_schemas if tool_schemas else None,
                     )
-                    # 非流式模式下显示输出
-                    if response.thinking:
-                        print(f"\n💭 思考:\n{response.thinking[:500]}...")
-                    if response.content:
-                        print(f"\n🤖 小铁:\n{response.content}")
             except Exception as e:
                 return f"❌ LLM 调用失败: {e}"
 
@@ -243,37 +240,54 @@ class Agent:
             function_name = tool_call.function.name
             arguments = tool_call.function.arguments
 
-            print(f"\n🔧 调用工具: {function_name}")
-            print(f"   参数: {arguments}")
+            # 格式化参数显示
+            if not self.quiet:
+                args_display = ", ".join(
+                    f"{k}={repr(v)[:50]}" for k, v in arguments.items()
+                )
+                print(f"\n🔧 {function_name}({args_display})")
 
             tool = self.tools.get(function_name)
             if not tool:
                 result_content = f"错误: 未知工具 '{function_name}'"
-                print(f"   ❌ {result_content}")
+                if not self.quiet:
+                    print(f"   ❌ {result_content}")
                 return (tool_call_id, function_name, result_content)
 
             try:
+                start_time = time.time()
                 result = await tool.execute(**arguments)
+                elapsed = time.time() - start_time
+
                 if result.success:
                     result_content = result.content
-                    print(f"   ✅ {function_name} 成功")
+                    # 显示结果预览
+                    if not self.quiet:
+                        preview = result_content[:100].replace("\n", " ")
+                        if len(result_content) > 100:
+                            preview += "..."
+                        print(f"   ✅ ({elapsed:.1f}s) {preview}")
                 else:
                     result_content = f"错误: {result.error}"
-                    print(f"   ❌ {function_name}: {result.error}")
+                    if not self.quiet:
+                        print(f"   ❌ ({elapsed:.1f}s) {result.error}")
             except Exception as e:
                 result_content = f"执行异常: {e}"
-                print(f"   ❌ {function_name}: {result_content}")
+                if not self.quiet:
+                    print(f"   ❌ {result_content}")
 
             return (tool_call_id, function_name, result_content)
 
         # 并行或串行执行工具调用
         if self.parallel_tools and len(tool_calls) > 1:
-            print(f"\n⚡ 并行执行 {len(tool_calls)} 个工具调用...")
+            if not self.quiet:
+                print(f"\n⚡ 并行执行 {len(tool_calls)} 个工具...")
             start_time = time.time()
             tasks = [execute_single_tool(tc) for tc in tool_calls]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             elapsed = time.time() - start_time
-            print(f"   ⏱️ 并行执行完成，耗时 {elapsed:.2f}s")
+            if not self.quiet:
+                print(f"   ⏱️ 完成，总耗时 {elapsed:.2f}s")
         else:
             # 串行执行
             results = []
@@ -303,6 +317,8 @@ class Agent:
 
         def on_thinking(text: str):
             nonlocal thinking_started
+            if self.quiet:
+                return
             if not thinking_started:
                 print("\n💭 思考中...", flush=True)
                 thinking_started = True
@@ -311,6 +327,8 @@ class Agent:
 
         def on_content(text: str):
             nonlocal content_started
+            if self.quiet:
+                return
             if not content_started:
                 print("\n🤖 小铁:", flush=True)
                 content_started = True
@@ -324,7 +342,7 @@ class Agent:
             enable_thinking=self.enable_thinking,
         )
 
-        if content_started:
+        if content_started and not self.quiet:
             print()  # 换行
 
         return response
