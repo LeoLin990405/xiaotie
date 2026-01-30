@@ -34,6 +34,53 @@ from .plugins import PluginManager
 from .input import EnhancedInput
 
 
+# MCP 客户端管理器 (全局，用于清理)
+_mcp_manager = None
+
+
+async def load_mcp_tools(config: Config) -> list:
+    """加载 MCP 工具"""
+    global _mcp_manager
+
+    if not config.mcp.enabled:
+        return []
+
+    from .mcp import MCPClientManager, MCPToolWrapper, create_mcp_tools
+
+    mcp_tools = []
+    _mcp_manager = MCPClientManager()
+
+    for server_name, server_config in config.mcp.servers.items():
+        if not server_config.enabled:
+            continue
+
+        try:
+            client = await _mcp_manager.add_server(
+                name=server_name,
+                command=server_config.command,
+                args=server_config.args,
+                env=server_config.env if server_config.env else None,
+                cwd=server_config.cwd,
+            )
+
+            tools = create_mcp_tools(client, server_name)
+            mcp_tools.extend(tools)
+            print_status(f"MCP 服务器 '{server_name}': {len(tools)} 个工具", "ok")
+
+        except Exception as e:
+            print_status(f"MCP 服务器 '{server_name}' 连接失败: {e}", "error")
+
+    return mcp_tools
+
+
+async def cleanup_mcp():
+    """清理 MCP 连接"""
+    global _mcp_manager
+    if _mcp_manager:
+        await _mcp_manager.disconnect_all()
+        _mcp_manager = None
+
+
 def create_tools(config: Config, workspace: Path) -> list:
     """创建工具列表"""
     tools = []
@@ -109,9 +156,9 @@ async def interactive_loop(
 
     while True:
         try:
-            # 获取用户输入
+            # 获取用户输入（使用异步版本）
             try:
-                user_input = enhanced_input.prompt("\n👤 你: ").strip()
+                user_input = (await enhanced_input.prompt_async("\n👤 你: ")).strip()
             except EOFError:
                 break
 
@@ -204,6 +251,12 @@ provider: anthropic
         tools.extend(plugin_tools)
         print_status(f"已加载 {len(plugin_tools)} 个插件工具", "ok")
 
+    # 加载 MCP 工具
+    mcp_tools = await load_mcp_tools(config)
+    if mcp_tools:
+        tools.extend(mcp_tools)
+        print_status(f"已加载 {len(mcp_tools)} 个 MCP 工具", "ok")
+
     # 加载系统提示词
     system_prompt = load_system_prompt(config)
 
@@ -241,7 +294,11 @@ provider: anthropic
     print_ready()
 
     # 进入交互循环
-    await interactive_loop(agent, session_mgr, plugin_mgr, display)
+    try:
+        await interactive_loop(agent, session_mgr, plugin_mgr, display)
+    finally:
+        # 清理 MCP 连接
+        await cleanup_mcp()
 
 
 def main():
@@ -358,6 +415,11 @@ async def run_non_interactive(
     if plugin_tools:
         tools.extend(plugin_tools)
 
+    # 加载 MCP 工具 (非交互模式)
+    mcp_tools = await load_mcp_tools(config)
+    if mcp_tools:
+        tools.extend(mcp_tools)
+
     # 加载系统提示词
     system_prompt = load_system_prompt(config)
 
@@ -418,6 +480,9 @@ async def run_non_interactive(
         else:
             print(f"❌ 错误: {e}")
         sys.exit(1)
+    finally:
+        # 清理 MCP 连接
+        await cleanup_mcp()
 
 
 if __name__ == "__main__":

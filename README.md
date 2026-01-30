@@ -3,7 +3,7 @@
 轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，参考 [OpenCode](https://github.com/opencode-ai/opencode) 设计。
 
 ```
- ▄███▄     小铁 XiaoTie v0.4.0
+ ▄███▄     小铁 XiaoTie v0.5.0
  █ ⚙ █    GLM-4.7 · OpenAI
  ▀███▀     ~/workspace
 ```
@@ -20,6 +20,7 @@
 - 🚀 **并行工具执行** - 多工具调用并行执行，提升效率
 - 🖥️ **TUI 模式** - 基于 Textual 的现代化终端界面
 - 📤 **非交互模式** - 支持单次查询和 JSON 输出
+- 🔌 **MCP 协议支持** - 连接 MCP 服务器，扩展工具能力
 
 ### 工具系统
 - 📁 **文件操作** - 读取、写入、编辑文件
@@ -82,6 +83,34 @@ api_base: https://open.bigmodel.cn/api/coding/paas/v4
 model: GLM-4.7
 provider: openai
 ```
+
+### MCP 配置
+
+小铁支持 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)，可以连接 MCP 服务器扩展工具能力。
+
+在 `config/config.yaml` 中添加 MCP 配置：
+
+```yaml
+# MCP 配置
+mcp:
+  enabled: true  # 启用 MCP 支持
+  servers:
+    # 文件系统服务器
+    filesystem:
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      enabled: true
+
+    # GitHub 服务器
+    github:
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-github"]
+      env:
+        GITHUB_PERSONAL_ACCESS_TOKEN: "your-token"
+      enabled: true
+```
+
+启动后，MCP 服务器提供的工具会自动加载，工具名称格式为 `mcp_<服务器名>_<工具名>`。
 
 ## 使用
 
@@ -293,6 +322,12 @@ xiaotie/
 │   ├── display.py        # 显示增强
 │   ├── repomap.py        # 代码库映射
 │   ├── plugins.py        # 插件系统
+│   ├── mcp/              # MCP 协议支持
+│   │   ├── __init__.py
+│   │   ├── protocol.py   # 协议类型定义
+│   │   ├── transport.py  # Stdio 传输
+│   │   ├── client.py     # MCP 客户端
+│   │   └── tools.py      # 工具包装器
 │   ├── tui/              # TUI 模块
 │   │   ├── __init__.py
 │   │   ├── app.py        # TUI 主应用
@@ -330,6 +365,26 @@ xiaotie/
 | 其他 | 自定义 | OpenAI 兼容 API |
 
 ## 版本历史
+
+### v0.5.0
+- 🔌 **MCP 协议支持** - 实现 Model Context Protocol 客户端
+  - Stdio 传输协议支持
+  - 自动工具发现与调用
+  - 多 MCP 服务器管理
+  - 配置文件集成
+- 📦 **新模块** - `xiaotie/mcp/` 模块
+  - `protocol.py` - MCP 协议类型定义
+  - `transport.py` - Stdio 传输实现
+  - `client.py` - MCP 客户端
+  - `tools.py` - MCP 工具包装器
+
+### v0.4.3
+- 🔒 **权限系统** - Human-in-the-Loop 安全机制，命令风险分类
+- 🔄 **Lint/Test 反馈循环** - 自动错误检测，参考 Aider 设计
+- 📋 **Profile 配置系统** - 多配置文件支持，参考 Open Interpreter
+- 🖥️ **增强 Bash 工具** - 持久化 Shell 会话，命令注入检测
+- 🔧 **新命令** - /lint, /test, /profiles, /profile
+- 🐛 **Bug 修复** - 修复 asyncio 事件循环冲突问题
 
 ### v0.4.2
 - 🎨 **TUI 重构** - 完全参考 OpenCode 设计重构 TUI
@@ -392,6 +447,7 @@ xiaotie/
 - [Aider](https://github.com/Aider-AI/aider) - 命令系统、RepoMap
 - [Open Interpreter](https://github.com/openinterpreter/open-interpreter) - 流式处理、显示
 - [Devika](https://github.com/stitionai/devika) - 多 Agent 架构
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) - MCP 协议实现参考
 
 ## License
 

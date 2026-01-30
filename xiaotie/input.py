@@ -130,7 +130,7 @@ class EnhancedInput:
             event.app.renderer.reset()
 
     def prompt(self, message: str = "👤 你: ") -> str:
-        """获取用户输入"""
+        """获取用户输入（同步版本，不能在 async 上下文中使用）"""
         if self.use_prompt_toolkit:
             try:
                 return self.session.prompt(
@@ -141,6 +141,22 @@ class EnhancedInput:
                 raise
         else:
             return input(message)
+
+    async def prompt_async(self, message: str = "👤 你: ") -> str:
+        """获取用户输入（异步版本，用于 async 上下文）"""
+        if self.use_prompt_toolkit:
+            try:
+                return await self.session.prompt_async(
+                    HTML(f"<prompt.user>{message}</prompt.user>"),
+                    key_bindings=self.bindings,
+                )
+            except (EOFError, KeyboardInterrupt):
+                raise
+        else:
+            # 在异步上下文中使用 run_in_executor 运行同步 input
+            import asyncio
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, lambda: input(message))
 
     def multiline_prompt(self, message: str = "👤 你: ") -> str:
         """多行输入（以空行结束）"""
@@ -166,6 +182,36 @@ class EnhancedInput:
                 except EOFError:
                     break
             return "\n".join(lines)
+
+    async def multiline_prompt_async(self, message: str = "👤 你: ") -> str:
+        """多行输入（异步版本）"""
+        if self.use_prompt_toolkit:
+            try:
+                return await self.session.prompt_async(
+                    HTML(f"<prompt.user>{message}</prompt.user>"),
+                    multiline=True,
+                    key_bindings=self.bindings,
+                )
+            except (EOFError, KeyboardInterrupt):
+                raise
+        else:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, self._sync_multiline_input, message)
+
+    def _sync_multiline_input(self, message: str) -> str:
+        """同步多行输入辅助方法"""
+        lines = []
+        print(message, end="")
+        while True:
+            try:
+                line = input()
+                if not line:
+                    break
+                lines.append(line)
+            except EOFError:
+                break
+        return "\n".join(lines)
 
 
 def create_input(commands: Optional["Commands"] = None) -> EnhancedInput:

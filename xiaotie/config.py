@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -46,11 +46,29 @@ class ToolsConfig:
 
 
 @dataclass
+class MCPServerConfig:
+    """MCP 服务器配置"""
+    command: str
+    args: List[str] = field(default_factory=list)
+    env: Dict[str, str] = field(default_factory=dict)
+    cwd: Optional[str] = None
+    enabled: bool = True
+
+
+@dataclass
+class MCPConfig:
+    """MCP 配置"""
+    enabled: bool = False
+    servers: Dict[str, MCPServerConfig] = field(default_factory=dict)
+
+
+@dataclass
 class Config:
     """主配置"""
     llm: LLMConfig
     agent: AgentConfig = field(default_factory=AgentConfig)
     tools: ToolsConfig = field(default_factory=ToolsConfig)
+    mcp: MCPConfig = field(default_factory=MCPConfig)
 
     @classmethod
     def load(cls, config_path: str | Path | None = None) -> "Config":
@@ -134,10 +152,27 @@ class Config:
             enable_bash=tools_data.get("enable_bash", True),
         )
 
+        # MCP 配置
+        mcp_data = data.get("mcp", {})
+        mcp_servers: Dict[str, MCPServerConfig] = {}
+        for server_name, server_data in mcp_data.get("servers", {}).items():
+            mcp_servers[server_name] = MCPServerConfig(
+                command=server_data.get("command", ""),
+                args=server_data.get("args", []),
+                env=server_data.get("env", {}),
+                cwd=server_data.get("cwd"),
+                enabled=server_data.get("enabled", True),
+            )
+        mcp_config = MCPConfig(
+            enabled=mcp_data.get("enabled", False),
+            servers=mcp_servers,
+        )
+
         return cls(
             llm=llm_config,
             agent=agent_config,
             tools=tools_config,
+            mcp=mcp_config,
         )
 
     @staticmethod

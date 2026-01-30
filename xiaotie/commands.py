@@ -508,3 +508,99 @@ class Commands:
 
         return True, "❌ 没有可重试的请求"
 
+    async def cmd_lint(self, args: str) -> tuple[bool, str]:
+        """对文件运行 lint 检查 (用法: /lint <文件路径>)"""
+        if not args:
+            return True, "用法: /lint <文件路径>"
+
+        from .feedback import FeedbackLoop, FeedbackConfig
+
+        file_path = args.strip()
+        feedback = FeedbackLoop(
+            self.agent.workspace_dir,
+            FeedbackConfig(auto_lint=True, auto_test=False)
+        )
+
+        result = await feedback.lint_file(file_path)
+
+        if result.success:
+            return True, f"✅ Lint 检查通过: {file_path}"
+        else:
+            lines = [f"❌ Lint 检查失败: {file_path}"]
+            if result.errors:
+                lines.append("\n错误:")
+                for err in result.errors[:5]:
+                    lines.append(f"  • {err}")
+            return True, "\n".join(lines)
+
+    async def cmd_test(self, args: str) -> tuple[bool, str]:
+        """运行测试 (用法: /test [文件路径])"""
+        from .feedback import FeedbackLoop, FeedbackConfig
+
+        file_path = args.strip() if args else None
+        feedback = FeedbackLoop(
+            self.agent.workspace_dir,
+            FeedbackConfig(auto_lint=False, auto_test=True)
+        )
+
+        result = await feedback.run_tests(file_path)
+
+        if result.success:
+            return True, f"✅ 测试通过: {result.passed} 个测试"
+        else:
+            lines = [f"❌ 测试失败: {result.failed} 个失败, {result.passed} 个通过"]
+            if result.errors:
+                lines.append("\n错误:")
+                for err in result.errors[:5]:
+                    lines.append(f"  • {err}")
+            return True, "\n".join(lines)
+
+    def cmd_profiles(self, args: str) -> tuple[bool, str]:
+        """列出所有配置 profiles"""
+        from .profiles import ProfileManager
+
+        mgr = ProfileManager()
+        profiles = mgr.list_profiles()
+
+        if not profiles:
+            return True, "📭 暂无保存的 profiles\n\n使用 /profile-new <名称> 创建"
+
+        lines = ["\\n📋 可用 Profiles:\\n"]
+        for name in profiles:
+            try:
+                config = mgr.load_profile(name)
+                lines.append(f"  • {name}: {config.description or '无描述'}")
+            except Exception:
+                lines.append(f"  • {name}: (加载失败)")
+
+        return True, "\n".join(lines)
+
+    def cmd_profile(self, args: str) -> tuple[bool, str]:
+        """切换或显示当前 profile (用法: /profile [名称])"""
+        from .profiles import ProfileManager
+
+        mgr = ProfileManager()
+
+        if not args:
+            current = mgr.get_current_profile()
+            if current:
+                return True, f"📋 当前 Profile: {current.name}"
+            return True, "📋 未设置 Profile"
+
+        name = args.strip()
+        try:
+            mgr.set_current_profile(name)
+            return True, f"✅ 已切换到 Profile: {name}"
+        except ValueError as e:
+            return True, f"❌ {e}"
+
+    def cmd_safe(self, args: str) -> tuple[bool, str]:
+        """切换安全模式（需要确认所有操作）"""
+        # 这里需要集成 PermissionManager
+        return True, "⚠️ 安全模式功能开发中"
+
+    def cmd_autolint(self, args: str) -> tuple[bool, str]:
+        """切换自动 lint 检查"""
+        # 需要在 agent 中添加 feedback_loop 属性
+        return True, "⚠️ 自动 lint 功能开发中"
+
