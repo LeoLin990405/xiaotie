@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xiaotie"
-version = "0.7.0"
+version = "0.8.0"
 description = "小铁 - 轻量级 AI Agent 框架"
 readme = "README.md"
 license = "MIT"
@@ -39,6 +39,9 @@ dependencies = [
 tui = [
     "textual>=0.50.0",
 ]
+search = [
+    "chromadb>=0.4.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
@@ -47,6 +50,7 @@ dev = [
 ]
 all = [
     "xiaotie[tui]",
+    "xiaotie[search]",
 ]
 
 [project.scripts]

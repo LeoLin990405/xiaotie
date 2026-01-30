@@ -5,7 +5,7 @@
 支持多 LLM Provider、工具调用、事件驱动架构、MCP 协议。
 """
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __author__ = "Leo"
 
 from .agent import Agent, AgentConfig, SessionState
@@ -64,6 +64,14 @@ def get_lsp_module():
     return lsp
 
 
+# 语义搜索支持 (延迟导入)
+def get_search_module():
+    """获取语义搜索模块"""
+    from . import search
+
+    return search
+
+
 __all__ = [
     # Agent
     "Agent",
@@ -109,4 +117,6 @@ __all__ = [
     "get_mcp_module",
     # LSP
     "get_lsp_module",
+    # Search
+    "get_search_module",
 ]
