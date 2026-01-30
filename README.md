@@ -35,6 +35,7 @@
 - 🔍 **Web 搜索** - DuckDuckGo 搜索
 - 🌐 **网页获取** - 获取网页内容
 - 📊 **代码分析** - 提取类、函数、依赖关系
+- 🔎 **语义搜索** - 基于向量的代码语义搜索
 
 ### 代码库感知 (RepoMap)
 - 📂 **目录树** - 可视化项目结构
@@ -452,7 +453,8 @@ xiaotie/
 │       ├── bash_tool.py  # Bash 工具
 │       ├── python_tool.py # Python/计算器
 │       ├── git_tool.py   # Git 工具
-│       └── web_tool.py   # Web 工具
+│       ├── web_tool.py   # Web 工具
+│       └── semantic_search_tool.py # 语义搜索工具
 ├── tests/                # 测试目录
 │   ├── conftest.py       # 测试配置
 │   ├── unit/             # 单元测试
@@ -485,6 +487,10 @@ xiaotie/
   - 自动代码分块 (按函数/类)
   - 余弦相似度搜索
   - 支持 20+ 代码文件扩展名
+- 🔧 **SemanticSearchTool** - 语义搜索工具
+  - 集成到 Agent 工具系统
+  - 支持查询、结果数量、文件过滤
+  - 自动索引工作区代码
 - 📦 **新模块** - `xiaotie/search/`
   - `embeddings.py` - 嵌入生成器
   - `vector_store.py` - 向量存储
