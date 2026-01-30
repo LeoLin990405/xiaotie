@@ -49,8 +49,7 @@ class CodeVectorStore:
     ):
         if not HAS_CHROMADB:
             raise ImportError(
-                "chromadb is required for vector search. "
-                "Install with: pip install chromadb"
+                "chromadb is required for vector search. " "Install with: pip install chromadb"
             )
 
         self.embedding_provider = embedding_provider
