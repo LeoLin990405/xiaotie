@@ -3,7 +3,7 @@
 轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，参考 [OpenCode](https://github.com/opencode-ai/opencode) 设计。
 
 ```
- ▄███▄     小铁 XiaoTie v0.5.0
+ ▄███▄     小铁 XiaoTie v0.5.1
  █ ⚙ █    GLM-4.7 · OpenAI
  ▀███▀     ~/workspace
 ```
@@ -305,6 +305,83 @@ class MyTool(Tool):
 | `/plugin-new <名称>` | 创建插件模板 |
 | `/plugin-reload <名称>` | 热重载插件 |
 
+## 自定义命令
+
+小铁支持 OpenCode 风格的自定义命令，可以创建预定义的提示模板。
+
+### 命令位置
+
+- **用户命令** (前缀 `user:`):
+  - `~/.config/xiaotie/commands/`
+  - `~/.xiaotie/commands/`
+- **项目命令** (前缀 `project:`):
+  - `<项目目录>/.xiaotie/commands/`
+
+### 创建命令
+
+```bash
+# 创建用户命令
+/cmd-new review-code
+
+# 创建项目命令
+/cmd-new-project deploy
+```
+
+或手动创建 Markdown 文件，如 `~/.xiaotie/commands/review-code.md`:
+
+```markdown
+# 代码审查
+
+请审查以下文件的代码质量：
+
+文件: $FILE_PATH
+
+重点关注：
+1. 代码风格
+2. 潜在 bug
+3. 性能问题
+4. 安全漏洞
+
+RUN git diff $FILE_PATH
+```
+
+### 命名参数
+
+使用 `$NAME` 格式定义参数（大写字母、数字、下划线，必须以字母开头）：
+
+```markdown
+# 分析 Issue
+
+RUN gh issue view $ISSUE_NUMBER --json title,body,comments
+RUN git grep "$SEARCH_PATTERN" .
+```
+
+执行命令时，系统会提示输入参数值。
+
+### 子目录组织
+
+可以使用子目录组织命令：
+
+```
+~/.xiaotie/commands/
+├── git/
+│   ├── commit.md      -> user:git:commit
+│   └── review.md      -> user:git:review
+└── deploy/
+    └── staging.md     -> user:deploy:staging
+```
+
+### 命令管理
+
+| 命令 | 说明 |
+|------|------|
+| `/commands` | 列出所有自定义命令 |
+| `/run <命令ID>` | 执行自定义命令 |
+| `/cmd-new <名称>` | 创建用户命令 |
+| `/cmd-new-project <名称>` | 创建项目命令 |
+| `/cmd-reload` | 重新加载命令 |
+| `/cmd-show <命令ID>` | 显示命令内容 |
+
 ## 项目结构
 
 ```
@@ -319,6 +396,7 @@ xiaotie/
 │   ├── banner.py         # 启动动画
 │   ├── session.py        # 会话管理
 │   ├── commands.py       # 命令系统
+│   ├── custom_commands.py # 自定义命令
 │   ├── display.py        # 显示增强
 │   ├── repomap.py        # 代码库映射
 │   ├── plugins.py        # 插件系统
@@ -365,6 +443,15 @@ xiaotie/
 | 其他 | 自定义 | OpenAI 兼容 API |
 
 ## 版本历史
+
+### v0.5.1
+- 📜 **自定义命令系统** - 参考 OpenCode 设计
+  - 用户命令: `~/.xiaotie/commands/`
+  - 项目命令: `.xiaotie/commands/`
+  - 支持 Markdown 文件定义命令
+  - 支持命名参数 `$ARG_NAME`
+  - 支持子目录组织命令
+- 🔧 **新命令** - /commands, /run, /cmd-new, /cmd-new-project, /cmd-reload, /cmd-show
 
 ### v0.5.0
 - 🔌 **MCP 协议支持** - 实现 Model Context Protocol 客户端

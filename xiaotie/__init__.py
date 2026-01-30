@@ -5,7 +5,7 @@
 支持多 LLM Provider、工具调用、事件驱动架构、MCP 协议。
 """
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 __author__ = "Leo"
 
 from .agent import Agent, AgentConfig, SessionState
@@ -28,6 +28,10 @@ from .feedback import (
 from .profiles import (
     ProfileManager, ProfileConfig,
     create_preset_profiles,
+)
+from .custom_commands import (
+    CustomCommandManager, CustomCommandExecutor,
+    CustomCommand,
 )
 
 # MCP 支持 (延迟导入以避免循环依赖)
@@ -73,6 +77,10 @@ __all__ = [
     "ProfileManager",
     "ProfileConfig",
     "create_preset_profiles",
+    # Custom Commands
+    "CustomCommandManager",
+    "CustomCommandExecutor",
+    "CustomCommand",
     # MCP
     "get_mcp_module",
 ]
