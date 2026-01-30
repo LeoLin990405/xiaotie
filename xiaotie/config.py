@@ -162,9 +162,10 @@ class Config:
         )
 
         # MCP 配置
-        mcp_data = data.get("mcp", {})
+        mcp_data = data.get("mcp", {}) or {}
         mcp_servers: Dict[str, MCPServerConfig] = {}
-        for server_name, server_data in mcp_data.get("servers", {}).items():
+        servers_data = mcp_data.get("servers", {}) or {}
+        for server_name, server_data in servers_data.items():
             mcp_servers[server_name] = MCPServerConfig(
                 command=server_data.get("command", ""),
                 args=server_data.get("args", []),
