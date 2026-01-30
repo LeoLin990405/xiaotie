@@ -550,7 +550,9 @@ class Agent:
             if self.quiet:
                 return
             if not thinking_started:
-                print("\n💭 思考中...", flush=True)
+                if not self.on_thinking:
+                    # 只有在没有外部回调时才打印标题
+                    print("\n💭 思考中...", flush=True)
                 thinking_started = True
                 await self._publish_event(Event(type=EventType.THINKING_START))
 
@@ -566,11 +568,15 @@ class Agent:
             if self.quiet:
                 return
             if not content_started:
-                print("\n🤖 小铁:", flush=True)
+                if not self.on_content:
+                    # 只有在没有外部回调时才打印标题
+                    print("\n🤖 小铁:", flush=True)
                 content_started = True
                 await self._publish_event(Event(type=EventType.MESSAGE_START))
 
-            print(text, end="", flush=True)
+            # 只有在没有外部回调时才直接打印
+            if not self.on_content:
+                print(text, end="", flush=True)
 
             # 发布消息增量事件
             await self._publish_event(MessageDeltaEvent(content=text))
