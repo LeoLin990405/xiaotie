@@ -1,7 +1,6 @@
 """Schema 单元测试"""
 
-import pytest
-from xiaotie.schema import Message, ToolCall, ToolResult, LLMResponse, FunctionCall, TokenUsage
+from xiaotie.schema import FunctionCall, LLMResponse, Message, TokenUsage, ToolCall, ToolResult
 
 
 class TestMessage:

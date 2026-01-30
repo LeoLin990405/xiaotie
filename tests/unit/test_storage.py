@@ -6,7 +6,6 @@ import tempfile
 import pytest
 
 from xiaotie.storage import (
-    Database,
     MessageRecord,
     MessageStore,
     SessionRecord,

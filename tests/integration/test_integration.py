@@ -1,8 +1,6 @@
 """集成测试"""
 
-import os
 import pytest
-from pathlib import Path
 
 
 class TestAgentIntegration:
@@ -24,14 +22,14 @@ class TestAgentIntegration:
 
     def test_tools_import(self):
         """测试工具导入"""
-        from xiaotie.tools import ReadTool, WriteTool, BashTool
+        from xiaotie.tools import BashTool, ReadTool, WriteTool
         assert ReadTool is not None
         assert WriteTool is not None
         assert BashTool is not None
 
     def test_schema_import(self):
         """测试 Schema 导入"""
-        from xiaotie.schema import Message, ToolCall, ToolResult, LLMResponse
+        from xiaotie.schema import LLMResponse, Message, ToolCall, ToolResult
         assert Message is not None
         assert ToolCall is not None
         assert ToolResult is not None
@@ -50,9 +48,9 @@ class TestMCPIntegration:
     def test_mcp_protocol_import(self):
         """测试 MCP 协议导入"""
         from xiaotie.mcp.protocol import (
+            JSONRPCNotification,
             JSONRPCRequest,
             JSONRPCResponse,
-            JSONRPCNotification,
         )
         assert JSONRPCRequest is not None
         assert JSONRPCResponse is not None
@@ -64,7 +62,7 @@ class TestLSPIntegration:
 
     def test_lsp_import(self):
         """测试 LSP 模块导入"""
-        from xiaotie.lsp import LSPClient, LSPManager, DiagnosticsTool
+        from xiaotie.lsp import DiagnosticsTool, LSPClient, LSPManager
         assert LSPClient is not None
         assert LSPManager is not None
         assert DiagnosticsTool is not None
@@ -72,11 +70,11 @@ class TestLSPIntegration:
     def test_lsp_protocol_import(self):
         """测试 LSP 协议导入"""
         from xiaotie.lsp.protocol import (
-            Position,
-            Range,
-            Location,
             Diagnostic,
             DiagnosticSeverity,
+            Location,
+            Position,
+            Range,
         )
         assert Position is not None
         assert Range is not None
@@ -90,7 +88,7 @@ class TestCustomCommandsIntegration:
 
     def test_custom_commands_import(self):
         """测试自定义命令导入"""
-        from xiaotie.custom_commands import CustomCommandManager, CustomCommandExecutor
+        from xiaotie.custom_commands import CustomCommandExecutor, CustomCommandManager
         assert CustomCommandManager is not None
         assert CustomCommandExecutor is not None
 

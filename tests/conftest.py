@@ -1,7 +1,6 @@
 """pytest 配置"""
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 

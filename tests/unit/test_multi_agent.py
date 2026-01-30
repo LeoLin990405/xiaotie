@@ -1,15 +1,15 @@
 """多 Agent 协作测试"""
 
 import pytest
+
 from xiaotie.multi_agent import (
     AgentCoordinator,
-    TaskResult,
     AgentRole,
-    RoleConfig,
-    create_default_roles,
-    TaskAgent,
-    TaskAgentConfig,
     AgentTool,
+    RoleConfig,
+    TaskAgentConfig,
+    TaskResult,
+    create_default_roles,
 )
 
 

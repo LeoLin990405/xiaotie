@@ -1,11 +1,10 @@
 """工具单元测试"""
 
 import os
-import pytest
-from pathlib import Path
 
-from xiaotie.tools import ReadTool, WriteTool, BashTool
-from xiaotie.schema import ToolResult
+import pytest
+
+from xiaotie.tools import BashTool, ReadTool, WriteTool
 
 
 class TestReadTool:
