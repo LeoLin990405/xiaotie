@@ -3,7 +3,7 @@
 轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，参考 [OpenCode](https://github.com/opencode-ai/opencode) 设计。
 
 ```
- ▄███▄     小铁 XiaoTie v0.8.0
+ ▄███▄     小铁 XiaoTie v0.8.1
  █ ⚙ █    GLM-4.7 · OpenAI
  ▀███▀     ~/workspace
 ```
@@ -479,6 +479,25 @@ xiaotie/
 | 其他 | 自定义 | OpenAI 兼容 API |
 
 ## 版本历史
+
+### v0.8.1
+- 🎨 **TUI 优化** - 参考 OpenCode 像素级复刻
+  - 10 个主题配色 (Nord, Dracula, Catppuccin, Tokyo Night 等)
+  - 模型选择器 (Ctrl+M)
+  - 主题选择器 (Ctrl+T)
+  - Toast 通知系统
+  - Nerd Font 图标支持
+  - 改进的状态行显示
+  - 思考指示器动画
+- 🔧 **TUI 组件增强**
+  - `Toast` - 通知提示 (success/error/warning/info)
+  - `ModelSelector` - 模型选择器
+  - `ThemeSelector` - 主题选择器
+  - `SelectorItem` - 通用选择项
+- 📦 **主题系统** - `xiaotie/tui/themes.py`
+  - 完整的颜色变量定义
+  - Diff 颜色、Markdown 颜色、语法高亮颜色
+  - CSS 变量导出支持
 
 ### v0.8.0
 - 🔍 **语义搜索** - 基于向量的代码语义搜索

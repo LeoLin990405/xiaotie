@@ -1,9 +1,12 @@
-"""小铁 TUI 主应用
+"""小铁 TUI 主应用 - OpenCode 风格
 
 参考 OpenCode 设计：
 - 分割面板布局（消息区 + 侧边栏）
 - 底部编辑器
 - 命令面板 (Ctrl+K)
+- 模型选择器 (Ctrl+M)
+- 主题选择器 (Ctrl+T)
+- Toast 通知
 - 状态行
 """
 
@@ -20,6 +23,7 @@ from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Static
 
+from .themes import get_theme_display_name, list_themes
 from .widgets import (
     Editor,
     MessageList,
@@ -27,6 +31,7 @@ from .widgets import (
     SessionList,
     StatusLine,
     ThinkingIndicator,
+    Toast,
 )
 
 
@@ -76,11 +81,13 @@ class HelpScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield Static("⚙️ 小铁帮助", classes="help-title")
+            yield Static("󰋽 小铁帮助", classes="help-title")
 
             yield Static("快捷键", classes="help-section")
             yield Static("Ctrl+K  命令面板", classes="help-item")
             yield Static("Ctrl+B  切换侧边栏", classes="help-item")
+            yield Static("Ctrl+M  模型选择", classes="help-item")
+            yield Static("Ctrl+T  主题选择", classes="help-item")
             yield Static("Ctrl+N  新会话", classes="help-item")
             yield Static("Ctrl+S  保存会话", classes="help-item")
             yield Static("Ctrl+L  清屏", classes="help-item")
@@ -97,6 +104,7 @@ class HelpScreen(ModalScreen):
             yield Static("/new      新建会话", classes="help-item")
             yield Static("/config   显示配置", classes="help-item")
             yield Static("/status   系统状态", classes="help-item")
+            yield Static("/themes   主题列表", classes="help-item")
 
             yield Static("\n按 ESC 或 Q 关闭", classes="help-item")
 
@@ -156,11 +164,11 @@ class CommandPaletteScreen(ModalScreen):
     }
 
     CommandPaletteScreen .cmd-item:hover {
-        background: $primary-darken-2;
+        background: $primary 30%;
     }
 
     CommandPaletteScreen .cmd-item.selected {
-        background: $primary-darken-1;
+        background: $primary 40%;
     }
 
     CommandPaletteScreen .no-results {
@@ -193,6 +201,8 @@ class CommandPaletteScreen(ModalScreen):
         ("copy", "复制最后回复", ""),
         ("undo", "撤销最后对话", ""),
         ("retry", "重试最后请求", ""),
+        ("themes", "主题列表", "Ctrl+T"),
+        ("models", "模型列表", "Ctrl+M"),
     ]
 
     def __init__(self, callback=None, **kwargs):
@@ -203,7 +213,7 @@ class CommandPaletteScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield Static("⌘ 命令面板 (输入搜索)", classes="palette-header")
+            yield Static("󰌌 命令面板 (输入搜索)", classes="palette-header")
             yield Input(placeholder="输入命令...", id="cmd-input")
             with ScrollableContainer(classes="command-list"):
                 for i, (name, desc, shortcut) in enumerate(self.COMMANDS):
@@ -287,6 +297,148 @@ class CommandPaletteScreen(ModalScreen):
                 item.remove_class("selected")
 
 
+class ModelSelectorScreen(ModalScreen):
+    """模型选择器屏幕"""
+
+    BINDINGS = [
+        Binding("escape", "dismiss", "关闭"),
+    ]
+
+    DEFAULT_CSS = """
+    ModelSelectorScreen {
+        align: center middle;
+    }
+
+    ModelSelectorScreen > Vertical {
+        width: 50;
+        height: auto;
+        max-height: 70%;
+        background: $surface;
+        border: solid $primary;
+        padding: 1;
+    }
+
+    ModelSelectorScreen .selector-title {
+        text-style: bold;
+        margin-bottom: 1;
+        color: $primary;
+    }
+
+    ModelSelectorScreen .model-item {
+        width: 100%;
+        height: 1;
+        padding: 0 1;
+    }
+
+    ModelSelectorScreen .model-item:hover {
+        background: $primary 30%;
+    }
+
+    ModelSelectorScreen .model-item.selected {
+        background: $primary 40%;
+    }
+    """
+
+    MODELS = [
+        ("claude-sonnet-4-20250514", "󰚩 Claude Sonnet 4"),
+        ("claude-opus-4-20250514", "󰚩 Claude Opus 4"),
+        ("claude-3-5-sonnet-20241022", "󰚩 Claude 3.5 Sonnet"),
+        ("gpt-4o", "󰧑 GPT-4o"),
+        ("gpt-4o-mini", "󰧑 GPT-4o Mini"),
+        ("GLM-4.7", "󰮯 GLM-4.7"),
+        ("deepseek-chat", "󰊤 DeepSeek Chat"),
+        ("deepseek-coder", "󰊤 DeepSeek Coder"),
+    ]
+
+    def __init__(self, current_model: str = "", callback=None, **kwargs):
+        super().__init__(**kwargs)
+        self.current_model = current_model
+        self.callback = callback
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Static("󰚩 选择模型", classes="selector-title")
+            for value, display in self.MODELS:
+                is_selected = value == self.current_model
+                classes = "model-item selected" if is_selected else "model-item"
+                yield Static(display, classes=classes, id=f"model-{value}")
+
+    def on_static_click(self, event) -> None:
+        """处理模型点击"""
+        widget_id = event.widget.id
+        if widget_id and widget_id.startswith("model-"):
+            model = widget_id[6:]  # 去掉 "model-" 前缀
+            if self.callback:
+                self.callback(model)
+            self.dismiss(model)
+
+
+class ThemeSelectorScreen(ModalScreen):
+    """主题选择器屏幕"""
+
+    BINDINGS = [
+        Binding("escape", "dismiss", "关闭"),
+    ]
+
+    DEFAULT_CSS = """
+    ThemeSelectorScreen {
+        align: center middle;
+    }
+
+    ThemeSelectorScreen > Vertical {
+        width: 40;
+        height: auto;
+        max-height: 70%;
+        background: $surface;
+        border: solid $primary;
+        padding: 1;
+    }
+
+    ThemeSelectorScreen .selector-title {
+        text-style: bold;
+        margin-bottom: 1;
+        color: $primary;
+    }
+
+    ThemeSelectorScreen .theme-item {
+        width: 100%;
+        height: 1;
+        padding: 0 1;
+    }
+
+    ThemeSelectorScreen .theme-item:hover {
+        background: $primary 30%;
+    }
+
+    ThemeSelectorScreen .theme-item.selected {
+        background: $primary 40%;
+    }
+    """
+
+    def __init__(self, current_theme: str = "default", callback=None, **kwargs):
+        super().__init__(**kwargs)
+        self.current_theme = current_theme
+        self.callback = callback
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Static("󰏘 选择主题", classes="selector-title")
+            for theme_id in list_themes():
+                display = get_theme_display_name(theme_id)
+                is_selected = theme_id == self.current_theme
+                classes = "theme-item selected" if is_selected else "theme-item"
+                yield Static(f"󰏘 {display}", classes=classes, id=f"theme-{theme_id}")
+
+    def on_static_click(self, event) -> None:
+        """处理主题点击"""
+        widget_id = event.widget.id
+        if widget_id and widget_id.startswith("theme-"):
+            theme = widget_id[6:]  # 去掉 "theme-" 前缀
+            if self.callback:
+                self.callback(theme)
+            self.dismiss(theme)
+
+
 class XiaoTieApp(App):
     """小铁 TUI 主应用 - OpenCode 风格"""
 
@@ -298,6 +450,7 @@ class XiaoTieApp(App):
         layout: grid;
         grid-size: 1;
         grid-rows: 1fr auto auto;
+        background: $background;
     }
 
     /* 主内容区 - 分割布局 */
@@ -316,6 +469,7 @@ class XiaoTieApp(App):
         width: 1fr;
         height: 100%;
         min-width: 40;
+        background: $background;
     }
 
     /* 侧边栏 */
@@ -323,7 +477,7 @@ class XiaoTieApp(App):
         width: 30;
         height: 100%;
         background: $surface-darken-1;
-        border-left: solid $surface-lighten-1;
+        border-left: solid $border;
     }
 
     #sidebar.hidden {
@@ -334,7 +488,7 @@ class XiaoTieApp(App):
     #divider {
         width: 1;
         height: 100%;
-        background: $surface-lighten-1;
+        background: $border;
     }
 
     #divider.hidden {
@@ -365,12 +519,23 @@ class XiaoTieApp(App):
         border-left: thick $secondary;
         color: $text-muted;
     }
+
+    /* Toast 容器 */
+    #toast-container {
+        dock: top;
+        align: right top;
+        width: auto;
+        height: auto;
+        layer: notification;
+    }
     """
 
     BINDINGS = [
         Binding("ctrl+k", "command_palette", "命令面板", show=True),
         Binding("ctrl+p", "command_palette", "命令面板", show=False),
         Binding("ctrl+b", "toggle_sidebar", "侧边栏", show=True),
+        Binding("ctrl+m", "model_selector", "模型", show=True),
+        Binding("ctrl+t", "theme_selector", "主题", show=True),
         Binding("ctrl+n", "new_session", "新会话", show=True),
         Binding("ctrl+s", "save_session", "保存", show=True),
         Binding("ctrl+l", "clear_screen", "清屏", show=False),
@@ -386,6 +551,7 @@ class XiaoTieApp(App):
     thinking_mode = reactive(True)
     is_processing = reactive(False)
     sidebar_visible = reactive(True)
+    current_theme = reactive("default")
 
     def __init__(
         self,
@@ -404,6 +570,9 @@ class XiaoTieApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
+
+        # Toast 容器
+        yield Container(id="toast-container")
 
         # 主内容区 - 分割布局
         with Container(id="main-container"):
@@ -473,6 +642,7 @@ class XiaoTieApp(App):
         status_line.session = self.session_name
         status_line.parallel = self.parallel_mode
         status_line.thinking = self.thinking_mode
+        status_line.theme_name = self.current_theme
 
     def _show_thinking(self) -> None:
         """显示思考指示器"""
@@ -488,16 +658,29 @@ class XiaoTieApp(App):
             self._thinking_widget.remove()
             self._thinking_widget = None
 
+    def show_toast(
+        self,
+        title: str,
+        message: str,
+        variant: str = "info",
+        duration: float = 3.0,
+    ) -> None:
+        """显示 Toast 通知"""
+        toast = Toast(title=title, message=message, variant=variant, duration=duration)
+        container = self.query_one("#toast-container")
+        container.mount(toast)
+
     def add_message(
         self,
         role: str,
         content: str,
         thinking: Optional[str] = None,
         tool_name: Optional[str] = None,
+        is_error: bool = False,
     ) -> None:
         """添加消息"""
         messages = self.query_one("#messages-pane", MessageList)
-        messages.add_message(role, content, thinking, tool_name)
+        messages.add_message(role, content, thinking, tool_name, is_error)
 
     async def on_editor_submitted(self, event: Editor.Submitted) -> None:
         """处理编辑器提交"""
@@ -519,6 +702,14 @@ class XiaoTieApp(App):
 
     async def _handle_command(self, cmd_line: str) -> None:
         """处理命令"""
+        # 特殊命令处理
+        if cmd_line == "themes":
+            self.action_theme_selector()
+            return
+        if cmd_line == "models":
+            self.action_model_selector()
+            return
+
         if self.commands:
             should_continue, message = await self.commands.execute(cmd_line)
             if message:
@@ -554,7 +745,8 @@ class XiaoTieApp(App):
             self.add_message("assistant", result, thinking=thinking)
 
         except Exception as e:
-            self.add_message("system", f"错误: {e}")
+            self.add_message("system", f"错误: {e}", is_error=True)
+            self.show_toast("错误", str(e), variant="error")
 
         finally:
             self.is_processing = False
@@ -570,6 +762,25 @@ class XiaoTieApp(App):
     def action_toggle_sidebar(self) -> None:
         """切换侧边栏"""
         self.sidebar_visible = not self.sidebar_visible
+
+    def action_model_selector(self) -> None:
+        """打开模型选择器"""
+
+        def on_model(model: str):
+            self.model_name = model
+            self.show_toast("模型已切换", f"当前模型: {model}", variant="success")
+
+        self.push_screen(ModelSelectorScreen(current_model=self.model_name, callback=on_model))
+
+    def action_theme_selector(self) -> None:
+        """打开主题选择器"""
+
+        def on_theme(theme: str):
+            self.current_theme = theme
+            display_name = get_theme_display_name(theme)
+            self.show_toast("主题已切换", f"当前主题: {display_name}", variant="success")
+
+        self.push_screen(ThemeSelectorScreen(current_theme=self.current_theme, callback=on_theme))
 
     def action_new_session(self) -> None:
         """新建会话"""
