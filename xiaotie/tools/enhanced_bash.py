@@ -24,6 +24,7 @@ from .base import Tool
 @dataclass
 class CommandLog:
     """命令日志"""
+
     command: str
     output: str
     exit_code: int
@@ -49,7 +50,9 @@ class PersistentShell:
 
         if self.is_windows:
             self._process = await asyncio.create_subprocess_exec(
-                "powershell.exe", "-NoProfile", "-NoLogo",
+                "powershell.exe",
+                "-NoProfile",
+                "-NoLogo",
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -58,7 +61,9 @@ class PersistentShell:
             )
         else:
             self._process = await asyncio.create_subprocess_exec(
-                "/bin/bash", "--norc", "--noprofile",
+                "/bin/bash",
+                "--norc",
+                "--noprofile",
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -109,8 +114,7 @@ class PersistentShell:
                     nonlocal exit_code
                     while True:
                         line = await asyncio.wait_for(
-                            self._process.stdout.readline(),
-                            timeout=timeout
+                            self._process.stdout.readline(), timeout=timeout
                         )
                         if not line:
                             break
@@ -132,12 +136,14 @@ class PersistentShell:
 
                 # 记录日志
                 duration = time.time() - start_time
-                self._history.append(CommandLog(
-                    command=command,
-                    output=stdout,
-                    exit_code=exit_code,
-                    duration=duration,
-                ))
+                self._history.append(
+                    CommandLog(
+                        command=command,
+                        output=stdout,
+                        exit_code=exit_code,
+                        duration=duration,
+                    )
+                )
 
                 return exit_code, stdout, stderr
 
@@ -161,12 +167,12 @@ class PersistentShell:
 
 # 命令注入检测模式
 INJECTION_PATTERNS = [
-    r"`[^`]+`",           # 反引号命令替换
-    r"\$\([^)]+\)",       # $() 命令替换
-    r";\s*[a-z]",         # 分号后跟命令
-    r"\|\s*[a-z]",        # 管道后跟命令（可能是恶意的）
-    r"&&\s*rm\s",         # && 后跟 rm
-    r"\|\|\s*rm\s",       # || 后跟 rm
+    r"`[^`]+`",  # 反引号命令替换
+    r"\$\([^)]+\)",  # $() 命令替换
+    r";\s*[a-z]",  # 分号后跟命令
+    r"\|\s*[a-z]",  # 管道后跟命令（可能是恶意的）
+    r"&&\s*rm\s",  # && 后跟 rm
+    r"\|\|\s*rm\s",  # || 后跟 rm
 ]
 
 
@@ -258,7 +264,7 @@ class EnhancedBashTool(Tool):
             if suspicious:
                 return ToolResult(
                     success=False,
-                    error=f"检测到可疑命令模式: {suspicious}。如果这是预期行为，请确认后重试。"
+                    error=f"检测到可疑命令模式: {suspicious}。如果这是预期行为，请确认后重试。",
                 )
 
         try:
@@ -278,9 +284,7 @@ class EnhancedBashTool(Tool):
 
             if exit_code != 0:
                 return ToolResult(
-                    success=False,
-                    content=output,
-                    error=f"命令失败，退出码: {exit_code}"
+                    success=False, content=output, error=f"命令失败，退出码: {exit_code}"
                 )
 
             return ToolResult(success=True, content=output or "(无输出)")
@@ -299,7 +303,10 @@ class EnhancedBashTool(Tool):
 
         if self.is_windows:
             process = await asyncio.create_subprocess_exec(
-                "powershell.exe", "-NoProfile", "-Command", command,
+                "powershell.exe",
+                "-NoProfile",
+                "-Command",
+                command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=cwd,
@@ -313,10 +320,7 @@ class EnhancedBashTool(Tool):
             )
 
         try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=timeout
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             process.kill()
             return -1, "", f"命令超时（{timeout}秒）"

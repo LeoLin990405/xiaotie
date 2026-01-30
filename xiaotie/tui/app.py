@@ -231,8 +231,7 @@ class CommandPaletteScreen(ModalScreen):
         query = event.value.lower().strip()
         if query:
             self.filtered_commands = [
-                cmd for cmd in self.COMMANDS
-                if query in cmd[0].lower() or query in cmd[1].lower()
+                cmd for cmd in self.COMMANDS if query in cmd[0].lower() or query in cmd[1].lower()
             ]
         else:
             self.filtered_commands = self.COMMANDS.copy()
@@ -250,9 +249,7 @@ class CommandPaletteScreen(ModalScreen):
 
     def on_key(self, event) -> None:
         if event.key == "down":
-            self.selected_index = min(
-                self.selected_index + 1, len(self.filtered_commands) - 1
-            )
+            self.selected_index = min(self.selected_index + 1, len(self.filtered_commands) - 1)
             self._update_selection()
             event.prevent_default()
         elif event.key == "up":
@@ -270,11 +267,13 @@ class CommandPaletteScreen(ModalScreen):
         if self.filtered_commands:
             for i, (name, desc, shortcut) in enumerate(self.filtered_commands):
                 classes = "cmd-item selected" if i == 0 else "cmd-item"
-                command_list.mount(Static(
-                    self._format_cmd(name, desc, shortcut),
-                    classes=classes,
-                    id=f"cmd-{name}",
-                ))
+                command_list.mount(
+                    Static(
+                        self._format_cmd(name, desc, shortcut),
+                        classes=classes,
+                        id=f"cmd-{name}",
+                    )
+                )
         else:
             command_list.mount(Static("无匹配命令", classes="no-results"))
 
@@ -548,7 +547,7 @@ class XiaoTieApp(App):
             thinking = None
             if self.agent.messages:
                 last_msg = self.agent.messages[-1]
-                if hasattr(last_msg, 'thinking'):
+                if hasattr(last_msg, "thinking"):
                     thinking = last_msg.thinking
 
             # 添加回复
@@ -562,6 +561,7 @@ class XiaoTieApp(App):
 
     def action_command_palette(self) -> None:
         """打开命令面板"""
+
         def on_command(cmd: str):
             asyncio.create_task(self._handle_command(cmd))
 

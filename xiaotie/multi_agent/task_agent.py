@@ -28,12 +28,14 @@ class TaskAgentConfig:
     prompt: str
 
     # 允许的工具列表
-    allowed_tools: list[str] = field(default_factory=lambda: [
-        "read_file",
-        "glob",
-        "grep",
-        "list_dir",
-    ])
+    allowed_tools: list[str] = field(
+        default_factory=lambda: [
+            "read_file",
+            "glob",
+            "grep",
+            "list_dir",
+        ]
+    )
 
     # 最大迭代次数
     max_iterations: int = 10
@@ -161,19 +163,23 @@ class TaskAgent:
                 tool_results = await self._execute_tools(response.tool_calls)
 
                 # 添加助手消息
-                messages.append(Message(
-                    role="assistant",
-                    content=response.content,
-                    tool_calls=response.tool_calls,
-                ))
+                messages.append(
+                    Message(
+                        role="assistant",
+                        content=response.content,
+                        tool_calls=response.tool_calls,
+                    )
+                )
 
                 # 添加工具结果消息
                 for tc, result in zip(response.tool_calls, tool_results):
-                    messages.append(Message(
-                        role="tool",
-                        content=result.content if result.success else f"错误: {result.error}",
-                        tool_call_id=tc.id,
-                    ))
+                    messages.append(
+                        Message(
+                            role="tool",
+                            content=result.content if result.success else f"错误: {result.error}",
+                            tool_call_id=tc.id,
+                        )
+                    )
             else:
                 # 没有工具调用，返回最终结果
                 return TaskAgentResult(
@@ -198,20 +204,24 @@ class TaskAgent:
         for tc in tool_calls:
             tool = self._find_tool(tc.function.name)
             if tool is None:
-                results.append(ToolResult(
-                    success=False,
-                    error=f"未知工具: {tc.function.name}",
-                ))
+                results.append(
+                    ToolResult(
+                        success=False,
+                        error=f"未知工具: {tc.function.name}",
+                    )
+                )
                 continue
 
             try:
                 result = await tool.execute(**tc.function.arguments)
                 results.append(result)
             except Exception as e:
-                results.append(ToolResult(
-                    success=False,
-                    error=f"工具执行失败: {e}",
-                ))
+                results.append(
+                    ToolResult(
+                        success=False,
+                        error=f"工具执行失败: {e}",
+                    )
+                )
 
         return results
 

@@ -52,6 +52,7 @@ class DiagnosticsTool(Tool):
         """延迟初始化 LSP 管理器"""
         if self._lsp_manager is None:
             from ..lsp import LSPManager
+
             self._lsp_manager = LSPManager(self.workspace_dir)
         return self._lsp_manager
 
@@ -126,6 +127,7 @@ class DiagnosticsTool(Tool):
                         )
 
                 from ..lsp.manager import format_diagnostics
+
                 content = format_diagnostics(all_diagnostics)
 
                 return ToolResult(

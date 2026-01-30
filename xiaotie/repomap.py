@@ -18,49 +18,109 @@ from typing import Dict, List, Optional, Set
 # 常见的忽略模式
 DEFAULT_IGNORE_PATTERNS = {
     # 目录
-    ".git", ".svn", ".hg",
-    "node_modules", "__pycache__", ".pytest_cache",
-    "venv", ".venv", "env", ".env",
-    "dist", "build", ".next", ".nuxt",
-    "target", "out", "bin", "obj",
-    ".idea", ".vscode", ".eclipse",
-    "coverage", ".nyc_output",
+    ".git",
+    ".svn",
+    ".hg",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    "venv",
+    ".venv",
+    "env",
+    ".env",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    "target",
+    "out",
+    "bin",
+    "obj",
+    ".idea",
+    ".vscode",
+    ".eclipse",
+    "coverage",
+    ".nyc_output",
     # 文件模式
-    "*.pyc", "*.pyo", "*.so", "*.dll", "*.dylib",
-    "*.egg-info", "*.egg",
-    "*.min.js", "*.min.css",
-    "*.map", "*.lock",
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    "*.pyc",
+    "*.pyo",
+    "*.so",
+    "*.dll",
+    "*.dylib",
+    "*.egg-info",
+    "*.egg",
+    "*.min.js",
+    "*.min.css",
+    "*.map",
+    "*.lock",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
 }
 
 # 代码文件扩展名
 CODE_EXTENSIONS = {
-    ".py", ".js", ".ts", ".jsx", ".tsx",
-    ".java", ".kt", ".scala",
-    ".go", ".rs", ".c", ".cpp", ".h", ".hpp",
-    ".rb", ".php", ".swift", ".m",
-    ".cs", ".fs", ".vb",
-    ".lua", ".pl", ".r",
-    ".sh", ".bash", ".zsh",
-    ".sql", ".graphql",
-    ".vue", ".svelte",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".java",
+    ".kt",
+    ".scala",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".rb",
+    ".php",
+    ".swift",
+    ".m",
+    ".cs",
+    ".fs",
+    ".vb",
+    ".lua",
+    ".pl",
+    ".r",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".sql",
+    ".graphql",
+    ".vue",
+    ".svelte",
 }
 
 # 重要文件（优先显示）
 IMPORTANT_FILES = {
-    "README.md", "README.rst", "README.txt", "README",
-    "setup.py", "pyproject.toml", "setup.cfg",
-    "package.json", "tsconfig.json",
-    "Cargo.toml", "go.mod", "build.gradle",
-    "Makefile", "CMakeLists.txt",
-    "Dockerfile", "docker-compose.yml",
-    ".env.example", "config.yaml", "config.json",
+    "README.md",
+    "README.rst",
+    "README.txt",
+    "README",
+    "setup.py",
+    "pyproject.toml",
+    "setup.cfg",
+    "package.json",
+    "tsconfig.json",
+    "Cargo.toml",
+    "go.mod",
+    "build.gradle",
+    "Makefile",
+    "CMakeLists.txt",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".env.example",
+    "config.yaml",
+    "config.json",
 }
 
 
 @dataclass
 class CodeDefinition:
     """代码定义"""
+
     name: str
     kind: str  # class, function, method, variable
     file_path: str
@@ -71,6 +131,7 @@ class CodeDefinition:
 @dataclass
 class FileInfo:
     """文件信息"""
+
     path: str
     relative_path: str
     size: int
@@ -121,33 +182,37 @@ class RepoMap:
         definitions = []
 
         # 匹配类定义
-        class_pattern = r'^class\s+(\w+)(?:\([^)]*\))?:'
+        class_pattern = r"^class\s+(\w+)(?:\([^)]*\))?:"
         for match in re.finditer(class_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
-            definitions.append(CodeDefinition(
-                name=match.group(1),
-                kind="class",
-                file_path=file_path,
-                line_number=line_num,
-                signature=match.group(0).rstrip(':'),
-            ))
+            line_num = content[: match.start()].count("\n") + 1
+            definitions.append(
+                CodeDefinition(
+                    name=match.group(1),
+                    kind="class",
+                    file_path=file_path,
+                    line_number=line_num,
+                    signature=match.group(0).rstrip(":"),
+                )
+            )
 
         # 匹配函数定义
-        func_pattern = r'^(?:async\s+)?def\s+(\w+)\s*\([^)]*\)(?:\s*->\s*[^:]+)?:'
+        func_pattern = r"^(?:async\s+)?def\s+(\w+)\s*\([^)]*\)(?:\s*->\s*[^:]+)?:"
         for match in re.finditer(func_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             # 检查是否是方法（缩进）
-            line_start = content.rfind('\n', 0, match.start()) + 1
+            line_start = content.rfind("\n", 0, match.start()) + 1
             indent = match.start() - line_start
             kind = "method" if indent > 0 else "function"
 
-            definitions.append(CodeDefinition(
-                name=match.group(1),
-                kind=kind,
-                file_path=file_path,
-                line_number=line_num,
-                signature=match.group(0).rstrip(':'),
-            ))
+            definitions.append(
+                CodeDefinition(
+                    name=match.group(1),
+                    kind=kind,
+                    file_path=file_path,
+                    line_number=line_num,
+                    signature=match.group(0).rstrip(":"),
+                )
+            )
 
         return definitions
 
@@ -156,31 +221,37 @@ class RepoMap:
         definitions = []
 
         # 匹配类定义
-        class_pattern = r'(?:export\s+)?class\s+(\w+)(?:\s+extends\s+\w+)?(?:\s+implements\s+[\w,\s]+)?\s*\{'
+        class_pattern = (
+            r"(?:export\s+)?class\s+(\w+)(?:\s+extends\s+\w+)?(?:\s+implements\s+[\w,\s]+)?\s*\{"
+        )
         for match in re.finditer(class_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
-            definitions.append(CodeDefinition(
-                name=match.group(1),
-                kind="class",
-                file_path=file_path,
-                line_number=line_num,
-            ))
+            line_num = content[: match.start()].count("\n") + 1
+            definitions.append(
+                CodeDefinition(
+                    name=match.group(1),
+                    kind="class",
+                    file_path=file_path,
+                    line_number=line_num,
+                )
+            )
 
         # 匹配函数定义
         func_patterns = [
-            r'(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(',
-            r'(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>',
-            r'(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?function',
+            r"(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(",
+            r"(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>",
+            r"(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?function",
         ]
         for pattern in func_patterns:
             for match in re.finditer(pattern, content):
-                line_num = content[:match.start()].count('\n') + 1
-                definitions.append(CodeDefinition(
-                    name=match.group(1),
-                    kind="function",
-                    file_path=file_path,
-                    line_number=line_num,
-                ))
+                line_num = content[: match.start()].count("\n") + 1
+                definitions.append(
+                    CodeDefinition(
+                        name=match.group(1),
+                        kind="function",
+                        file_path=file_path,
+                        line_number=line_num,
+                    )
+                )
 
         return definitions
 
@@ -228,8 +299,10 @@ class RepoMap:
                     if self._is_code_file(file_path):
                         try:
                             content = file_path.read_text(encoding="utf-8", errors="ignore")
-                            file_info.lines = content.count('\n') + 1
-                            file_info.definitions = self._extract_definitions(content, relative_path)
+                            file_info.lines = content.count("\n") + 1
+                            file_info.definitions = self._extract_definitions(
+                                content, relative_path
+                            )
                         except Exception:
                             pass
 
@@ -288,11 +361,13 @@ class RepoMap:
         files = self.scan_files()
 
         # 按重要性和定义数量排序
-        files.sort(key=lambda f: (
-            -int(f.is_important),
-            -len(f.definitions),
-            f.relative_path,
-        ))
+        files.sort(
+            key=lambda f: (
+                -int(f.is_important),
+                -len(f.definitions),
+                f.relative_path,
+            )
+        )
 
         lines = ["# 代码库概览\n"]
 

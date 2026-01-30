@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class MCPClientError(Exception):
     """MCP 客户端错误"""
+
     pass
 
 
@@ -187,7 +188,9 @@ class MCPClient:
         # 解析结果
         init_result = InitializeResult(**result)
         self._server_info = init_result.serverInfo
-        self._server_capabilities = init_result.capabilities.model_dump() if init_result.capabilities else {}
+        self._server_capabilities = (
+            init_result.capabilities.model_dump() if init_result.capabilities else {}
+        )
 
         logger.info(
             f"MCP 初始化成功: {init_result.serverInfo.name} v{init_result.serverInfo.version}"

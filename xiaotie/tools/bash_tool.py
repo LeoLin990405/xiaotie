@@ -51,7 +51,10 @@ class BashTool(Tool):
             # 创建子进程
             if self.is_windows:
                 process = await asyncio.create_subprocess_exec(
-                    "powershell.exe", "-NoProfile", "-Command", command,
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-Command",
+                    command,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
@@ -63,16 +66,10 @@ class BashTool(Tool):
                 )
 
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
-                    timeout=timeout
-                )
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
             except asyncio.TimeoutError:
                 process.kill()
-                return ToolResult(
-                    success=False,
-                    error=f"命令超时（{timeout}秒）"
-                )
+                return ToolResult(success=False, error=f"命令超时（{timeout}秒）")
 
             stdout_text = stdout.decode("utf-8", errors="replace")
             stderr_text = stderr.decode("utf-8", errors="replace")
@@ -85,9 +82,7 @@ class BashTool(Tool):
             is_success = process.returncode == 0
             if not is_success:
                 return ToolResult(
-                    success=False,
-                    content=output,
-                    error=f"命令失败，退出码: {process.returncode}"
+                    success=False, content=output, error=f"命令失败，退出码: {process.returncode}"
                 )
 
             return ToolResult(success=True, content=output or "(无输出)")

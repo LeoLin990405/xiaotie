@@ -223,15 +223,19 @@ class MessageList(ScrollableContainer):
         self._has_messages = False
         # 重新显示欢迎消息
         with Vertical(classes="welcome", id="welcome-msg"):
-            self.mount(Static(
-                " ▄███▄\n █ ⚙ █\n ▀███▀",
-                classes="welcome-logo",
-            ))
+            self.mount(
+                Static(
+                    " ▄███▄\n █ ⚙ █\n ▀███▀",
+                    classes="welcome-logo",
+                )
+            )
             self.mount(Static("欢迎使用小铁 XiaoTie", classes="welcome-title"))
-            self.mount(Static(
-                "输入问题开始对话 · Ctrl+K 命令面板 · Ctrl+B 切换侧边栏",
-                classes="welcome-hint",
-            ))
+            self.mount(
+                Static(
+                    "输入问题开始对话 · Ctrl+K 命令面板 · Ctrl+B 切换侧边栏",
+                    classes="welcome-hint",
+                )
+            )
 
 
 class Editor(Widget):
@@ -279,6 +283,7 @@ class Editor(Widget):
 
     class Submitted(Message):
         """输入提交"""
+
         def __init__(self, value: str) -> None:
             self.value = value
             super().__init__()
@@ -456,12 +461,14 @@ class SessionList(ScrollableContainer):
         session_list = self.query_one(".session-list", Vertical)
         if sessions:
             for session in sessions:
-                session_list.mount(SessionItem(
-                    session_id=session.get("id", ""),
-                    title=session.get("title", "未命名"),
-                    message_count=session.get("message_count", 0),
-                    is_current=session.get("is_current", False),
-                ))
+                session_list.mount(
+                    SessionItem(
+                        session_id=session.get("id", ""),
+                        title=session.get("title", "未命名"),
+                        message_count=session.get("message_count", 0),
+                        is_current=session.get("is_current", False),
+                    )
+                )
         else:
             self.mount(Static("暂无会话", classes="empty-hint"))
 

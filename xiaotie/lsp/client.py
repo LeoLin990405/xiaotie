@@ -32,6 +32,7 @@ from .protocol import (
 @dataclass
 class LSPConfig:
     """LSP 配置"""
+
     command: str
     args: list[str] = field(default_factory=list)
     env: Optional[dict[str, str]] = None
@@ -203,9 +204,7 @@ class LSPClient:
         if uri not in self._open_files:
             return
 
-        params = DidCloseTextDocumentParams(
-            textDocument=TextDocumentIdentifier(uri=uri)
-        )
+        params = DidCloseTextDocumentParams(textDocument=TextDocumentIdentifier(uri=uri))
 
         await self._notify("textDocument/didClose", params.to_dict())
         del self._open_files[uri]
@@ -323,9 +322,7 @@ class LSPClient:
         while self.is_running:
             try:
                 # 读取 header
-                header_data = await loop.run_in_executor(
-                    None, self._read_header
-                )
+                header_data = await loop.run_in_executor(None, self._read_header)
                 if not header_data:
                     break
 

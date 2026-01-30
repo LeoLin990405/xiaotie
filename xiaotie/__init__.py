@@ -52,13 +52,17 @@ from .schema import LLMResponse, Message, ToolCall, ToolResult
 def get_mcp_module():
     """获取 MCP 模块"""
     from . import mcp
+
     return mcp
+
 
 # LSP 支持 (延迟导入)
 def get_lsp_module():
     """获取 LSP 模块"""
     from . import lsp
+
     return lsp
+
 
 __all__ = [
     # Agent

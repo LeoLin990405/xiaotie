@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 @dataclass
 class LintResult:
     """Lint 结果"""
+
     success: bool
     output: str
     errors: List[str] = field(default_factory=list)
@@ -28,6 +29,7 @@ class LintResult:
 @dataclass
 class TestResult:
     """测试结果"""
+
     success: bool
     output: str
     passed: int = 0
@@ -38,6 +40,7 @@ class TestResult:
 @dataclass
 class FeedbackConfig:
     """反馈配置"""
+
     # Lint 配置
     auto_lint: bool = True
     lint_cmd: Optional[str] = None  # 自定义 lint 命令
@@ -125,16 +128,12 @@ class FeedbackLoop:
     def _get_test_command(self, file_path: str) -> Optional[str]:
         """获取测试命令"""
         if self.config.test_cmd:
-            return self.config.test_cmd.format(
-                file=file_path,
-                dir=str(Path(file_path).parent)
-            )
+            return self.config.test_cmd.format(file=file_path, dir=str(Path(file_path).parent))
 
         suffix = Path(file_path).suffix.lower()
         if suffix in DEFAULT_TEST_COMMANDS:
             return DEFAULT_TEST_COMMANDS[suffix].format(
-                file=file_path,
-                dir=str(Path(file_path).parent)
+                file=file_path, dir=str(Path(file_path).parent)
             )
 
         return None
@@ -181,10 +180,7 @@ class FeedbackLoop:
                 cwd=str(self.workspace),
             )
 
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=timeout
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
 
             output = stdout.decode("utf-8", errors="replace")
             if stderr:

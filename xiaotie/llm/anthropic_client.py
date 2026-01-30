@@ -24,10 +24,7 @@ class AnthropicClient(LLMClientBase):
         super().__init__(api_key, api_base, model, retry_config)
         self.client = AsyncAnthropic(api_key=api_key, base_url=api_base)
 
-    def _convert_messages(
-        self,
-        messages: list[Message]
-    ) -> tuple[str | None, list[dict[str, Any]]]:
+    def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
         """转换为 Anthropic 消息格式"""
         system_message = None
         api_messages = []
@@ -44,37 +41,37 @@ class AnthropicClient(LLMClientBase):
                 if msg.thinking or msg.tool_calls:
                     content_blocks = []
                     if msg.thinking:
-                        content_blocks.append({
-                            "type": "thinking",
-                            "thinking": msg.thinking
-                        })
+                        content_blocks.append({"type": "thinking", "thinking": msg.thinking})
                     if msg.content:
-                        content_blocks.append({
-                            "type": "text",
-                            "text": msg.content
-                        })
+                        content_blocks.append({"type": "text", "text": msg.content})
                     if msg.tool_calls:
                         for tc in msg.tool_calls:
-                            content_blocks.append({
-                                "type": "tool_use",
-                                "id": tc.id,
-                                "name": tc.function.name,
-                                "input": tc.function.arguments,
-                            })
+                            content_blocks.append(
+                                {
+                                    "type": "tool_use",
+                                    "id": tc.id,
+                                    "name": tc.function.name,
+                                    "input": tc.function.arguments,
+                                }
+                            )
                     api_messages.append({"role": "assistant", "content": content_blocks})
                 else:
                     api_messages.append({"role": "assistant", "content": msg.content})
 
             elif msg.role == "tool":
                 # Anthropic: tool 结果用 user role + tool_result
-                api_messages.append({
-                    "role": "user",
-                    "content": [{
-                        "type": "tool_result",
-                        "tool_use_id": msg.tool_call_id,
-                        "content": msg.content,
-                    }]
-                })
+                api_messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": msg.tool_call_id,
+                                "content": msg.content,
+                            }
+                        ],
+                    }
+                )
 
         return system_message, api_messages
 
@@ -123,14 +120,16 @@ class AnthropicClient(LLMClientBase):
             elif block.type == "thinking":
                 thinking_content += block.thinking
             elif block.type == "tool_use":
-                tool_calls.append(ToolCall(
-                    id=block.id,
-                    type="function",
-                    function=FunctionCall(
-                        name=block.name,
-                        arguments=block.input,
-                    ),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        id=block.id,
+                        type="function",
+                        function=FunctionCall(
+                            name=block.name,
+                            arguments=block.input,
+                        ),
+                    )
+                )
 
         usage = None
         if hasattr(response, "usage"):
@@ -158,10 +157,7 @@ class AnthropicClient(LLMClientBase):
         api_tools = self._convert_tools(tools) if tools else None
 
         if self.retry_config.enabled:
-            retry_decorator = async_retry(
-                config=self.retry_config,
-                on_retry=self.retry_callback
-            )
+            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback)
             api_call = retry_decorator(self._make_api_request)
             response = await api_call(system, api_messages, api_tools)
         else:

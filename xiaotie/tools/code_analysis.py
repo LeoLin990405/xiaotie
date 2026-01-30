@@ -17,6 +17,7 @@ from .base import Tool, ToolResult
 @dataclass
 class CodeDefinition:
     """代码定义"""
+
     name: str
     type: str  # class, function, method, variable
     line: int
@@ -32,6 +33,7 @@ class CodeDefinition:
 @dataclass
 class CodeAnalysis:
     """代码分析结果"""
+
     file_path: str
     language: str
     lines: int
@@ -129,23 +131,25 @@ class CodeAnalysisTool(Tool):
                 # 类定义
                 if isinstance(node, ast.ClassDef):
                     decorators = [
-                        ast.unparse(d) if hasattr(ast, 'unparse') else str(d)
+                        ast.unparse(d) if hasattr(ast, "unparse") else str(d)
                         for d in node.decorator_list
                     ]
                     docstring = ast.get_docstring(node) if include_docstrings else None
-                    classes.append(CodeDefinition(
-                        name=node.name,
-                        type="class",
-                        line=node.lineno,
-                        docstring=docstring[:100] if docstring else None,
-                        decorators=decorators,
-                    ))
+                    classes.append(
+                        CodeDefinition(
+                            name=node.name,
+                            type="class",
+                            line=node.lineno,
+                            docstring=docstring[:100] if docstring else None,
+                            decorators=decorators,
+                        )
+                    )
 
                 # 函数定义
                 elif isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
                     # 跳过类方法（已在类中处理）
                     decorators = [
-                        ast.unparse(d) if hasattr(ast, 'unparse') else str(d)
+                        ast.unparse(d) if hasattr(ast, "unparse") else str(d)
                         for d in node.decorator_list
                     ]
                     docstring = ast.get_docstring(node) if include_docstrings else None
@@ -156,15 +160,19 @@ class CodeAnalysisTool(Tool):
                         args.append(arg.arg)
                     signature = f"({', '.join(args)})"
 
-                    func_type = "async function" if isinstance(node, ast.AsyncFunctionDef) else "function"
-                    functions.append(CodeDefinition(
-                        name=node.name,
-                        type=func_type,
-                        line=node.lineno,
-                        docstring=docstring[:100] if docstring else None,
-                        signature=signature,
-                        decorators=decorators,
-                    ))
+                    func_type = (
+                        "async function" if isinstance(node, ast.AsyncFunctionDef) else "function"
+                    )
+                    functions.append(
+                        CodeDefinition(
+                            name=node.name,
+                            type=func_type,
+                            line=node.lineno,
+                            docstring=docstring[:100] if docstring else None,
+                            signature=signature,
+                            decorators=decorators,
+                        )
+                    )
 
                 # 导入
                 elif isinstance(node, ast.Import):
@@ -210,37 +218,41 @@ class CodeAnalysisTool(Tool):
 
         # 简单的正则匹配
         # 类定义
-        class_pattern = r'class\s+(\w+)'
+        class_pattern = r"class\s+(\w+)"
         for match in re.finditer(class_pattern, content):
-            line = content[:match.start()].count('\n') + 1
-            classes.append(CodeDefinition(
-                name=match.group(1),
-                type="class",
-                line=line,
-            ))
+            line = content[: match.start()].count("\n") + 1
+            classes.append(
+                CodeDefinition(
+                    name=match.group(1),
+                    type="class",
+                    line=line,
+                )
+            )
 
         # 函数定义
         func_patterns = [
-            r'function\s+(\w+)\s*\(',
-            r'const\s+(\w+)\s*=\s*(?:async\s*)?\(',
-            r'(\w+)\s*:\s*(?:async\s*)?\(',
+            r"function\s+(\w+)\s*\(",
+            r"const\s+(\w+)\s*=\s*(?:async\s*)?\(",
+            r"(\w+)\s*:\s*(?:async\s*)?\(",
         ]
         for pattern in func_patterns:
             for match in re.finditer(pattern, content):
-                line = content[:match.start()].count('\n') + 1
-                functions.append(CodeDefinition(
-                    name=match.group(1),
-                    type="function",
-                    line=line,
-                ))
+                line = content[: match.start()].count("\n") + 1
+                functions.append(
+                    CodeDefinition(
+                        name=match.group(1),
+                        type="function",
+                        line=line,
+                    )
+                )
 
         # 导入
         import_pattern = r'import\s+.*?from\s+[\'"]([^\'"]+)[\'"]'
         for match in re.finditer(import_pattern, content):
             module = match.group(1)
             imports.append(module)
-            if not module.startswith('.'):
-                dep = module.split('/')[0]
+            if not module.startswith("."):
+                dep = module.split("/")[0]
                 if dep not in dependencies:
                     dependencies.append(dep)
 
@@ -249,8 +261,8 @@ class CodeAnalysisTool(Tool):
         for match in re.finditer(require_pattern, content):
             module = match.group(1)
             imports.append(module)
-            if not module.startswith('.'):
-                dep = module.split('/')[0]
+            if not module.startswith("."):
+                dep = module.split("/")[0]
                 if dep not in dependencies:
                     dependencies.append(dep)
 
@@ -275,7 +287,7 @@ class CodeAnalysisTool(Tool):
         """通用代码分析"""
         return CodeAnalysis(
             file_path=str(file_path),
-            language=file_path.suffix.lstrip('.') or "unknown",
+            language=file_path.suffix.lstrip(".") or "unknown",
             lines=len(content.splitlines()),
             classes=[],
             functions=[],

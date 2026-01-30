@@ -201,22 +201,21 @@ class AgentCoordinator:
                 return await self.spawn_agent(prompt, role, parent_id)
 
         # 并行执行
-        coroutines = [
-            run_with_semaphore(prompt, role)
-            for prompt, role in tasks
-        ]
+        coroutines = [run_with_semaphore(prompt, role) for prompt, role in tasks]
         results = await asyncio.gather(*coroutines, return_exceptions=True)
 
         # 处理异常
         task_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                task_results.append(TaskResult(
-                    task_id=str(uuid4()),
-                    success=False,
-                    content="",
-                    error=str(result),
-                ))
+                task_results.append(
+                    TaskResult(
+                        task_id=str(uuid4()),
+                        success=False,
+                        content="",
+                        error=str(result),
+                    )
+                )
             else:
                 task_results.append(result)
 

@@ -37,7 +37,7 @@ def truncate_text_by_tokens(text: str, max_tokens: int = 8000) -> str:
     tail_part = text[-chars_per_half:]
     first_newline = tail_part.find("\n")
     if first_newline > 0:
-        tail_part = tail_part[first_newline + 1:]
+        tail_part = tail_part[first_newline + 1 :]
 
     truncation_note = f"\n\n... [内容已截断: {token_count} tokens -> ~{max_tokens} tokens] ...\n\n"
     return head_part + truncation_note + tail_part
@@ -195,13 +195,17 @@ class EditTool(Tool):
             if count == 0:
                 return ToolResult(success=False, error="未找到要替换的文本")
             if count > 1:
-                return ToolResult(success=False, error=f"找到 {count} 处匹配，请提供更多上下文使其唯一")
+                return ToolResult(
+                    success=False, error=f"找到 {count} 处匹配，请提供更多上下文使其唯一"
+                )
 
             # 执行替换
             new_content = content.replace(old_string, new_string, 1)
             file_path.write_text(new_content, encoding="utf-8")
 
-            return ToolResult(success=True, content=f"已替换 {len(old_string)} -> {len(new_string)} 字符")
+            return ToolResult(
+                success=True, content=f"已替换 {len(old_string)} -> {len(new_string)} 字符"
+            )
 
         except Exception as e:
             return ToolResult(success=False, error=f"编辑失败: {e}")

@@ -12,6 +12,7 @@ from typing import Dict
 @dataclass
 class Theme:
     """主题配置"""
+
     name: str
     primary: str
     secondary: str

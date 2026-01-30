@@ -38,10 +38,7 @@ class LLMClientBase(ABC):
         pass
 
     @abstractmethod
-    def _convert_messages(
-        self,
-        messages: list[Message]
-    ) -> tuple[str | None, list[dict[str, Any]]]:
+    def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
         """转换消息格式"""
         pass
 

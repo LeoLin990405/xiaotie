@@ -92,11 +92,13 @@ def create_tools(config: Config, workspace: Path) -> list:
     tools = []
 
     if config.tools.enable_file_tools:
-        tools.extend([
-            ReadTool(workspace_dir=str(workspace)),
-            WriteTool(workspace_dir=str(workspace)),
-            EditTool(workspace_dir=str(workspace)),
-        ])
+        tools.extend(
+            [
+                ReadTool(workspace_dir=str(workspace)),
+                WriteTool(workspace_dir=str(workspace)),
+                EditTool(workspace_dir=str(workspace)),
+            ]
+        )
 
     if config.tools.enable_bash:
         tools.append(BashTool())
@@ -221,12 +223,14 @@ async def main_async(stream: bool = True, thinking: bool = True):
         print_banner(workspace=str(Path.cwd()))
         print_status(str(e), "error")
         print("\n请创建配置文件 config/config.yaml，示例:")
-        print("""
+        print(
+            """
 api_key: YOUR_API_KEY
 api_base: https://api.anthropic.com
 model: claude-sonnet-4-20250514
 provider: anthropic
-""")
+"""
+        )
         sys.exit(1)
 
     # 创建工作目录
@@ -322,19 +326,22 @@ def main():
     )
 
     parser.add_argument(
-        "-p", "--prompt",
+        "-p",
+        "--prompt",
         type=str,
         help="非交互模式：直接执行提示词",
     )
     parser.add_argument(
-        "-f", "--format",
+        "-f",
+        "--format",
         type=str,
         choices=["text", "json"],
         default="text",
         help="输出格式 (默认: text)",
     )
     parser.add_argument(
-        "-q", "--quiet",
+        "-q",
+        "--quiet",
         action="store_true",
         help="安静模式：只输出结果",
     )
@@ -354,7 +361,8 @@ def main():
         help="禁用深度思考",
     )
     parser.add_argument(
-        "-v", "--version",
+        "-v",
+        "--version",
         action="version",
         version=f"小铁 XiaoTie v{VERSION}",
     )
@@ -365,6 +373,7 @@ def main():
     if args.tui:
         try:
             from .tui.main import run_tui
+
             run_tui()
         except ImportError as e:
             print("❌ TUI 模式需要安装 textual: pip install textual")
@@ -374,20 +383,24 @@ def main():
 
     # 非交互模式
     if args.prompt:
-        asyncio.run(run_non_interactive(
-            prompt=args.prompt,
-            output_format=args.format,
-            quiet=args.quiet,
-            stream=not args.no_stream,
-            thinking=not args.no_thinking,
-        ))
+        asyncio.run(
+            run_non_interactive(
+                prompt=args.prompt,
+                output_format=args.format,
+                quiet=args.quiet,
+                stream=not args.no_stream,
+                thinking=not args.no_thinking,
+            )
+        )
         return
 
     # 交互模式
-    asyncio.run(main_async(
-        stream=not args.no_stream,
-        thinking=not args.no_thinking,
-    ))
+    asyncio.run(
+        main_async(
+            stream=not args.no_stream,
+            thinking=not args.no_thinking,
+        )
+    )
 
 
 async def run_non_interactive(

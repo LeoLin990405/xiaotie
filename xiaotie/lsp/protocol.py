@@ -16,6 +16,7 @@ DocumentUri = str
 @dataclass
 class Position:
     """文档中的位置"""
+
     line: int  # 0-indexed
     character: int  # 0-indexed
 
@@ -30,6 +31,7 @@ class Position:
 @dataclass
 class Range:
     """文档中的范围"""
+
     start: Position
     end: Position
 
@@ -47,6 +49,7 @@ class Range:
 @dataclass
 class Location:
     """文档位置"""
+
     uri: DocumentUri
     range: Range
 
@@ -61,6 +64,7 @@ class Location:
 @dataclass
 class TextDocumentIdentifier:
     """文档标识符"""
+
     uri: DocumentUri
 
     def to_dict(self) -> dict:
@@ -70,6 +74,7 @@ class TextDocumentIdentifier:
 @dataclass
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
     """带版本的文档标识符"""
+
     version: int
 
     def to_dict(self) -> dict:
@@ -79,6 +84,7 @@ class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
 @dataclass
 class TextDocumentItem:
     """文档项"""
+
     uri: DocumentUri
     languageId: str
     version: int
@@ -95,6 +101,7 @@ class TextDocumentItem:
 
 class DiagnosticSeverity(IntEnum):
     """诊断严重程度"""
+
     Error = 1
     Warning = 2
     Information = 3
@@ -104,6 +111,7 @@ class DiagnosticSeverity(IntEnum):
 @dataclass
 class DiagnosticRelatedInformation:
     """诊断相关信息"""
+
     location: Location
     message: str
 
@@ -118,6 +126,7 @@ class DiagnosticRelatedInformation:
 @dataclass
 class Diagnostic:
     """诊断信息"""
+
     range: Range
     message: str
     severity: Optional[DiagnosticSeverity] = None
@@ -134,8 +143,7 @@ class Diagnostic:
         related = None
         if "relatedInformation" in data:
             related = [
-                DiagnosticRelatedInformation.from_dict(r)
-                for r in data["relatedInformation"]
+                DiagnosticRelatedInformation.from_dict(r) for r in data["relatedInformation"]
             ]
 
         return cls(
@@ -170,9 +178,11 @@ class Diagnostic:
 
 # LSP 请求/响应类型
 
+
 @dataclass
 class InitializeParams:
     """初始化参数"""
+
     processId: Optional[int]
     rootUri: Optional[DocumentUri]
     capabilities: dict = field(default_factory=dict)
@@ -192,6 +202,7 @@ class InitializeParams:
 @dataclass
 class InitializeResult:
     """初始化结果"""
+
     capabilities: dict
 
     @classmethod
@@ -202,6 +213,7 @@ class InitializeResult:
 @dataclass
 class DidOpenTextDocumentParams:
     """打开文档参数"""
+
     textDocument: TextDocumentItem
 
     def to_dict(self) -> dict:
@@ -211,6 +223,7 @@ class DidOpenTextDocumentParams:
 @dataclass
 class DidCloseTextDocumentParams:
     """关闭文档参数"""
+
     textDocument: TextDocumentIdentifier
 
     def to_dict(self) -> dict:
@@ -220,6 +233,7 @@ class DidCloseTextDocumentParams:
 @dataclass
 class DidChangeTextDocumentParams:
     """文档变更参数"""
+
     textDocument: VersionedTextDocumentIdentifier
     contentChanges: list[dict]
 
@@ -233,6 +247,7 @@ class DidChangeTextDocumentParams:
 @dataclass
 class PublishDiagnosticsParams:
     """发布诊断参数"""
+
     uri: DocumentUri
     diagnostics: list[Diagnostic]
     version: Optional[int] = None
@@ -288,5 +303,6 @@ LANGUAGE_ID_MAP = {
 def detect_language_id(file_path: str) -> str:
     """根据文件扩展名检测语言 ID"""
     import os
+
     ext = os.path.splitext(file_path)[1].lower()
     return LANGUAGE_ID_MAP.get(ext, "plaintext")

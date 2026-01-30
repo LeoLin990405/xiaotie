@@ -19,6 +19,7 @@ import yaml
 @dataclass
 class ProfileConfig:
     """Profile 配置"""
+
     # 基本信息
     name: str = "default"
     description: str = ""
@@ -49,11 +50,19 @@ class ProfileConfig:
     interactive_permissions: bool = True
 
     # 工具配置
-    enabled_tools: List[str] = field(default_factory=lambda: [
-        "read_file", "write_file", "edit_file",
-        "bash", "python", "calculator",
-        "git", "web_search", "web_fetch",
-    ])
+    enabled_tools: List[str] = field(
+        default_factory=lambda: [
+            "read_file",
+            "write_file",
+            "edit_file",
+            "bash",
+            "python",
+            "calculator",
+            "git",
+            "web_search",
+            "web_fetch",
+        ]
+    )
     disabled_tools: List[str] = field(default_factory=list)
 
     # 自定义命令
@@ -225,8 +234,12 @@ class ProfileManager:
             parallel_tools=config.get("parallel_tools", profile.parallel_tools),
             auto_lint=config.get("auto_lint", profile.auto_lint),
             auto_test=config.get("auto_test", profile.auto_test),
-            auto_approve_low_risk=config.get("auto_approve_low_risk", profile.auto_approve_low_risk),
-            interactive_permissions=config.get("interactive_permissions", profile.interactive_permissions),
+            auto_approve_low_risk=config.get(
+                "auto_approve_low_risk", profile.auto_approve_low_risk
+            ),
+            interactive_permissions=config.get(
+                "interactive_permissions", profile.interactive_permissions
+            ),
             enabled_tools=config.get("enabled_tools", profile.enabled_tools),
             disabled_tools=config.get("disabled_tools", profile.disabled_tools),
             lint_cmd=config.get("lint_cmd", profile.lint_cmd),

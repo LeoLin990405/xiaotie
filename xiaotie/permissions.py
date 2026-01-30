@@ -17,15 +17,17 @@ from typing import Any, Callable, Dict, List, Optional, Set
 
 class RiskLevel(Enum):
     """风险等级"""
-    LOW = "low"           # 只读操作
-    MEDIUM = "medium"     # 可逆操作
-    HIGH = "high"         # 不可逆/危险操作
-    CRITICAL = "critical" # 系统级危险操作
+
+    LOW = "low"  # 只读操作
+    MEDIUM = "medium"  # 可逆操作
+    HIGH = "high"  # 不可逆/危险操作
+    CRITICAL = "critical"  # 系统级危险操作
 
 
 @dataclass
 class PermissionRule:
     """权限规则"""
+
     tool_name: str
     risk_level: RiskLevel
     patterns: List[str] = field(default_factory=list)  # 参数匹配模式
@@ -44,12 +46,10 @@ DEFAULT_RISK_RULES: Dict[str, RiskLevel] = {
     "git_status": RiskLevel.LOW,
     "git_diff": RiskLevel.LOW,
     "git_log": RiskLevel.LOW,
-
     # 写入工具 - 中风险
     "write_file": RiskLevel.MEDIUM,
     "edit_file": RiskLevel.MEDIUM,
     "python": RiskLevel.MEDIUM,
-
     # 系统命令 - 高风险
     "bash": RiskLevel.HIGH,
     "git_commit": RiskLevel.MEDIUM,
@@ -62,27 +62,22 @@ DANGEROUS_PATTERNS = [
     r"rm\s+-r",
     r"rmdir",
     r"del\s+/[sS]",
-
     # 系统修改
     r"sudo\s+",
     r"chmod\s+777",
     r"chown\s+-R",
-
     # 网络操作
     r"curl.*\|\s*sh",
     r"wget.*\|\s*sh",
     r"curl.*\|\s*bash",
-
     # Git 危险操作
     r"git\s+push\s+.*--force",
     r"git\s+reset\s+--hard",
     r"git\s+clean\s+-fd",
-
     # 进程操作
     r"kill\s+-9",
     r"pkill",
     r"killall",
-
     # 磁盘操作
     r"dd\s+if=",
     r"mkfs",
@@ -116,6 +111,7 @@ SAFE_PATTERNS = [
 @dataclass
 class PermissionRequest:
     """权限请求"""
+
     tool_name: str
     arguments: Dict[str, Any]
     risk_level: RiskLevel

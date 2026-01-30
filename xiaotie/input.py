@@ -24,6 +24,7 @@ try:
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.styles import Style
+
     HAS_PROMPT_TOOLKIT = True
 except ImportError:
     HAS_PROMPT_TOOLKIT = False
@@ -95,10 +96,12 @@ class EnhancedInput:
                 history_file = str(history_dir / "history")
 
             # 样式
-            self.style = Style.from_dict({
-                "prompt": "#00aa00 bold",
-                "prompt.user": "#00aaff bold",
-            })
+            self.style = Style.from_dict(
+                {
+                    "prompt": "#00aa00 bold",
+                    "prompt.user": "#00aaff bold",
+                }
+            )
 
             # 创建会话
             self.session: PromptSession = PromptSession(
@@ -153,6 +156,7 @@ class EnhancedInput:
         else:
             # 在异步上下文中使用 run_in_executor 运行同步 input
             import asyncio
+
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, lambda: input(message))
 
@@ -194,6 +198,7 @@ class EnhancedInput:
                 raise
         else:
             import asyncio
+
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, self._sync_multiline_input, message)
 

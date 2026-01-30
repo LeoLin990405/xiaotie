@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class TransportError(Exception):
     """传输层错误"""
+
     pass
 
 
@@ -59,9 +60,18 @@ DEFAULT_INHERITED_ENV_VARS = (
     ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"]
     if sys.platform != "win32"
     else [
-        "APPDATA", "HOMEDRIVE", "HOMEPATH", "LOCALAPPDATA", "PATH",
-        "PATHEXT", "PROCESSOR_ARCHITECTURE", "SYSTEMDRIVE", "SYSTEMROOT",
-        "TEMP", "USERNAME", "USERPROFILE",
+        "APPDATA",
+        "HOMEDRIVE",
+        "HOMEPATH",
+        "LOCALAPPDATA",
+        "PATH",
+        "PATHEXT",
+        "PROCESSOR_ARCHITECTURE",
+        "SYSTEMDRIVE",
+        "SYSTEMROOT",
+        "TEMP",
+        "USERNAME",
+        "USERPROFILE",
     ]
 )
 
@@ -159,19 +169,13 @@ class StdioTransport(Transport):
 
             # 等待进程退出
             try:
-                await asyncio.wait_for(
-                    self._process.wait(),
-                    timeout=PROCESS_TERMINATION_TIMEOUT
-                )
+                await asyncio.wait_for(self._process.wait(), timeout=PROCESS_TERMINATION_TIMEOUT)
             except asyncio.TimeoutError:
                 # 超时则强制终止
                 logger.warning("MCP 服务器未响应，强制终止")
                 self._process.terminate()
                 try:
-                    await asyncio.wait_for(
-                        self._process.wait(),
-                        timeout=1.0
-                    )
+                    await asyncio.wait_for(self._process.wait(), timeout=1.0)
                 except asyncio.TimeoutError:
                     self._process.kill()
 
@@ -213,8 +217,7 @@ class StdioTransport(Transport):
                 while "\n" not in self._read_buffer:
                     if timeout:
                         chunk = await asyncio.wait_for(
-                            self._process.stdout.read(4096),
-                            timeout=timeout
+                            self._process.stdout.read(4096), timeout=timeout
                         )
                     else:
                         chunk = await self._process.stdout.read(4096)
@@ -247,10 +250,7 @@ class StdioTransport(Transport):
 
         try:
             # 非阻塞读取
-            data = await asyncio.wait_for(
-                self._process.stderr.read(4096),
-                timeout=0.1
-            )
+            data = await asyncio.wait_for(self._process.stderr.read(4096), timeout=0.1)
             return data.decode(self.encoding) if data else ""
         except asyncio.TimeoutError:
             return ""

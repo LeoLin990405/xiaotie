@@ -13,6 +13,7 @@ import yaml
 @dataclass
 class RetryConfig:
     """重试配置"""
+
     enabled: bool = True
     max_retries: int = 3
     initial_delay: float = 1.0
@@ -23,6 +24,7 @@ class RetryConfig:
 @dataclass
 class LLMConfig:
     """LLM 配置"""
+
     api_key: str
     api_base: str = "https://api.anthropic.com"
     model: str = "claude-sonnet-4-20250514"
@@ -33,6 +35,7 @@ class LLMConfig:
 @dataclass
 class AgentConfig:
     """Agent 配置"""
+
     max_steps: int = 50
     workspace_dir: str = "./workspace"
     system_prompt_path: str = "system_prompt.md"
@@ -41,6 +44,7 @@ class AgentConfig:
 @dataclass
 class ToolsConfig:
     """工具配置"""
+
     enable_file_tools: bool = True
     enable_bash: bool = True
 
@@ -48,6 +52,7 @@ class ToolsConfig:
 @dataclass
 class MCPServerConfig:
     """MCP 服务器配置"""
+
     command: str
     args: List[str] = field(default_factory=list)
     env: Dict[str, str] = field(default_factory=dict)
@@ -58,6 +63,7 @@ class MCPServerConfig:
 @dataclass
 class MCPConfig:
     """MCP 配置"""
+
     enabled: bool = False
     servers: Dict[str, MCPServerConfig] = field(default_factory=dict)
 
@@ -65,6 +71,7 @@ class MCPConfig:
 @dataclass
 class Config:
     """主配置"""
+
     llm: LLMConfig
     agent: AgentConfig = field(default_factory=AgentConfig)
     tools: ToolsConfig = field(default_factory=ToolsConfig)
@@ -117,7 +124,9 @@ class Config:
             env_key = "ANTHROPIC_API_KEY" if provider == "anthropic" else "OPENAI_API_KEY"
             api_key = os.environ.get(env_key, "")
             if not api_key:
-                raise ValueError(f"请设置 API key：在配置文件中设置 api_key，或设置环境变量 {env_key}")
+                raise ValueError(
+                    f"请设置 API key：在配置文件中设置 api_key，或设置环境变量 {env_key}"
+                )
 
         # 解析重试配置
         retry_data = data.get("retry", {})

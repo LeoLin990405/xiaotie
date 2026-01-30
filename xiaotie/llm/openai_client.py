@@ -41,10 +41,7 @@ class OpenAIClient(LLMClientBase):
         self.is_glm = any(d in api_base for d in self.GLM_DOMAINS)
         self.is_minimax = any(d in api_base for d in self.MINIMAX_DOMAINS)
 
-    def _convert_messages(
-        self,
-        messages: list[Message]
-    ) -> tuple[str | None, list[dict[str, Any]]]:
+    def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
         """转换为 OpenAI 消息格式"""
         api_messages = []
 
@@ -64,14 +61,16 @@ class OpenAIClient(LLMClientBase):
                 if msg.tool_calls:
                     tool_calls_list = []
                     for tc in msg.tool_calls:
-                        tool_calls_list.append({
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": json.dumps(tc.function.arguments),
-                            },
-                        })
+                        tool_calls_list.append(
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": json.dumps(tc.function.arguments),
+                                },
+                            }
+                        )
                     assistant_msg["tool_calls"] = tool_calls_list
 
                 # 保留 reasoning_details (MiniMax 等支持)
@@ -81,11 +80,13 @@ class OpenAIClient(LLMClientBase):
                 api_messages.append(assistant_msg)
 
             elif msg.role == "tool":
-                api_messages.append({
-                    "role": "tool",
-                    "tool_call_id": msg.tool_call_id,
-                    "content": msg.content,
-                })
+                api_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.tool_call_id,
+                        "content": msg.content,
+                    }
+                )
 
         return None, api_messages
 
@@ -98,14 +99,16 @@ class OpenAIClient(LLMClientBase):
                     result.append(tool)
                 else:
                     # Anthropic 格式转 OpenAI
-                    result.append({
-                        "type": "function",
-                        "function": {
-                            "name": tool["name"],
-                            "description": tool.get("description", ""),
-                            "parameters": tool.get("input_schema", {}),
-                        },
-                    })
+                    result.append(
+                        {
+                            "type": "function",
+                            "function": {
+                                "name": tool["name"],
+                                "description": tool.get("description", ""),
+                                "parameters": tool.get("input_schema", {}),
+                            },
+                        }
+                    )
             elif hasattr(tool, "to_openai_schema"):
                 result.append(tool.to_openai_schema())
             else:
@@ -146,14 +149,16 @@ class OpenAIClient(LLMClientBase):
         if message.tool_calls:
             for tc in message.tool_calls:
                 arguments = json.loads(tc.function.arguments)
-                tool_calls.append(ToolCall(
-                    id=tc.id,
-                    type="function",
-                    function=FunctionCall(
-                        name=tc.function.name,
-                        arguments=arguments,
-                    ),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        id=tc.id,
+                        type="function",
+                        function=FunctionCall(
+                            name=tc.function.name,
+                            arguments=arguments,
+                        ),
+                    )
+                )
 
         usage = None
         if hasattr(response, "usage") and response.usage:
@@ -181,10 +186,7 @@ class OpenAIClient(LLMClientBase):
         api_tools = self._convert_tools(tools) if tools else None
 
         if self.retry_config.enabled:
-            retry_decorator = async_retry(
-                config=self.retry_config,
-                on_retry=self.retry_callback
-            )
+            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback)
             api_call = retry_decorator(self._make_api_request)
             response = await api_call(api_messages, api_tools)
         else:
@@ -285,7 +287,11 @@ class OpenAIClient(LLMClientBase):
                         tool_calls_dict[idx] = {
                             "id": tc.id or "",
                             "name": tc.function.name if tc.function and tc.function.name else "",
-                            "arguments": tc.function.arguments if tc.function and tc.function.arguments else "",
+                            "arguments": (
+                                tc.function.arguments
+                                if tc.function and tc.function.arguments
+                                else ""
+                            ),
                         }
                     else:
                         if tc.id:
@@ -305,14 +311,16 @@ class OpenAIClient(LLMClientBase):
                     arguments = json.loads(tc_data["arguments"]) if tc_data["arguments"] else {}
                 except json.JSONDecodeError:
                     arguments = {}
-                tool_calls.append(ToolCall(
-                    id=tc_data["id"],
-                    type="function",
-                    function=FunctionCall(
-                        name=tc_data["name"],
-                        arguments=arguments,
-                    ),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        id=tc_data["id"],
+                        type="function",
+                        function=FunctionCall(
+                            name=tc_data["name"],
+                            arguments=arguments,
+                        ),
+                    )
+                )
 
         return LLMResponse(
             content=content,

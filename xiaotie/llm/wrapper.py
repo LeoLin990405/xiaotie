@@ -14,6 +14,7 @@ from .openai_client import OpenAIClient
 
 class LLMProvider(str, Enum):
     """LLM 提供商"""
+
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
 

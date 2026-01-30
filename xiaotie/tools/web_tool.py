@@ -76,10 +76,7 @@ class WebSearchTool(Tool):
         url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&no_html=1"
 
         try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "XiaoTie/0.3.0"}
-            )
+            req = urllib.request.Request(url, headers={"User-Agent": "XiaoTie/0.3.0"})
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode("utf-8"))
 
@@ -87,20 +84,24 @@ class WebSearchTool(Tool):
 
             # 提取摘要
             if data.get("Abstract"):
-                results.append({
-                    "title": data.get("Heading", "摘要"),
-                    "snippet": data["Abstract"],
-                    "url": data.get("AbstractURL", ""),
-                })
+                results.append(
+                    {
+                        "title": data.get("Heading", "摘要"),
+                        "snippet": data["Abstract"],
+                        "url": data.get("AbstractURL", ""),
+                    }
+                )
 
             # 提取相关主题
-            for topic in data.get("RelatedTopics", [])[:num_results - len(results)]:
+            for topic in data.get("RelatedTopics", [])[: num_results - len(results)]:
                 if isinstance(topic, dict) and "Text" in topic:
-                    results.append({
-                        "title": topic.get("Text", "")[:50],
-                        "snippet": topic.get("Text", ""),
-                        "url": topic.get("FirstURL", ""),
-                    })
+                    results.append(
+                        {
+                            "title": topic.get("Text", "")[:50],
+                            "snippet": topic.get("Text", ""),
+                            "url": topic.get("FirstURL", ""),
+                        }
+                    )
 
             return results[:num_results]
 
@@ -146,7 +147,7 @@ class WebFetchTool(Tool):
                 headers={
                     "User-Agent": "Mozilla/5.0 (compatible; XiaoTie/0.3.0)",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                }
+                },
             )
 
             with urllib.request.urlopen(req, timeout=15) as response:
@@ -181,32 +182,32 @@ class WebFetchTool(Tool):
     def _html_to_text(self, html: str) -> str:
         """简单的 HTML 转文本"""
         # 移除 script 和 style
-        html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-        html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
+        html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
 
         # 移除 HTML 注释
-        html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
+        html = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
 
         # 处理常见标签
-        html = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
-        html = re.sub(r'<p[^>]*>', '\n\n', html, flags=re.IGNORECASE)
-        html = re.sub(r'</p>', '', html, flags=re.IGNORECASE)
-        html = re.sub(r'<h[1-6][^>]*>', '\n\n## ', html, flags=re.IGNORECASE)
-        html = re.sub(r'</h[1-6]>', '\n', html, flags=re.IGNORECASE)
-        html = re.sub(r'<li[^>]*>', '\n- ', html, flags=re.IGNORECASE)
+        html = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
+        html = re.sub(r"<p[^>]*>", "\n\n", html, flags=re.IGNORECASE)
+        html = re.sub(r"</p>", "", html, flags=re.IGNORECASE)
+        html = re.sub(r"<h[1-6][^>]*>", "\n\n## ", html, flags=re.IGNORECASE)
+        html = re.sub(r"</h[1-6]>", "\n", html, flags=re.IGNORECASE)
+        html = re.sub(r"<li[^>]*>", "\n- ", html, flags=re.IGNORECASE)
 
         # 移除所有其他标签
-        html = re.sub(r'<[^>]+>', '', html)
+        html = re.sub(r"<[^>]+>", "", html)
 
         # 解码 HTML 实体
-        html = html.replace('&nbsp;', ' ')
-        html = html.replace('&lt;', '<')
-        html = html.replace('&gt;', '>')
-        html = html.replace('&amp;', '&')
-        html = html.replace('&quot;', '"')
+        html = html.replace("&nbsp;", " ")
+        html = html.replace("&lt;", "<")
+        html = html.replace("&gt;", ">")
+        html = html.replace("&amp;", "&")
+        html = html.replace("&quot;", '"')
 
         # 清理空白
-        lines = [line.strip() for line in html.split('\n')]
+        lines = [line.strip() for line in html.split("\n")]
         lines = [line for line in lines if line]
 
-        return '\n'.join(lines)
+        return "\n".join(lines)

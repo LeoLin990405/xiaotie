@@ -188,7 +188,8 @@ class GitTool(Tool):
             "--oneline",
             "--graph",
             "--decorate",
-            "-n", "15",  # 最近 15 条
+            "-n",
+            "15",  # 最近 15 条
         ]
         if args:
             git_args.extend(args.split())

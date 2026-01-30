@@ -37,6 +37,7 @@ STATIC_LOGO = [
     " ▀███▀  ",
 ]
 
+
 # ANSI 颜色代码
 class Colors:
     RESET = "\033[0m"

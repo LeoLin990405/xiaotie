@@ -29,13 +29,15 @@ class SessionManager:
             try:
                 with open(f, "r", encoding="utf-8") as fp:
                     data = json.load(fp)
-                    sessions.append({
-                        "id": f.stem,
-                        "title": data.get("title", "未命名"),
-                        "created_at": data.get("created_at", ""),
-                        "updated_at": data.get("updated_at", ""),
-                        "message_count": len(data.get("messages", [])),
-                    })
+                    sessions.append(
+                        {
+                            "id": f.stem,
+                            "title": data.get("title", "未命名"),
+                            "created_at": data.get("created_at", ""),
+                            "updated_at": data.get("updated_at", ""),
+                            "message_count": len(data.get("messages", [])),
+                        }
+                    )
             except Exception:
                 continue
         # 按更新时间排序

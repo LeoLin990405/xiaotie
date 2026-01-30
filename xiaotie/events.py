@@ -17,6 +17,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 class EventType(Enum):
     """事件类型"""
+
     # Agent 事件
     AGENT_START = "agent_start"
     AGENT_STEP = "agent_step"
@@ -47,6 +48,7 @@ class EventType(Enum):
 @dataclass
 class Event:
     """事件基类"""
+
     type: EventType
     timestamp: datetime = field(default_factory=datetime.now)
     session_id: Optional[str] = None
@@ -56,6 +58,7 @@ class Event:
 @dataclass
 class AgentStartEvent(Event):
     """Agent 开始事件"""
+
     type: EventType = EventType.AGENT_START
     user_input: str = ""
 
@@ -63,6 +66,7 @@ class AgentStartEvent(Event):
 @dataclass
 class AgentStepEvent(Event):
     """Agent 步骤事件"""
+
     type: EventType = EventType.AGENT_STEP
     step: int = 0
     total_steps: int = 0
@@ -71,6 +75,7 @@ class AgentStepEvent(Event):
 @dataclass
 class MessageDeltaEvent(Event):
     """消息增量事件"""
+
     type: EventType = EventType.MESSAGE_DELTA
     content: str = ""
     role: str = "assistant"
@@ -79,6 +84,7 @@ class MessageDeltaEvent(Event):
 @dataclass
 class ThinkingDeltaEvent(Event):
     """思考增量事件"""
+
     type: EventType = EventType.THINKING_DELTA
     content: str = ""
 
@@ -86,6 +92,7 @@ class ThinkingDeltaEvent(Event):
 @dataclass
 class ToolStartEvent(Event):
     """工具开始事件"""
+
     type: EventType = EventType.TOOL_START
     tool_name: str = ""
     tool_id: str = ""
@@ -95,6 +102,7 @@ class ToolStartEvent(Event):
 @dataclass
 class ToolCompleteEvent(Event):
     """工具完成事件"""
+
     type: EventType = EventType.TOOL_COMPLETE
     tool_name: str = ""
     tool_id: str = ""
@@ -107,13 +115,14 @@ class ToolCompleteEvent(Event):
 @dataclass
 class TokenUpdateEvent(Event):
     """Token 更新事件"""
+
     type: EventType = EventType.TOKEN_UPDATE
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
 
 
-T = TypeVar('T', bound=Event)
+T = TypeVar("T", bound=Event)
 
 
 class EventBroker(Generic[T]):

@@ -20,6 +20,7 @@ try:
     from rich.spinner import Spinner  # noqa: F401
     from rich.syntax import Syntax
     from rich.text import Text
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -71,18 +72,22 @@ class Display:
                 preview = "\n".join(lines[:3])
                 if len(lines) > 3:
                     preview += f"\n... ({len(lines) - 3} 更多行)"
-                self.console.print(Panel(
-                    preview,
-                    title="💭 思考过程",
-                    border_style="dim",
-                    expand=False,
-                ))
+                self.console.print(
+                    Panel(
+                        preview,
+                        title="💭 思考过程",
+                        border_style="dim",
+                        expand=False,
+                    )
+                )
             else:
-                self.console.print(Panel(
-                    text,
-                    title="💭 思考过程",
-                    border_style="cyan",
-                ))
+                self.console.print(
+                    Panel(
+                        text,
+                        title="💭 思考过程",
+                        border_style="cyan",
+                    )
+                )
         else:
             print(f"💭 思考: {text[:200]}...")
 

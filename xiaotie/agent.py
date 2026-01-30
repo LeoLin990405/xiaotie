@@ -19,6 +19,7 @@ from typing import Callable, Dict, Optional
 
 try:
     import tiktoken
+
     HAS_TIKTOKEN = True
 except ImportError:
     HAS_TIKTOKEN = False
@@ -43,6 +44,7 @@ from .tools import Tool
 @dataclass
 class AgentConfig:
     """Agent 配置"""
+
     max_steps: int = 50
     token_limit: int = 100000
     parallel_tools: bool = True
@@ -51,7 +53,7 @@ class AgentConfig:
     quiet: bool = False
     # 摘要配置
     summary_threshold: float = 0.8  # 达到 token_limit 的 80% 时触发摘要
-    summary_keep_recent: int = 5    # 摘要时保留最近 N 条用户消息
+    summary_keep_recent: int = 5  # 摘要时保留最近 N 条用户消息
 
 
 class SessionState:
@@ -85,10 +87,7 @@ class SessionState:
         if session_id not in self._busy_sessions:
             return True
         try:
-            await asyncio.wait_for(
-                self._busy_sessions[session_id].wait(),
-                timeout=timeout
-            )
+            await asyncio.wait_for(self._busy_sessions[session_id].wait(), timeout=timeout)
             return True
         except asyncio.TimeoutError:
             return False
@@ -139,9 +138,7 @@ class Agent:
         self.parallel_tools = parallel_tools
 
         # 消息历史
-        self.messages: list[Message] = [
-            Message(role="system", content=system_prompt)
-        ]
+        self.messages: list[Message] = [Message(role="system", content=system_prompt)]
 
         # 取消控制
         self.cancel_event: Optional[asyncio.Event] = None
@@ -192,7 +189,7 @@ class Agent:
                 # 检查是否所有 tool 调用都有结果
                 tool_call_ids = {tc.id for tc in assistant_msg.tool_calls}
                 result_ids = set()
-                for msg in self.messages[last_assistant_idx + 1:]:
+                for msg in self.messages[last_assistant_idx + 1 :]:
                     if msg.role == "tool" and msg.tool_call_id:
                         result_ids.add(msg.tool_call_id)
 
@@ -205,8 +202,7 @@ class Agent:
         if self._encoding is None:
             # 没有 tiktoken，按字符估算
             total_chars = sum(
-                len(str(msg.content)) + len(str(msg.thinking or ""))
-                for msg in self.messages
+                len(str(msg.content)) + len(str(msg.thinking or "")) for msg in self.messages
             )
             return total_chars // 4
 
@@ -249,7 +245,9 @@ class Agent:
 
         # 保留最近的用户消息
         keep_recent = self.config.summary_keep_recent
-        recent_user_msgs = user_messages[-keep_recent:] if len(user_messages) > keep_recent else user_messages
+        recent_user_msgs = (
+            user_messages[-keep_recent:] if len(user_messages) > keep_recent else user_messages
+        )
         old_user_msgs = user_messages[:-keep_recent] if len(user_messages) > keep_recent else []
 
         # 收集需要摘要的内容
@@ -262,18 +260,17 @@ class Agent:
 
         if content_to_summarize:
             # 生成摘要
-            summary_prompt = "请用中文简洁摘要以下对话内容（保留关键信息和决策）:\n\n" + "\n".join(content_to_summarize[-30:])
+            summary_prompt = "请用中文简洁摘要以下对话内容（保留关键信息和决策）:\n\n" + "\n".join(
+                content_to_summarize[-30:]
+            )
             try:
-                summary_response = await self.llm.generate([
-                    Message(role="user", content=summary_prompt)
-                ])
+                summary_response = await self.llm.generate(
+                    [Message(role="user", content=summary_prompt)]
+                )
                 summary = summary_response.content
 
                 # 添加摘要消息
-                new_messages.append(Message(
-                    role="assistant",
-                    content=f"[历史摘要]\n{summary}"
-                ))
+                new_messages.append(Message(role="assistant", content=f"[历史摘要]\n{summary}"))
             except Exception as e:
                 if not self.quiet:
                     print(f"⚠️ 摘要生成失败: {e}")
@@ -309,10 +306,11 @@ class Agent:
             # 添加用户输入
             if user_input:
                 self.messages.append(Message(role="user", content=user_input))
-                await self._publish_event(AgentStartEvent(
-                    user_input=user_input,
-                    data={"message_count": len(self.messages)}
-                ))
+                await self._publish_event(
+                    AgentStartEvent(
+                        user_input=user_input, data={"message_count": len(self.messages)}
+                    )
+                )
 
             return await self._run_loop()
 
@@ -330,10 +328,12 @@ class Agent:
                 return "⚠️ 任务已取消"
 
             # 发布步骤事件
-            await self._publish_event(AgentStepEvent(
-                step=step + 1,
-                total_steps=self.config.max_steps,
-            ))
+            await self._publish_event(
+                AgentStepEvent(
+                    step=step + 1,
+                    total_steps=self.config.max_steps,
+                )
+            )
 
             # Token 管理
             await self._summarize_messages()
@@ -351,10 +351,7 @@ class Agent:
                         tools=tool_schemas if tool_schemas else None,
                     )
             except Exception as e:
-                await self._publish_event(Event(
-                    type=EventType.AGENT_ERROR,
-                    data={"error": str(e)}
-                ))
+                await self._publish_event(Event(type=EventType.AGENT_ERROR, data={"error": str(e)}))
                 return f"❌ LLM 调用失败: {e}"
 
             # 更新 token 统计
@@ -362,26 +359,29 @@ class Agent:
                 self.api_total_tokens = response.usage.total_tokens
                 self.api_input_tokens = response.usage.input_tokens
                 self.api_output_tokens = response.usage.output_tokens
-                await self._publish_event(TokenUpdateEvent(
-                    input_tokens=response.usage.input_tokens,
-                    output_tokens=response.usage.output_tokens,
-                    total_tokens=response.usage.total_tokens,
-                ))
+                await self._publish_event(
+                    TokenUpdateEvent(
+                        input_tokens=response.usage.input_tokens,
+                        output_tokens=response.usage.output_tokens,
+                        total_tokens=response.usage.total_tokens,
+                    )
+                )
 
             # 添加 assistant 消息
-            self.messages.append(Message(
-                role="assistant",
-                content=response.content,
-                thinking=response.thinking,
-                tool_calls=response.tool_calls,
-            ))
+            self.messages.append(
+                Message(
+                    role="assistant",
+                    content=response.content,
+                    thinking=response.thinking,
+                    tool_calls=response.tool_calls,
+                )
+            )
 
             # 如果没有工具调用，任务完成
             if not response.tool_calls:
-                await self._publish_event(Event(
-                    type=EventType.AGENT_COMPLETE,
-                    data={"content": response.content}
-                ))
+                await self._publish_event(
+                    Event(type=EventType.AGENT_COMPLETE, data={"content": response.content})
+                )
                 return response.content
 
             # 执行工具调用
@@ -397,18 +397,18 @@ class Agent:
 
             # 添加工具结果到消息历史
             for tool_call_id, function_name, result_content in tool_results:
-                self.messages.append(Message(
-                    role="tool",
-                    content=result_content,
-                    tool_call_id=tool_call_id,
-                    name=function_name,
-                ))
+                self.messages.append(
+                    Message(
+                        role="tool",
+                        content=result_content,
+                        tool_call_id=tool_call_id,
+                        name=function_name,
+                    )
+                )
 
         return "⚠️ 达到最大步数限制"
 
-    async def _execute_tools_sequential(
-        self, tool_calls: list
-    ) -> list[tuple[str, str, str]]:
+    async def _execute_tools_sequential(self, tool_calls: list) -> list[tuple[str, str, str]]:
         """顺序执行工具调用（参考 OpenCode 设计）"""
         results = []
 
@@ -416,11 +416,7 @@ class Agent:
             # 检查取消
             if self._check_cancelled():
                 # 标记剩余工具为已取消
-                results.append((
-                    tool_call.id,
-                    tool_call.function.name,
-                    "⚠️ 已取消"
-                ))
+                results.append((tool_call.id, tool_call.function.name, "⚠️ 已取消"))
                 continue
 
             result = await self._execute_single_tool(tool_call)
@@ -428,9 +424,7 @@ class Agent:
 
         return results
 
-    async def _execute_tools_parallel(
-        self, tool_calls: list
-    ) -> list[tuple[str, str, str]]:
+    async def _execute_tools_parallel(self, tool_calls: list) -> list[tuple[str, str, str]]:
         """并行执行多个工具调用"""
         if self._check_cancelled():
             return []
@@ -451,36 +445,30 @@ class Agent:
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 tc = tool_calls[i]
-                final_results.append((
-                    tc.id,
-                    tc.function.name,
-                    f"执行异常: {result}"
-                ))
+                final_results.append((tc.id, tc.function.name, f"执行异常: {result}"))
             else:
                 final_results.append(result)
 
         return final_results
 
-    async def _execute_single_tool(
-        self, tool_call
-    ) -> tuple[str, str, str]:
+    async def _execute_single_tool(self, tool_call) -> tuple[str, str, str]:
         """执行单个工具"""
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments
 
         # 发布工具开始事件
-        await self._publish_event(ToolStartEvent(
-            tool_name=function_name,
-            tool_id=tool_call_id,
-            arguments=arguments,
-        ))
+        await self._publish_event(
+            ToolStartEvent(
+                tool_name=function_name,
+                tool_id=tool_call_id,
+                arguments=arguments,
+            )
+        )
 
         # 格式化参数显示
         if not self.quiet:
-            args_display = ", ".join(
-                f"{k}={repr(v)[:50]}" for k, v in arguments.items()
-            )
+            args_display = ", ".join(f"{k}={repr(v)[:50]}" for k, v in arguments.items())
             print(f"\n🔧 {function_name}({args_display})")
 
         tool = self.tools.get(function_name)
@@ -488,12 +476,14 @@ class Agent:
             result_content = f"错误: 未知工具 '{function_name}'"
             if not self.quiet:
                 print(f"   ❌ {result_content}")
-            await self._publish_event(ToolCompleteEvent(
-                tool_name=function_name,
-                tool_id=tool_call_id,
-                success=False,
-                error=result_content,
-            ))
+            await self._publish_event(
+                ToolCompleteEvent(
+                    tool_name=function_name,
+                    tool_id=tool_call_id,
+                    success=False,
+                    error=result_content,
+                )
+            )
             return (tool_call_id, function_name, result_content)
 
         try:
@@ -510,37 +500,43 @@ class Agent:
                         preview += "..."
                     print(f"   ✅ ({elapsed:.1f}s) {preview}")
 
-                await self._publish_event(ToolCompleteEvent(
-                    tool_name=function_name,
-                    tool_id=tool_call_id,
-                    success=True,
-                    result=result_content[:500],
-                    duration=elapsed,
-                ))
+                await self._publish_event(
+                    ToolCompleteEvent(
+                        tool_name=function_name,
+                        tool_id=tool_call_id,
+                        success=True,
+                        result=result_content[:500],
+                        duration=elapsed,
+                    )
+                )
             else:
                 result_content = f"错误: {result.error}"
                 if not self.quiet:
                     print(f"   ❌ ({elapsed:.1f}s) {result.error}")
 
-                await self._publish_event(ToolCompleteEvent(
-                    tool_name=function_name,
-                    tool_id=tool_call_id,
-                    success=False,
-                    error=result.error,
-                    duration=elapsed,
-                ))
+                await self._publish_event(
+                    ToolCompleteEvent(
+                        tool_name=function_name,
+                        tool_id=tool_call_id,
+                        success=False,
+                        error=result.error,
+                        duration=elapsed,
+                    )
+                )
 
         except Exception as e:
             result_content = f"执行异常: {e}"
             if not self.quiet:
                 print(f"   ❌ {result_content}")
 
-            await self._publish_event(ToolCompleteEvent(
-                tool_name=function_name,
-                tool_id=tool_call_id,
-                success=False,
-                error=str(e),
-            ))
+            await self._publish_event(
+                ToolCompleteEvent(
+                    tool_name=function_name,
+                    tool_id=tool_call_id,
+                    success=False,
+                    error=str(e),
+                )
+            )
 
         return (tool_call_id, function_name, result_content)
 
@@ -610,7 +606,9 @@ class Agent:
 
     def reset(self):
         """重置 Agent 状态"""
-        system_msg = self.messages[0] if self.messages and self.messages[0].role == "system" else None
+        system_msg = (
+            self.messages[0] if self.messages and self.messages[0].role == "system" else None
+        )
         self.messages = [system_msg] if system_msg else []
         self.api_total_tokens = 0
         self.api_input_tokens = 0

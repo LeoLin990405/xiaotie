@@ -34,11 +34,13 @@ def create_tools(config: Config, workspace: Path) -> list:
     tools = []
 
     if config.tools.enable_file_tools:
-        tools.extend([
-            ReadTool(workspace_dir=str(workspace)),
-            WriteTool(workspace_dir=str(workspace)),
-            EditTool(workspace_dir=str(workspace)),
-        ])
+        tools.extend(
+            [
+                ReadTool(workspace_dir=str(workspace)),
+                WriteTool(workspace_dir=str(workspace)),
+                EditTool(workspace_dir=str(workspace)),
+            ]
+        )
 
     if config.tools.enable_bash:
         tools.append(BashTool())

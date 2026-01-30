@@ -80,6 +80,7 @@ class LSPManager:
     def _command_exists(self, command: str) -> bool:
         """检查命令是否存在"""
         import shutil
+
         return shutil.which(command) is not None
 
     async def get_client_for_file(self, file_path: str) -> Optional[LSPClient]:
@@ -105,9 +106,7 @@ class LSPManager:
         if client:
             await client.notify_change(file_path)
 
-    async def get_diagnostics(
-        self, file_path: Optional[str] = None
-    ) -> dict[str, list[Diagnostic]]:
+    async def get_diagnostics(self, file_path: Optional[str] = None) -> dict[str, list[Diagnostic]]:
         """获取诊断信息"""
         if file_path:
             client = await self.get_client_for_file(file_path)
@@ -132,6 +131,7 @@ class LSPManager:
 
         # 等待一小段时间让 LSP 处理
         import asyncio
+
         await asyncio.sleep(0.5)
 
         diags = client.get_diagnostics(file_path)

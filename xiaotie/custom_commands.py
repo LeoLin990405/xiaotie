@@ -20,12 +20,13 @@ from typing import Callable, Optional
 @dataclass
 class CustomCommand:
     """自定义命令"""
-    id: str                          # 命令 ID (如 user:git:commit)
-    name: str                        # 命令名称 (如 commit)
-    source: str                      # 来源 (user/project)
-    file_path: Path                  # 文件路径
-    content: str                     # 命令内容
-    description: str = ""            # 描述 (从文件第一行提取)
+
+    id: str  # 命令 ID (如 user:git:commit)
+    name: str  # 命令名称 (如 commit)
+    source: str  # 来源 (user/project)
+    file_path: Path  # 文件路径
+    content: str  # 命令内容
+    description: str = ""  # 描述 (从文件第一行提取)
     arguments: list[str] = field(default_factory=list)  # 参数列表
 
     @property
@@ -38,7 +39,7 @@ class CustomCommandManager:
     """自定义命令管理器"""
 
     # 参数模式: $NAME (大写字母、数字、下划线，必须以字母开头)
-    ARG_PATTERN = re.compile(r'\$([A-Z][A-Z0-9_]*)')
+    ARG_PATTERN = re.compile(r"\$([A-Z][A-Z0-9_]*)")
 
     def __init__(self, workspace_dir: Optional[str] = None):
         self.workspace_dir = Path(workspace_dir) if workspace_dir else Path.cwd()

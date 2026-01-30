@@ -153,10 +153,7 @@ class Commands:
         """退出程序"""
         # 自动保存会话
         if self.session_mgr.current_session:
-            self.session_mgr.save_session(
-                self.session_mgr.current_session,
-                self.agent.messages
-            )
+            self.session_mgr.save_session(self.session_mgr.current_session, self.agent.messages)
         if self.on_quit:
             self.on_quit()
         return False, "\n👋 再见！"
@@ -178,10 +175,7 @@ class Commands:
         """保存当前会话"""
         if not self.session_mgr.current_session:
             self.session_mgr.create_session()
-        self.session_mgr.save_session(
-            self.session_mgr.current_session,
-            self.agent.messages
-        )
+        self.session_mgr.save_session(self.session_mgr.current_session, self.agent.messages)
         return True, f"✅ 会话已保存: {self.session_mgr.current_session}"
 
     def cmd_sessions(self, args: str) -> tuple[bool, str]:
@@ -388,7 +382,10 @@ class Commands:
         name = args.strip().lower().replace("-", "_").replace(" ", "_")
         plugin_path = self.plugin_mgr.create_plugin_template(name)
 
-        return True, f"✅ 插件模板已创建: {plugin_path}\n\n编辑后重启或使用 /plugin-reload {name} 加载"
+        return (
+            True,
+            f"✅ 插件模板已创建: {plugin_path}\n\n编辑后重启或使用 /plugin-reload {name} 加载",
+        )
 
     def cmd_plugin_reload(self, args: str) -> tuple[bool, str]:
         """重新加载插件 (用法: /plugin-reload <名称>)"""
@@ -479,6 +476,7 @@ class Commands:
             if msg.role == "assistant" and msg.content:
                 try:
                     import subprocess
+
                     # macOS
                     process = subprocess.Popen(
                         ["pbcopy"],
@@ -539,8 +537,7 @@ class Commands:
 
         file_path = args.strip()
         feedback = FeedbackLoop(
-            self.agent.workspace_dir,
-            FeedbackConfig(auto_lint=True, auto_test=False)
+            self.agent.workspace_dir, FeedbackConfig(auto_lint=True, auto_test=False)
         )
 
         result = await feedback.lint_file(file_path)
@@ -561,8 +558,7 @@ class Commands:
 
         file_path = args.strip() if args else None
         feedback = FeedbackLoop(
-            self.agent.workspace_dir,
-            FeedbackConfig(auto_lint=False, auto_test=True)
+            self.agent.workspace_dir, FeedbackConfig(auto_lint=False, auto_test=True)
         )
 
         result = await feedback.run_tests(file_path)
@@ -658,7 +654,9 @@ class Commands:
         if user_cmds:
             lines.append("  用户命令:")
             for cmd in user_cmds:
-                desc = cmd.description[:40] + "..." if len(cmd.description) > 40 else cmd.description
+                desc = (
+                    cmd.description[:40] + "..." if len(cmd.description) > 40 else cmd.description
+                )
                 args_hint = f" ({len(cmd.arguments)} 参数)" if cmd.arguments else ""
                 lines.append(f"    • {cmd.id}{args_hint}")
                 if desc:
@@ -669,7 +667,9 @@ class Commands:
                 lines.append("")
             lines.append("  项目命令:")
             for cmd in project_cmds:
-                desc = cmd.description[:40] + "..." if len(cmd.description) > 40 else cmd.description
+                desc = (
+                    cmd.description[:40] + "..." if len(cmd.description) > 40 else cmd.description
+                )
                 args_hint = f" ({len(cmd.arguments)} 参数)" if cmd.arguments else ""
                 lines.append(f"    • {cmd.id}{args_hint}")
                 if desc:
@@ -783,5 +783,3 @@ class Commands:
     def completions_cmd_show(self) -> list[str]:
         """cmd-show 命令的补全"""
         return self.completions_run()
-
-
