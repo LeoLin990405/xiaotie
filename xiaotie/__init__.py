@@ -5,7 +5,7 @@
 支持多 LLM Provider、工具调用、事件驱动架构、MCP 协议。
 """
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 __author__ = "Leo"
 
 from .agent import Agent, AgentConfig, SessionState
@@ -39,6 +39,12 @@ def get_mcp_module():
     """获取 MCP 模块"""
     from . import mcp
     return mcp
+
+# LSP 支持 (延迟导入)
+def get_lsp_module():
+    """获取 LSP 模块"""
+    from . import lsp
+    return lsp
 
 __all__ = [
     # Agent
@@ -83,4 +89,6 @@ __all__ = [
     "CustomCommand",
     # MCP
     "get_mcp_module",
+    # LSP
+    "get_lsp_module",
 ]
