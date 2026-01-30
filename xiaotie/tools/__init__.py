@@ -8,6 +8,7 @@ from .enhanced_bash import EnhancedBashTool, PersistentShell
 from .file_tools import EditTool, ReadTool, WriteTool
 from .git_tool import GitTool
 from .python_tool import CalculatorTool, PythonTool
+from .semantic_search_tool import SemanticSearchTool
 from .web_tool import WebFetchTool, WebSearchTool
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "WebSearchTool",
     "WebFetchTool",
     "CodeAnalysisTool",
+    "SemanticSearchTool",
 ]

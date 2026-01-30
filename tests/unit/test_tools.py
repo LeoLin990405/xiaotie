@@ -1,10 +1,14 @@
 """工具单元测试"""
 
+import importlib.util
 import os
 
 import pytest
 
-from xiaotie.tools import BashTool, ReadTool, WriteTool
+from xiaotie.tools import BashTool, ReadTool, SemanticSearchTool, WriteTool
+
+# 检查 chromadb 是否可用
+HAS_CHROMADB = importlib.util.find_spec("chromadb") is not None
 
 
 class TestReadTool:
@@ -138,3 +142,66 @@ class TestBashTool:
         """测试工具属性"""
         assert bash_tool.name == "bash"
         assert "command" in bash_tool.parameters["properties"]
+
+
+class TestSemanticSearchTool:
+    """SemanticSearchTool 测试"""
+
+    @pytest.fixture
+    def search_tool(self, workspace_dir):
+        return SemanticSearchTool(workspace_dir=workspace_dir)
+
+    def test_tool_properties(self, search_tool):
+        """测试工具属性"""
+        assert search_tool.name == "semantic_search"
+        assert "query" in search_tool.parameters["properties"]
+        assert "n_results" in search_tool.parameters["properties"]
+
+    @pytest.mark.asyncio
+    async def test_search_without_chromadb(self, search_tool):
+        """测试没有 chromadb 时的行为"""
+        if HAS_CHROMADB:
+            pytest.skip("chromadb is installed")
+        result = await search_tool.execute(query="test")
+        assert result.success is False
+        assert "chromadb" in result.content.lower()
+
+    @pytest.mark.skipif(not HAS_CHROMADB, reason="chromadb not installed")
+    @pytest.mark.asyncio
+    async def test_search_empty_workspace(self, tmp_path):
+        """测试空工作区搜索"""
+        tool = SemanticSearchTool(
+            workspace_dir=str(tmp_path),
+            persist_directory=str(tmp_path / "vectordb"),
+        )
+        result = await tool.execute(query="test function")
+        assert result.success is True
+
+    @pytest.mark.skipif(not HAS_CHROMADB, reason="chromadb not installed")
+    @pytest.mark.asyncio
+    async def test_search_with_code(self, tmp_path):
+        """测试有代码的工作区搜索"""
+        # 创建测试代码文件
+        code_file = tmp_path / "test.py"
+        code_file.write_text("""
+def hello_world():
+    return "Hello, World!"
+
+def add_numbers(a, b):
+    return a + b
+
+class Calculator:
+    def multiply(self, a, b):
+        return a * b
+""")
+
+        tool = SemanticSearchTool(
+            workspace_dir=str(tmp_path),
+            persist_directory=str(tmp_path / "vectordb"),
+        )
+        result = await tool.execute(query="hello function", n_results=3)
+        assert result.success is True
+
+    def test_get_index_count_before_init(self, search_tool):
+        """测试初始化前获取索引数量"""
+        assert search_tool.get_index_count() == 0
