@@ -15,15 +15,14 @@
 from __future__ import annotations
 
 import inspect
-from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Callable, Any
+from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:
     from .agent import Agent
-    from .session import SessionManager
     from .plugins import PluginManager
+    from .session import SessionManager
 
-from .custom_commands import CustomCommandManager, CustomCommandExecutor
+from .custom_commands import CustomCommandExecutor, CustomCommandManager
 
 
 class Commands:
@@ -251,7 +250,7 @@ class Commands:
             return True, f"📊 当前模型: {self.agent.llm._client.model}"
 
         # TODO: 实现模型切换
-        return True, f"⚠️ 模型切换功能开发中"
+        return True, "⚠️ 模型切换功能开发中"
 
     def cmd_tokens(self, args: str) -> tuple[bool, str]:
         """显示 Token 使用情况"""
@@ -291,7 +290,7 @@ class Commands:
             lines.append(f"  {role_icon} {content}")
 
         if len(messages) > 10:
-            lines.insert(1, f"  ... (显示最近 10 条)")
+            lines.insert(1, "  ... (显示最近 10 条)")
 
         return True, "\n".join(lines)
 
@@ -536,7 +535,7 @@ class Commands:
         if not args:
             return True, "用法: /lint <文件路径>"
 
-        from .feedback import FeedbackLoop, FeedbackConfig
+        from .feedback import FeedbackConfig, FeedbackLoop
 
         file_path = args.strip()
         feedback = FeedbackLoop(
@@ -558,7 +557,7 @@ class Commands:
 
     async def cmd_test(self, args: str) -> tuple[bool, str]:
         """运行测试 (用法: /test [文件路径])"""
-        from .feedback import FeedbackLoop, FeedbackConfig
+        from .feedback import FeedbackConfig, FeedbackLoop
 
         file_path = args.strip() if args else None
         feedback = FeedbackLoop(

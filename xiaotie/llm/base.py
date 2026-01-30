@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Tuple, Optional
+from typing import Any
 
 from ..retry import RetryConfig
-from ..schema import Message, LLMResponse
+from ..schema import LLMResponse, Message
 
 
 class LLMClientBase(ABC):

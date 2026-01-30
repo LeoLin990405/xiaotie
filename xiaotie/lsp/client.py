@@ -9,18 +9,22 @@ import asyncio
 import json
 import os
 import subprocess
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Any, Callable
-import threading
+from typing import Any, Callable, Optional
 
 from .protocol import (
-    Diagnostic, DocumentUri, Position, Range,
-    TextDocumentItem, TextDocumentIdentifier,
+    Diagnostic,
+    DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams,
+    DocumentUri,
+    InitializeParams,
+    PublishDiagnosticsParams,
+    TextDocumentIdentifier,
+    TextDocumentItem,
     VersionedTextDocumentIdentifier,
-    InitializeParams, InitializeResult,
-    DidOpenTextDocumentParams, DidCloseTextDocumentParams,
-    DidChangeTextDocumentParams, PublishDiagnosticsParams,
     detect_language_id,
 )
 
@@ -155,7 +159,7 @@ class LSPClient:
             ],
         )
 
-        result = await self._request("initialize", params.to_dict())
+        await self._request("initialize", params.to_dict())
 
         # 发送 initialized 通知
         await self._notify("initialized", {})

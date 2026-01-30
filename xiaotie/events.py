@@ -12,8 +12,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, TypeVar, Generic
-from weakref import WeakSet
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 
 class EventType(Enum):

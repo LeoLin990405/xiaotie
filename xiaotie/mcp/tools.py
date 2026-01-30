@@ -6,12 +6,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from ..schema import ToolResult
 from ..tools.base import Tool
+from .client import MCPClient, MCPClientError, MCPClientManager
 from .protocol import MCPTool, MCPToolResult, TextContent
-from .client import MCPClient, MCPClientManager, MCPClientError
 
 logger = logging.getLogger(__name__)
 

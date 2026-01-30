@@ -10,8 +10,8 @@
 from __future__ import annotations
 
 import subprocess
-from typing import Any, Dict, Optional
 from pathlib import Path
+from typing import Any, Dict
 
 from .base import Tool, ToolResult
 
@@ -230,7 +230,7 @@ class GitTool(Tool):
             )
 
         files = args.split()
-        result = self._run_git("add", *files)
+        self._run_git("add", *files)
 
         return ToolResult(
             success=True,

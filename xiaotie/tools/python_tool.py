@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import io
+import sys
 import traceback
 from typing import Any, Dict
 
@@ -42,9 +42,6 @@ class PythonTool(Tool):
         sys.stdout = io.StringIO()
         sys.stderr = io.StringIO()
 
-        result_value = None
-        error = None
-
         try:
             # 创建执行环境
             exec_globals = {
@@ -70,7 +67,7 @@ class PythonTool(Tool):
                 content=output if output else "代码执行成功（无输出）",
             )
 
-        except Exception as e:
+        except Exception:
             error_msg = traceback.format_exc()
             return ToolResult(
                 success=False,

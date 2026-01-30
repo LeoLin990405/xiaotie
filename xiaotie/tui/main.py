@@ -5,22 +5,27 @@
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 
 from ..agent import Agent
+from ..commands import Commands
 from ..config import Config
 from ..llm import LLMClient
-from ..retry import RetryConfig
-from ..tools import (
-    ReadTool, WriteTool, EditTool, BashTool,
-    PythonTool, CalculatorTool, GitTool,
-    WebSearchTool, WebFetchTool,
-)
-from ..session import SessionManager
-from ..commands import Commands
 from ..plugins import PluginManager
+from ..retry import RetryConfig
+from ..session import SessionManager
+from ..tools import (
+    BashTool,
+    CalculatorTool,
+    EditTool,
+    GitTool,
+    PythonTool,
+    ReadTool,
+    WebFetchTool,
+    WebSearchTool,
+    WriteTool,
+)
 from .app import XiaoTieApp
 
 

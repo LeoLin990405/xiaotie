@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import ast
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
 
 from .base import Tool, ToolResult
 
@@ -288,12 +288,12 @@ class CodeAnalysisTool(Tool):
         """格式化分析结果"""
         lines = [
             f"📊 代码分析: {analysis.file_path}",
-            f"",
-            f"📝 基本信息:",
+            "",
+            "📝 基本信息:",
             f"  • 语言: {analysis.language}",
             f"  • 行数: {analysis.lines}",
             f"  • 复杂度: {analysis.complexity}",
-            f"",
+            "",
         ]
 
         if analysis.classes:

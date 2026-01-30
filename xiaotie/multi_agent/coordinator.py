@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
 from uuid import uuid4
 
 from .roles import AgentRole, RoleConfig, create_default_roles
-from .task_agent import TaskAgent, TaskAgentConfig, TaskAgentResult
+from .task_agent import TaskAgent, TaskAgentConfig
 
 
 @dataclass

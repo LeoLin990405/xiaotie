@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import os
 import re
-from pathlib import Path
-from typing import Optional, List, Dict, Set, Tuple
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Set
 
 # 常见的忽略模式
 DEFAULT_IGNORE_PATTERNS = {

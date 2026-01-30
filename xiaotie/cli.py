@@ -18,21 +18,27 @@ import sys
 from pathlib import Path
 
 from .agent import Agent
-from .config import Config
-from .llm import LLMClient, LLMProvider
-from .retry import RetryConfig
-from .tools import (
-    ReadTool, WriteTool, EditTool, BashTool,
-    PythonTool, CalculatorTool, GitTool,
-    WebSearchTool, WebFetchTool, CodeAnalysisTool,
-)
-from .banner import print_banner, print_status, print_ready, VERSION
-from .session import SessionManager
+from .banner import VERSION, print_banner, print_ready, print_status
 from .commands import Commands
-from .display import Display, StreamDisplay, get_display, set_display
-from .plugins import PluginManager
+from .config import Config
+from .display import Display, StreamDisplay, set_display
 from .input import EnhancedInput
-
+from .llm import LLMClient
+from .plugins import PluginManager
+from .retry import RetryConfig
+from .session import SessionManager
+from .tools import (
+    BashTool,
+    CalculatorTool,
+    CodeAnalysisTool,
+    EditTool,
+    GitTool,
+    PythonTool,
+    ReadTool,
+    WebFetchTool,
+    WebSearchTool,
+    WriteTool,
+)
 
 # MCP 客户端管理器 (全局，用于清理)
 _mcp_manager = None
@@ -45,7 +51,7 @@ async def load_mcp_tools(config: Config) -> list:
     if not config.mcp.enabled:
         return []
 
-    from .mcp import MCPClientManager, MCPToolWrapper, create_mcp_tools
+    from .mcp import MCPClientManager, create_mcp_tools
 
     mcp_tools = []
     _mcp_manager = MCPClientManager()
@@ -361,7 +367,7 @@ def main():
             from .tui.main import run_tui
             run_tui()
         except ImportError as e:
-            print(f"❌ TUI 模式需要安装 textual: pip install textual")
+            print("❌ TUI 模式需要安装 textual: pip install textual")
             print(f"   错误: {e}")
             sys.exit(1)
         return

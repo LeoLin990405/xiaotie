@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from .schema import Message, ToolCall, FunctionCall
+from .schema import FunctionCall, Message, ToolCall
 
 
 class SessionManager:

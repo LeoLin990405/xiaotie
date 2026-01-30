@@ -12,20 +12,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, List, Callable
+from typing import List, Optional
 
-from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, ScrollableContainer
-from textual.widgets import Static, Input, Label, Button, TextArea
-from textual.widget import Widget
-from textual.reactive import reactive
-from textual.message import Message
-from textual.binding import Binding
 from rich.markdown import Markdown
-from rich.syntax import Syntax
-from rich.panel import Panel as RichPanel
 from rich.text import Text
-from rich.console import Group
+from textual.app import ComposeResult
+from textual.containers import Horizontal, ScrollableContainer, Vertical
+from textual.message import Message
+from textual.reactive import reactive
+from textual.widget import Widget
+from textual.widgets import Input, Static
 
 
 class ChatMessage(Static):

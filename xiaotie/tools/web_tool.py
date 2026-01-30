@@ -5,10 +5,10 @@
 
 from __future__ import annotations
 
-import urllib.parse
-import urllib.request
 import json
 import re
+import urllib.parse
+import urllib.request
 from typing import Any, Dict, List
 
 from .base import Tool, ToolResult

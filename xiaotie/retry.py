@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import functools
 from dataclasses import dataclass, field
-from typing import Callable, Type, Tuple
+from typing import Callable, Type
 
 
 class RetryExhaustedError(Exception):

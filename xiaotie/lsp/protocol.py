@@ -7,8 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Optional, Any, Union
-
+from typing import Optional, Union
 
 # 基础类型
 DocumentUri = str

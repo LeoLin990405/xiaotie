@@ -41,7 +41,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from typing import List, Type, Optional
+from typing import List, Optional
 
 from .tools.base import Tool
 

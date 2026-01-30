@@ -9,18 +9,17 @@
 
 from __future__ import annotations
 
-import sys
 from typing import Optional
 
 # 尝试导入 rich，如果没有则使用简单输出
 try:
     from rich.console import Console
+    from rich.live import Live  # noqa: F401
     from rich.markdown import Markdown
-    from rich.syntax import Syntax
     from rich.panel import Panel
+    from rich.spinner import Spinner  # noqa: F401
+    from rich.syntax import Syntax
     from rich.text import Text
-    from rich.live import Live
-    from rich.spinner import Spinner
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False

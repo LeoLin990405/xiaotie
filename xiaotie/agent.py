@@ -12,11 +12,10 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 import time
 import uuid
-from typing import Any, Optional, List, Dict, Callable, Set
 from dataclasses import dataclass
+from typing import Callable, Dict, Optional
 
 try:
     import tiktoken
@@ -24,16 +23,21 @@ try:
 except ImportError:
     HAS_TIKTOKEN = False
 
-from .schema import Message, LLMResponse
-from .llm import LLMClient
-from .tools import Tool
 from .events import (
-    EventBroker, EventType, Event,
-    AgentStartEvent, AgentStepEvent,
-    MessageDeltaEvent, ThinkingDeltaEvent,
-    ToolStartEvent, ToolCompleteEvent, TokenUpdateEvent,
+    AgentStartEvent,
+    AgentStepEvent,
+    Event,
+    EventType,
+    MessageDeltaEvent,
+    ThinkingDeltaEvent,
+    TokenUpdateEvent,
+    ToolCompleteEvent,
+    ToolStartEvent,
     get_event_broker,
 )
+from .llm import LLMClient
+from .schema import LLMResponse, Message
+from .tools import Tool
 
 
 @dataclass
@@ -258,7 +262,7 @@ class Agent:
 
         if content_to_summarize:
             # 生成摘要
-            summary_prompt = f"请用中文简洁摘要以下对话内容（保留关键信息和决策）:\n\n" + "\n".join(content_to_summarize[-30:])
+            summary_prompt = "请用中文简洁摘要以下对话内容（保留关键信息和决策）:\n\n" + "\n".join(content_to_summarize[-30:])
             try:
                 summary_response = await self.llm.generate([
                     Message(role="user", content=summary_prompt)

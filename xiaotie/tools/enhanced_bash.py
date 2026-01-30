@@ -17,8 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .base import Tool
 from ..schema import ToolResult
+from .base import Tool
 
 
 @dataclass

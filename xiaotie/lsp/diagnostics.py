@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import os
-from typing import Optional, Any
+from typing import Optional
 
 from ..tools.base import Tool, ToolResult
 

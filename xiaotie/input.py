@@ -9,10 +9,8 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, List, Callable
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .commands import Commands
@@ -20,12 +18,12 @@ if TYPE_CHECKING:
 # 尝试导入 prompt_toolkit
 try:
     from prompt_toolkit import PromptSession
-    from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
     from prompt_toolkit.completion import Completer, Completion
-    from prompt_toolkit.styles import Style
     from prompt_toolkit.formatted_text import HTML
+    from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.styles import Style
     HAS_PROMPT_TOOLKIT = True
 except ImportError:
     HAS_PROMPT_TOOLKIT = False

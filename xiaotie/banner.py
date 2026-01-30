@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 import time
-from typing import List, Optional
 
 # 版本号
 VERSION = "0.5.0"

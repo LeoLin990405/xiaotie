@@ -7,25 +7,22 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 from .protocol import (
-    JSONRPCRequest,
-    JSONRPCNotification,
-    JSONRPCResponse,
-    Implementation,
+    LATEST_PROTOCOL_VERSION,
     ClientCapabilities,
+    Implementation,
     InitializeParams,
     InitializeResult,
-    MCPTool,
+    JSONRPCNotification,
+    JSONRPCRequest,
     ListToolsResult,
-    MCPToolCall,
+    MCPTool,
     MCPToolResult,
-    TextContent,
-    LATEST_PROTOCOL_VERSION,
 )
-from .transport import StdioTransport, Transport, TransportError
+from .transport import StdioTransport
 
 logger = logging.getLogger(__name__)
 

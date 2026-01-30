@@ -5,15 +5,15 @@
 """
 
 from .app import XiaoTieApp
+from .layout import BorderedContainer, Panel, SplitPane
 from .widgets import (
     ChatMessage,
-    MessageList,
     Editor,
+    MessageList,
     SessionList,
     StatusLine,
     ThinkingIndicator,
 )
-from .layout import SplitPane, BorderedContainer, Panel
 
 __all__ = [
     "XiaoTieApp",

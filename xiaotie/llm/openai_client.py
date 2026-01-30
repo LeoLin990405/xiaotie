@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-from typing import Any, List, Tuple, Optional, AsyncIterator, Callable
+from typing import Any, Callable, Optional
 
 from openai import AsyncOpenAI
 
-from .base import LLMClientBase
 from ..retry import RetryConfig, async_retry
-from ..schema import Message, LLMResponse, ToolCall, FunctionCall, TokenUsage
+from ..schema import FunctionCall, LLMResponse, Message, TokenUsage, ToolCall
+from .base import LLMClientBase
 
 
 class OpenAIClient(LLMClientBase):

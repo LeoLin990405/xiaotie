@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any, List, Tuple, Optional
+from typing import Any
 
 from anthropic import AsyncAnthropic
 
-from .base import LLMClientBase
 from ..retry import RetryConfig, async_retry
-from ..schema import Message, LLMResponse, ToolCall, FunctionCall, TokenUsage
+from ..schema import FunctionCall, LLMResponse, Message, TokenUsage, ToolCall
+from .base import LLMClientBase
 
 
 class AnthropicClient(LLMClientBase):

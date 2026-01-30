@@ -9,14 +9,18 @@
 """
 
 from .client import LSPClient, LSPConfig
+from .diagnostics import DiagnosticsTool
 from .manager import LSPManager, format_diagnostics
 from .protocol import (
-    Diagnostic, DiagnosticSeverity,
-    Position, Range, Location,
-    TextDocumentIdentifier, DocumentUri,
+    Diagnostic,
+    DiagnosticSeverity,
+    DocumentUri,
+    Location,
+    Position,
+    Range,
+    TextDocumentIdentifier,
     detect_language_id,
 )
-from .diagnostics import DiagnosticsTool
 
 __all__ = [
     "LSPClient",

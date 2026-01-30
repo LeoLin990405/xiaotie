@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Static
+from textual.containers import Container, Horizontal
 from textual.reactive import reactive
+from textual.widgets import Static
 
 
 class SplitPane(Horizontal):

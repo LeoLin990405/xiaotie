@@ -7,8 +7,8 @@ from typing import Any
 
 import tiktoken
 
-from .base import Tool
 from ..schema import ToolResult
+from .base import Tool
 
 
 def truncate_text_by_tokens(text: str, max_tokens: int = 8000) -> str:

@@ -10,28 +10,23 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer, Container
-from textual.widgets import Header, Footer, Static, Input, Label, Button
-from textual.screen import Screen, ModalScreen
+from textual.containers import Container, Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.text import Text
+from textual.screen import ModalScreen
+from textual.widgets import Footer, Header, Input, Static
 
 from .widgets import (
-    ChatMessage,
-    MessageList,
     Editor,
+    MessageList,
+    SessionItem,
     SessionList,
     StatusLine,
     ThinkingIndicator,
-    CommandPaletteItem,
 )
 
 

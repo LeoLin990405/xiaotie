@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 from ..schema import Message, ToolResult
 
 if TYPE_CHECKING:
-    from ..agent import Agent
+    pass
 
 
 @dataclass
