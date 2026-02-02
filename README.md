@@ -3,7 +3,7 @@
 轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，参考 [OpenCode](https://github.com/opencode-ai/opencode) 设计。
 
 ```
- ▄███▄     小铁 XiaoTie v0.8.2
+ ▄███▄     小铁 XiaoTie v0.9.0
  █ ⚙ █    GLM-4.7 · OpenAI
  ▀███▀     ~/workspace
 ```
@@ -47,6 +47,9 @@
 - 🧠 **OpenAI GPT** - GPT-4o 等
 - 🔮 **智谱 GLM-4.7** - 深度思考 + 工具流式
 - 🌈 **MiniMax** - abab 系列
+- 🌟 **Google Gemini** - Gemini Pro/Flash (v0.9.0 新增)
+- 🔷 **DeepSeek** - DeepSeek Chat/Coder (v0.9.0 新增)
+- 🟣 **Qwen** - 通义千问系列 (v0.9.0 新增)
 
 ## 安装
 
@@ -230,6 +233,54 @@ async def main():
     print(result)
 
 asyncio.run(main())
+```
+
+### Agent SDK v2 (v0.9.0)
+
+```python
+from xiaotie import AgentBuilder
+from xiaotie.tools import ReadTool, WriteTool, BashTool
+
+# 使用构建器模式创建 Agent
+agent = (
+    AgentBuilder("my-agent")
+    .with_llm("claude-sonnet-4")
+    .with_tools([ReadTool(), WriteTool(), BashTool()])
+    .with_memory(max_tokens=4000)
+    .with_hooks(
+        on_start=lambda: print("Agent started"),
+        on_tool_call=lambda t: print(f"Calling {t.name}"),
+    )
+    .build()
+)
+
+# 运行
+result = await agent.run("帮我分析这段代码")
+```
+
+或使用 YAML 配置：
+
+```yaml
+# agent.yaml
+name: code-reviewer
+llm:
+  provider: anthropic
+  model: claude-sonnet-4
+tools:
+  - read
+  - write
+  - bash
+memory:
+  type: conversation
+  max_tokens: 4000
+hooks:
+  on_tool_call: log_tool_call
+```
+
+```python
+from xiaotie import AgentBuilder
+
+agent = AgentBuilder.from_yaml("agent.yaml").build()
 ```
 
 ### 事件订阅
@@ -441,12 +492,20 @@ xiaotie/
 │   │   ├── __init__.py
 │   │   ├── app.py        # TUI 主应用
 │   │   ├── widgets.py    # 自定义组件
+│   │   ├── themes.py     # 主题系统
+│   │   ├── command_palette.py # 命令面板 (v0.9.0)
+│   │   ├── onboarding.py # 首次启动向导 (v0.9.0)
+│   │   ├── streaming.py  # 流式渲染 (v0.9.0)
 │   │   └── main.py       # TUI 入口
+│   ├── testing/          # 测试模块 (v0.9.0)
+│   │   └── __init__.py   # Cassette/MockLLMClient
 │   ├── llm/
 │   │   ├── base.py       # LLM 客户端基类
 │   │   ├── wrapper.py    # 统一包装器
+│   │   ├── providers.py  # Provider 适配层 (v0.9.0)
 │   │   ├── anthropic_client.py
 │   │   └── openai_client.py
+│   ├── builder.py        # AgentBuilder (v0.9.0)
 │   └── tools/
 │       ├── base.py       # 工具基类
 │       ├── file_tools.py # 文件工具
@@ -463,7 +522,8 @@ xiaotie/
 │   ├── config.yaml.example
 │   └── system_prompt.md
 ├── docs/
-│   └── v0.3.0-plan.md    # 迭代计划
+│   ├── v0.3.0-plan.md    # 迭代计划
+│   └── v0.9.0-plan.md    # v0.9.0 计划
 ├── pyproject.toml
 └── README.md
 ```
@@ -476,9 +536,39 @@ xiaotie/
 | OpenAI | https://api.openai.com/v1 | GPT 系列 |
 | 智谱 GLM | https://open.bigmodel.cn/api/coding/paas/v4 | GLM-4.7 深度思考 |
 | MiniMax | https://api.minimax.io | 自动处理 URL 后缀 |
+| Gemini | https://generativelanguage.googleapis.com | Google AI (v0.9.0) |
+| DeepSeek | https://api.deepseek.com | DeepSeek (v0.9.0) |
+| Qwen | https://dashscope.aliyuncs.com | 通义千问 (v0.9.0) |
 | 其他 | 自定义 | OpenAI 兼容 API |
 
 ## 版本历史
+
+### v0.9.0
+- 🏗️ **Agent SDK v2** - 声明式 Agent 构建
+  - `AgentBuilder` 构建器模式，链式 API
+  - `AgentSpec` YAML/JSON 配置支持
+  - 生命周期 hooks (on_start, on_step, on_tool_call, on_complete)
+  - 策略/记忆/工具解耦设计
+- 🔌 **Provider 适配层** - 统一 LLM 接口
+  - 新增 Gemini、DeepSeek、Qwen 支持
+  - 能力矩阵 (流式、工具调用、并行工具、视觉)
+  - 自动路由/降级策略
+- 🎯 **命令面板增强** - 模糊搜索算法
+  - 精确匹配、前缀匹配、包含匹配、子序列匹配
+  - 快速模型切换器
+  - 命令分类与图标
+- 🚀 **首次启动向导** - 零配置体验
+  - 5 步引导流程
+  - API Key 配置
+  - 连接测试
+- 🌊 **流式渲染优化** - 实时响应显示
+  - 50ms 防抖动更新
+  - Token/秒速度统计
+  - 平滑光标动画
+- 🧪 **测试模块** - LLM 响应录制
+  - Cassette 录制/回放系统
+  - MockLLMClient 测试客户端
+  - Textual Pilot TUI 测试
 
 ### v0.8.2
 - 🎨 **主题管理器** - 全局主题状态管理
