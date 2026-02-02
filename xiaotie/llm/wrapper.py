@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from enum import Enum
 from typing import Any, Callable, Optional
 
@@ -10,6 +11,7 @@ from ..schema import LLMResponse, Message
 from .anthropic_client import AnthropicClient
 from .base import LLMClientBase
 from .openai_client import OpenAIClient
+from .providers import PROVIDER_CONFIGS, ProviderConfig, get_provider_config
 
 
 class LLMProvider(str, Enum):
@@ -17,6 +19,12 @@ class LLMProvider(str, Enum):
 
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    GEMINI = "gemini"
+    DEEPSEEK = "deepseek"
+    QWEN = "qwen"
+    ZHIPU = "zhipu"
+    MINIMAX = "minimax"
+    OLLAMA = "ollama"
 
 
 class LLMClient:
@@ -27,36 +35,55 @@ class LLMClient:
 
     def __init__(
         self,
-        api_key: str,
-        api_base: str = "https://api.anthropic.com",
-        model: str = "claude-sonnet-4-20250514",
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
+        model: Optional[str] = None,
         provider: LLMProvider | str = LLMProvider.ANTHROPIC,
         retry_config: RetryConfig | None = None,
     ):
+        # 标准化 provider
         if isinstance(provider, str):
-            provider = LLMProvider(provider)
+            provider_str = provider.lower()
+            try:
+                provider = LLMProvider(provider_str)
+            except ValueError:
+                # 尝试作为别名处理
+                provider = LLMProvider.OPENAI  # 默认使用 OpenAI 兼容
+
+        self.provider = provider
+        self.provider_config = get_provider_config(provider.value)
+
+        # 从配置或参数获取值
+        if self.provider_config:
+            api_base = api_base or self.provider_config.api_base
+            model = model or self.provider_config.default_model
+            if not api_key:
+                api_key = os.environ.get(self.provider_config.api_key_env, "")
 
         # 处理 MiniMax API 的特殊 URL
-        full_api_base = self._process_api_base(api_base, provider)
+        full_api_base = self._process_api_base(api_base or "", provider)
 
         # 根据 provider 创建对应客户端
         self._client: LLMClientBase
         if provider == LLMProvider.ANTHROPIC:
             self._client = AnthropicClient(
-                api_key=api_key,
+                api_key=api_key or "",
                 api_base=full_api_base,
-                model=model,
-                retry_config=retry_config,
-            )
-        elif provider == LLMProvider.OPENAI:
-            self._client = OpenAIClient(
-                api_key=api_key,
-                api_base=full_api_base,
-                model=model,
+                model=model or "claude-sonnet-4-20250514",
                 retry_config=retry_config,
             )
         else:
-            raise ValueError(f"不支持的 provider: {provider}")
+            # 所有其他 provider 使用 OpenAI 兼容客户端
+            self._client = OpenAIClient(
+                api_key=api_key or "",
+                api_base=full_api_base,
+                model=model or "gpt-4o",
+                retry_config=retry_config,
+            )
+
+        # 存储配置
+        self.model = model
+        self.api_base = full_api_base
 
     def _process_api_base(self, api_base: str, provider: LLMProvider) -> str:
         """处理 API base URL"""
@@ -67,10 +94,29 @@ class LLMClient:
             api_base = api_base.replace("/anthropic", "").replace("/v1", "")
             if provider == LLMProvider.ANTHROPIC:
                 return f"{api_base}/anthropic"
-            elif provider == LLMProvider.OPENAI:
+            else:
                 return f"{api_base}/v1"
 
         return api_base
+
+    @property
+    def capabilities(self) -> list:
+        """获取当前 provider 的能力列表"""
+        if self.provider_config:
+            return self.provider_config.capabilities
+        return []
+
+    def has_capability(self, cap: str) -> bool:
+        """检查是否支持某能力"""
+        if self.provider_config:
+            from .providers import ProviderCapability
+
+            try:
+                cap_enum = ProviderCapability(cap)
+                return self.provider_config.has_capability(cap_enum)
+            except ValueError:
+                return False
+        return False
 
     async def generate(
         self,
@@ -95,3 +141,32 @@ class LLMClient:
             )
         # 回退到非流式
         return await self._client.generate(messages, tools)
+
+    @classmethod
+    def from_provider(
+        cls,
+        provider: str,
+        model: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> "LLMClient":
+        """从 provider 名称创建客户端"""
+        config = get_provider_config(provider)
+        if not config:
+            raise ValueError(f"Unknown provider: {provider}")
+
+        return cls(
+            provider=provider,
+            model=model or config.default_model,
+            api_key=api_key,
+            api_base=config.api_base,
+        )
+
+    @staticmethod
+    def list_providers() -> list[str]:
+        """列出所有支持的 provider"""
+        return list(PROVIDER_CONFIGS.keys())
+
+    @staticmethod
+    def get_provider_info(provider: str) -> Optional[ProviderConfig]:
+        """获取 provider 信息"""
+        return get_provider_config(provider)
