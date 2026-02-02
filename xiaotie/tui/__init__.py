@@ -21,6 +21,12 @@ from .onboarding import (
     is_first_run,
     should_show_onboarding,
 )
+from .streaming import (
+    StreamingMessage,
+    StreamingRenderer,
+    StreamingState,
+    ThinkingProgress,
+)
 from .widgets import (
     ChatMessage,
     Editor,
@@ -53,6 +59,11 @@ __all__ = [
     "SessionList",
     "StatusLine",
     "ThinkingIndicator",
+    # Streaming
+    "StreamingMessage",
+    "StreamingRenderer",
+    "StreamingState",
+    "ThinkingProgress",
     # Layout
     "SplitPane",
     "BorderedContainer",
