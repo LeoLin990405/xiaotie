@@ -14,6 +14,13 @@ from .command_palette import (
     search_commands,
 )
 from .layout import BorderedContainer, Panel, SplitPane
+from .onboarding import (
+    OnboardingWizard,
+    ProviderSetup,
+    SUPPORTED_PROVIDERS,
+    is_first_run,
+    should_show_onboarding,
+)
 from .widgets import (
     ChatMessage,
     Editor,
@@ -33,6 +40,12 @@ __all__ = [
     "CommandCategory",
     "fuzzy_match",
     "search_commands",
+    # Onboarding
+    "OnboardingWizard",
+    "ProviderSetup",
+    "SUPPORTED_PROVIDERS",
+    "is_first_run",
+    "should_show_onboarding",
     # Widgets
     "ChatMessage",
     "MessageList",
