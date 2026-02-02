@@ -5,6 +5,14 @@
 """
 
 from .app import XiaoTieApp
+from .command_palette import (
+    Command,
+    CommandCategory,
+    CommandPalette,
+    QuickModelSelector,
+    fuzzy_match,
+    search_commands,
+)
 from .layout import BorderedContainer, Panel, SplitPane
 from .widgets import (
     ChatMessage,
@@ -16,13 +24,23 @@ from .widgets import (
 )
 
 __all__ = [
+    # App
     "XiaoTieApp",
+    # Command Palette
+    "CommandPalette",
+    "QuickModelSelector",
+    "Command",
+    "CommandCategory",
+    "fuzzy_match",
+    "search_commands",
+    # Widgets
     "ChatMessage",
     "MessageList",
     "Editor",
     "SessionList",
     "StatusLine",
     "ThinkingIndicator",
+    # Layout
     "SplitPane",
     "BorderedContainer",
     "Panel",
