@@ -5,10 +5,11 @@
 支持多 LLM Provider、工具调用、事件驱动架构、MCP 协议。
 """
 
-__version__ = "0.8.2"
+__version__ = "0.9.0-dev"
 __author__ = "Leo"
 
 from .agent import Agent, AgentConfig, SessionState
+from .builder import AgentBuilder, AgentHooks, AgentSpec, create_agent
 from .custom_commands import (
     CustomCommand,
     CustomCommandExecutor,
@@ -77,6 +78,11 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "SessionState",
+    # Builder
+    "AgentBuilder",
+    "AgentSpec",
+    "AgentHooks",
+    "create_agent",
     # Schema
     "Message",
     "ToolCall",
