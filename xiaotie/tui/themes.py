@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Callable, Dict
 
 
 @dataclass
@@ -400,6 +400,41 @@ THEMES: Dict[str, Theme] = {
         syntax_comment="#8b949e",
     ),
 }
+
+
+class ThemeManager:
+    """主题管理器 - 单例模式"""
+
+    _instance = None
+    _current_theme: str = "default"
+    _callbacks: list[Callable[[str], None]] = []
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def get_current_theme(self) -> str:
+        return self._current_theme
+
+    def set_theme(self, name: str) -> bool:
+        """设置主题并通知所有监听器"""
+        if name not in THEMES:
+            return False
+        self._current_theme = name
+        for callback in self._callbacks:
+            callback(name)
+        return True
+
+    def subscribe(self, callback: Callable[[str], None]):
+        """订阅主题变更事件"""
+        self._callbacks.append(callback)
+
+    def unsubscribe(self, callback: Callable[[str], None]):
+        """取消订阅"""
+        if callback in self._callbacks:
+            self._callbacks.remove(callback)
 
 
 def get_theme(name: str) -> Theme:

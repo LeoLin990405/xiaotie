@@ -23,7 +23,7 @@ from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Static
 
-from .themes import get_theme_display_name, list_themes
+from .themes import ThemeManager, get_theme, get_theme_display_name, list_themes
 from .widgets import (
     Editor,
     MessageList,
@@ -567,6 +567,7 @@ class XiaoTieApp(App):
         self.plugin_mgr = plugin_mgr
         self.commands = commands
         self._thinking_widget = None
+        self._theme_manager = ThemeManager.get_instance()
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -594,6 +595,8 @@ class XiaoTieApp(App):
 
     def on_mount(self) -> None:
         """挂载时初始化"""
+        self._theme_manager.subscribe(self._on_theme_changed)
+        self._on_theme_changed(self._theme_manager.get_current_theme())
         self._update_status()
         # 聚焦编辑器
         self.query_one("#editor-container", Editor).focus_input()
@@ -634,6 +637,13 @@ class XiaoTieApp(App):
             sidebar.add_class("hidden")
             divider.add_class("hidden")
 
+    def watch_current_theme(self, value: str) -> None:
+        if self._theme_manager.get_current_theme() != value:
+            if not self._theme_manager.set_theme(value):
+                self.current_theme = self._theme_manager.get_current_theme()
+                return
+        self._update_status()
+
     def _update_status(self) -> None:
         """更新状态行"""
         status_line = self.query_one("#status-line", StatusLine)
@@ -643,6 +653,46 @@ class XiaoTieApp(App):
         status_line.parallel = self.parallel_mode
         status_line.thinking = self.thinking_mode
         status_line.theme_name = self.current_theme
+
+    def _on_theme_changed(self, name: str) -> None:
+        """主题变更回调"""
+        theme = get_theme(name)
+        self.stylesheet.set_variables(
+            {
+                "primary": theme.primary,
+                "secondary": theme.secondary,
+                "accent": theme.accent,
+                "success": theme.success,
+                "warning": theme.warning,
+                "error": theme.error,
+                "info": theme.info,
+                "background": theme.background,
+                "background-panel": theme.background_panel,
+                "background-element": theme.background_element,
+                "surface": theme.surface,
+                "text": theme.text,
+                "text-muted": theme.text_muted,
+                "border": theme.border,
+                "border-active": theme.border_active,
+                "border-subtle": theme.border_subtle,
+                "diff-added": theme.diff_added,
+                "diff-removed": theme.diff_removed,
+                "diff-context": theme.diff_context,
+                "markdown-heading": theme.markdown_heading,
+                "markdown-link": theme.markdown_link,
+                "markdown-code": theme.markdown_code,
+                "markdown-quote": theme.markdown_quote,
+                "syntax-keyword": theme.syntax_keyword,
+                "syntax-function": theme.syntax_function,
+                "syntax-string": theme.syntax_string,
+                "syntax-number": theme.syntax_number,
+                "syntax-comment": theme.syntax_comment,
+            }
+        )
+        self.refresh_css()
+
+        if self.current_theme != name:
+            self.current_theme = name
 
     def _show_thinking(self) -> None:
         """显示思考指示器"""

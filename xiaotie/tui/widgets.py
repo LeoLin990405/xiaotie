@@ -25,7 +25,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Input, Static
 
-from .themes import get_theme_display_name, list_themes
+from .themes import get_theme, get_theme_display_name, list_themes
 
 
 class ChatMessage(Static):
@@ -738,6 +738,74 @@ class SelectorItem(Static):
         self.post_message(self.Selected(self.value, self.display))
 
 
+class ThemeSelectorItem(Static):
+    """主题选择器项"""
+
+    DEFAULT_CSS = """
+    ThemeSelectorItem {
+        width: 100%;
+        height: 1;
+        padding: 0 1;
+    }
+
+    ThemeSelectorItem:hover {
+        background: $primary 30%;
+    }
+
+    ThemeSelectorItem.selected {
+        background: $primary 40%;
+    }
+
+    ThemeSelectorItem .theme-row {
+        width: 100%;
+        height: 1;
+    }
+
+    ThemeSelectorItem .theme-name {
+        width: 1fr;
+    }
+
+    ThemeSelectorItem .theme-swatch {
+        width: 2;
+        height: 1;
+        margin-left: 1;
+        border: solid $border;
+    }
+    """
+
+    class Selected(Message):
+        def __init__(self, value: str, display: str) -> None:
+            self.value = value
+            self.display = display
+            super().__init__()
+
+    def __init__(
+        self,
+        value: str,
+        display: str,
+        colors: list[str],
+        is_selected: bool = False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.value = value
+        self.display = display
+        self.colors = colors
+        if is_selected:
+            self.add_class("selected")
+
+    def compose(self) -> ComposeResult:
+        with Horizontal(classes="theme-row"):
+            yield Static(self.display, classes="theme-name")
+            for color in self.colors:
+                swatch = Static("  ", classes="theme-swatch")
+                swatch.styles.background = color
+                yield swatch
+
+    def on_click(self) -> None:
+        self.post_message(self.Selected(self.value, self.display))
+
+
 class ModelSelector(ScrollableContainer):
     """模型选择器"""
 
@@ -807,9 +875,11 @@ class ThemeSelector(ScrollableContainer):
     def compose(self) -> ComposeResult:
         yield Static("󰏘 选择主题", classes="selector-title")
         for theme_id in list_themes():
+            theme = get_theme(theme_id)
             display = get_theme_display_name(theme_id)
             is_selected = theme_id == self.current_theme
-            yield SelectorItem(theme_id, display, is_selected)
+            colors = [theme.primary, theme.secondary, theme.accent]
+            yield ThemeSelectorItem(theme_id, display, colors, is_selected)
 
 
 class CommandPaletteItem(Static):
