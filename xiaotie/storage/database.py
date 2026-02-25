@@ -98,6 +98,11 @@ class Database:
         await self._connection.execute("PRAGMA foreign_keys = ON")
         # 启用 WAL 模式提高并发性能
         await self._connection.execute("PRAGMA journal_mode = WAL")
+        # 性能优化 PRAGMAs
+        await self._connection.execute("PRAGMA synchronous = NORMAL")
+        await self._connection.execute("PRAGMA cache_size = -64000")  # 64MB
+        await self._connection.execute("PRAGMA mmap_size = 268435456")  # 256MB
+        await self._connection.execute("PRAGMA temp_store = MEMORY")
         await self._connection.commit()
 
     async def close(self) -> None:
@@ -167,6 +172,82 @@ class Database:
         """查询多行"""
         cursor = await self.execute(sql, parameters)
         return await cursor.fetchall()
+
+
+class BatchCommitDatabase(Database):
+    """Write-behind 批量提交数据库
+
+    累积写操作，定期批量提交以减少 fsync 次数。
+    """
+
+    def __init__(self, db_path: str, flush_interval: float = 1.0, max_pending: int = 100):
+        super().__init__(db_path)
+        self._flush_interval = flush_interval
+        self._max_pending = max_pending
+        self._pending_count = 0
+        self._flush_task: Optional[asyncio.Task] = None
+        self._dirty = False
+
+    async def connect(self) -> None:
+        """连接并启动后台 flush 任务"""
+        await super().connect()
+        if self._flush_task is None:
+            self._flush_task = asyncio.create_task(self._flush_loop())
+
+    async def _flush_loop(self):
+        """后台定期 flush"""
+        while True:
+            await asyncio.sleep(self._flush_interval)
+            if self._dirty and self._connection is not None:
+                try:
+                    await self._connection.commit()
+                    self._dirty = False
+                    self._pending_count = 0
+                except Exception:
+                    pass
+
+    async def execute(self, sql: str, parameters: tuple = ()) -> aiosqlite.Cursor:
+        """执行 SQL（写操作延迟提交）"""
+        cursor = await super().execute(sql, parameters)
+        sql_upper = sql.strip().upper()
+        if sql_upper.startswith(("INSERT", "UPDATE", "DELETE", "REPLACE")):
+            self._dirty = True
+            self._pending_count += 1
+            if self._pending_count >= self._max_pending:
+                await self.flush()
+        return cursor
+
+    async def executemany(self, sql: str, parameters: list[tuple]) -> aiosqlite.Cursor:
+        """批量执行 SQL（延迟提交）"""
+        cursor = await super().executemany(sql, parameters)
+        self._dirty = True
+        self._pending_count += len(parameters)
+        if self._pending_count >= self._max_pending:
+            await self.flush()
+        return cursor
+
+    async def flush(self) -> None:
+        """立即提交所有待处理的写操作"""
+        if self._dirty and self._connection is not None:
+            await self._connection.commit()
+            self._dirty = False
+            self._pending_count = 0
+
+    async def commit(self) -> None:
+        """显式提交（直接 flush）"""
+        await self.flush()
+
+    async def close(self) -> None:
+        """关闭前 flush 所有待处理写操作"""
+        if self._flush_task is not None:
+            self._flush_task.cancel()
+            try:
+                await self._flush_task
+            except asyncio.CancelledError:
+                pass
+            self._flush_task = None
+        await self.flush()
+        await super().close()
 
 
 # 全局数据库实例

@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
 import re
 import socket
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List
+from typing import Any
 
 from .base import Tool, ToolResult
 
@@ -28,7 +29,7 @@ class WebSearchTool(Tool):
         return "搜索网络获取信息。适用于查找最新资料、技术文档、解决方案等。"
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -71,16 +72,19 @@ class WebSearchTool(Tool):
                 error=f"搜索失败: {e}",
             )
 
-    async def _search_duckduckgo(self, query: str, num_results: int) -> List[Dict]:
+    async def _search_duckduckgo(self, query: str, num_results: int) -> list[dict]:
         """使用 DuckDuckGo 搜索"""
         # DuckDuckGo Instant Answer API
         encoded_query = urllib.parse.quote(query)
         url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&no_html=1"
 
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "XiaoTie/0.3.0"})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            def _fetch():
+                req = urllib.request.Request(url, headers={"User-Agent": "XiaoTie/0.3.0"})
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    return json.loads(response.read().decode("utf-8"))
+
+            data = await asyncio.to_thread(_fetch)
 
             results = []
 
@@ -107,8 +111,8 @@ class WebSearchTool(Tool):
 
             return results[:num_results]
 
-        except Exception:
-            # 如果 API 失败，返回空结果
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError):
+            # API 失败，返回空结果
             return []
 
 
@@ -137,7 +141,7 @@ class WebFetchTool(Tool):
         return "获取网页内容。可以读取网页的文本内容。"
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

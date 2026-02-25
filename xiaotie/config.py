@@ -130,7 +130,22 @@ class Config:
 
     @classmethod
     def from_yaml(cls, config_path: str | Path) -> "Config":
-        """从 YAML 文件加载配置"""
+        """从 YAML 文件加载配置。
+
+        解析 YAML 配置文件并构建完整的 Config 对象。支持从环境变量
+        读取 API Key，支持嵌套的重试、缓存、工具、MCP 等配置。
+
+        Args:
+            config_path: YAML 配置文件路径。
+
+        Returns:
+            Config: 解析后的配置对象。
+
+        Raises:
+            FileNotFoundError: 配置文件不存在。
+            ValueError: 配置文件为空，或 API Key 未设置。
+            yaml.YAMLError: YAML 格式解析错误。
+        """
         config_path = Path(config_path)
 
         with open(config_path, encoding="utf-8") as f:

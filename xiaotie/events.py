@@ -161,19 +161,32 @@ T = TypeVar("T", bound=Event)
 
 
 class EventBroker(Generic[T]):
-    """事件代理 - 非阻塞发布/订阅"""
+    """事件代理 - 非阻塞发布/订阅（copy-on-read 模式）"""
 
-    def __init__(self, buffer_size: int = 128):
+    def __init__(self, buffer_size: int = 128, dead_ref_threshold: int = 50):
         self._subscribers: Dict[EventType, Set[weakref.ref]] = {}
         self._buffer_size = buffer_size
         self._lock = asyncio.Lock()
+        self._dead_ref_count = 0
+        self._dead_ref_threshold = dead_ref_threshold
 
     async def subscribe(
         self,
         event_types: List[EventType],
         cancel_event: Optional[asyncio.Event] = None,
     ) -> asyncio.Queue:
-        """订阅事件类型"""
+        """订阅指定类型的事件。
+
+        创建一个异步队列，接收匹配类型的事件。使用弱引用管理订阅者，
+        当队列被垃圾回收时自动清理订阅。
+
+        Args:
+            event_types: 要订阅的事件类型列表，如 [EventType.TOOL_START, EventType.MESSAGE_DELTA]。
+            cancel_event: 可选的取消事件。当该事件被设置时，自动取消订阅并清理资源。
+
+        Returns:
+            asyncio.Queue: 事件队列，通过 await queue.get() 接收事件。
+        """
         queue: asyncio.Queue = asyncio.Queue(maxsize=self._buffer_size)
 
         async with self._lock:
@@ -207,7 +220,6 @@ class EventBroker(Generic[T]):
         async with self._lock:
             for event_type in event_types:
                 if event_type in self._subscribers:
-                    # 移除对已清理队列的引用
                     dead_refs = set()
                     for ref in self._subscribers[event_type]:
                         if ref() is None or ref() is queue:
@@ -215,64 +227,62 @@ class EventBroker(Generic[T]):
                     for ref in dead_refs:
                         self._subscribers[event_type].discard(ref)
 
+    async def _batch_cleanup_dead_refs(self):
+        """延迟批量清理死引用（在锁内调用）"""
+        for event_type in list(self._subscribers.keys()):
+            refs = self._subscribers[event_type]
+            alive = {ref for ref in refs if ref() is not None}
+            self._subscribers[event_type] = alive
+        self._dead_ref_count = 0
+
     async def publish(self, event: T):
-        """发布事件（非阻塞）"""
-        if event.type not in self._subscribers:
+        """发布事件（copy-on-read，无锁快速路径）"""
+        # 快速路径：无订阅者直接返回
+        refs = self._subscribers.get(event.type)
+        if not refs:
             return
 
-        # 直接使用列表推导式获取活跃队列，减少锁持有时间
-        async with self._lock:
-            active_queues = []
-            dead_refs = []
-            
-            for ref in self._subscribers[event.type]:
-                queue = ref()
-                if queue is not None:
-                    active_queues.append(queue)
-                else:
-                    dead_refs.append(ref)
-            
-            # 批量移除无效的引用
-            for ref in dead_refs:
-                self._subscribers[event.type].discard(ref)
+        # copy-on-read：快照引用集合，无需持锁遍历
+        snapshot = list(refs)
 
-        # 批量发布到活跃队列，使用更高效的错误处理
-        for queue in active_queues:
-            try:
-                queue.put_nowait(event)
-            except asyncio.QueueFull:
-                # 队列满，丢弃旧事件
-                try:
-                    queue.get_nowait()
-                    queue.put_nowait(event)
-                except (asyncio.QueueEmpty, asyncio.QueueFull):
-                    pass
-
-    def publish_sync(self, event: T):
-        """同步发布事件（用于非异步上下文）"""
-        if event.type not in self._subscribers:
-            return
-
-        # 清理无效的弱引用并收集有效的队列
-        active_queues = []
-        dead_refs = set()
-        
-        for ref in self._subscribers.get(event.type, set()):
+        # 分发事件到活跃队列，统计死引用
+        local_dead = 0
+        for ref in snapshot:
             queue = ref()
             if queue is not None:
-                active_queues.append(queue)
+                try:
+                    queue.put_nowait(event)
+                except asyncio.QueueFull:
+                    try:
+                        queue.get_nowait()
+                        queue.put_nowait(event)
+                    except (asyncio.QueueEmpty, asyncio.QueueFull):
+                        pass
             else:
-                dead_refs.add(ref)
+                local_dead += 1
 
-        # 移除无效的引用
-        for ref in dead_refs:
-            self._subscribers[event.type].discard(ref)
+        # 延迟批量清理：累积死引用超过阈值时才加锁清理
+        if local_dead > 0:
+            self._dead_ref_count += local_dead
+            if self._dead_ref_count >= self._dead_ref_threshold:
+                async with self._lock:
+                    await self._batch_cleanup_dead_refs()
 
-        for queue in active_queues:
-            try:
-                queue.put_nowait(event)
-            except asyncio.QueueFull:
-                pass
+    def publish_sync(self, event: T):
+        """同步发布事件（用于非异步上下文，copy-on-read）"""
+        refs = self._subscribers.get(event.type)
+        if not refs:
+            return
+
+        snapshot = list(refs)
+
+        for ref in snapshot:
+            queue = ref()
+            if queue is not None:
+                try:
+                    queue.put_nowait(event)
+                except asyncio.QueueFull:
+                    pass
 
 
 # 全局事件代理

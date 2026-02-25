@@ -54,6 +54,9 @@ class AgentConfig:
     # 摘要配置
     summary_threshold: float = 0.8  # 达到 token_limit 的 80% 时触发摘要
     summary_keep_recent: int = 5  # 摘要时保留最近 N 条用户消息
+    # 缓存配置
+    cache_enabled: bool = True
+    cache_ttl: int = 3600  # 1小时
 
 
 class SessionState:
@@ -114,6 +117,21 @@ class Agent:
         parallel_tools: bool = True,
         session_id: Optional[str] = None,
     ):
+        """初始化 Agent。
+
+        Args:
+            llm_client: LLM 客户端实例，用于与大语言模型通信。
+            system_prompt: 系统提示词，定义 Agent 的角色和行为。
+            tools: 可用工具列表，每个工具需实现 Tool 接口。
+            max_steps: 单次运行的最大步数，防止无限循环。默认 50。
+            token_limit: Token 上限，超过阈值时触发自动摘要。默认 100000。
+            workspace_dir: 工作目录路径，文件操作的根目录。默认当前目录。
+            stream: 是否启用流式输出。默认 True。
+            enable_thinking: 是否启用深度思考模式（GLM-4.7 等支持）。默认 True。
+            quiet: 安静模式，仅输出最终结果。默认 False。
+            parallel_tools: 是否并行执行多个工具调用。默认 True。
+            session_id: 会话 ID，用于并发控制。默认自动生成。
+        """
         self.llm = llm_client
         self.tools: dict[str, Tool] = {t.name: t for t in tools}
         self.workspace_dir = workspace_dir
@@ -127,6 +145,8 @@ class Agent:
             enable_thinking=enable_thinking,
             stream=stream,
             quiet=quiet,
+            cache_enabled=True,  # 默认启用缓存
+            cache_ttl=3600,      # 默认1小时TTL
         )
 
         # 兼容旧属性
@@ -156,6 +176,10 @@ class Agent:
                 self._encoding = tiktoken.get_encoding("cl100k_base")
             except Exception:
                 pass
+
+        # 增量 token 估算缓存
+        self._cached_token_count = 0
+        self._cached_message_count = 0
 
         # 事件代理
         self._event_broker = get_event_broker()
@@ -198,21 +222,35 @@ class Agent:
                     self.messages = self.messages[:last_assistant_idx]
 
     def _estimate_tokens(self) -> int:
-        """估算当前消息的 token 数"""
-        if self._encoding is None:
-            # 没有 tiktoken，按字符估算
-            total_chars = sum(
-                len(str(msg.content)) + len(str(msg.thinking or "")) for msg in self.messages
-            )
-            return total_chars // 4
+        """估算当前消息的 token 数（增量计算，仅编码新增消息）"""
+        current_count = len(self.messages)
 
-        total = 0
-        for msg in self.messages:
+        # 如果消息被截断（如摘要后），重置缓存
+        if current_count < self._cached_message_count:
+            self._cached_token_count = 0
+            self._cached_message_count = 0
+
+        if self._encoding is None:
+            # 没有 tiktoken，按字符估算（增量）
+            new_chars = sum(
+                len(str(msg.content)) + len(str(msg.thinking or ""))
+                for msg in self.messages[self._cached_message_count:]
+            )
+            self._cached_token_count += new_chars // 4
+            self._cached_message_count = current_count
+            return self._cached_token_count
+
+        # 仅编码新增消息
+        new_tokens = 0
+        for msg in self.messages[self._cached_message_count:]:
             if isinstance(msg.content, str):
-                total += len(self._encoding.encode(msg.content))
+                new_tokens += len(self._encoding.encode(msg.content))
             if msg.thinking:
-                total += len(self._encoding.encode(msg.thinking))
-        return total
+                new_tokens += len(self._encoding.encode(msg.thinking))
+
+        self._cached_token_count += new_tokens
+        self._cached_message_count = current_count
+        return self._cached_token_count
 
     async def _should_summarize(self) -> bool:
         """检查是否需要摘要"""
@@ -620,6 +658,8 @@ class Agent:
         self.api_input_tokens = 0
         self.api_output_tokens = 0
         self._cancelled = False
+        self._cached_token_count = 0
+        self._cached_message_count = 0
 
     def get_stats(self) -> dict:
         """获取统计信息"""

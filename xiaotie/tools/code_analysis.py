@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 import ast
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .base import Tool, ToolResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -23,7 +26,7 @@ class CodeDefinition:
     line: int
     docstring: Optional[str] = None
     signature: Optional[str] = None
-    decorators: List[str] = None
+    decorators: list[str] = None
 
     def __post_init__(self):
         if self.decorators is None:
@@ -37,10 +40,10 @@ class CodeAnalysis:
     file_path: str
     language: str
     lines: int
-    classes: List[CodeDefinition]
-    functions: List[CodeDefinition]
-    imports: List[str]
-    dependencies: List[str]
+    classes: list[CodeDefinition]
+    functions: list[CodeDefinition]
+    imports: list[str]
+    dependencies: list[str]
     complexity: int  # 简单复杂度估算
 
 
@@ -60,7 +63,7 @@ class CodeAnalysisTool(Tool):
         return "分析代码文件，提取类、函数定义、依赖关系等信息。"
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -191,8 +194,8 @@ class CodeAnalysisTool(Tool):
                         if dep not in dependencies:
                             dependencies.append(dep)
 
-        except SyntaxError:
-            pass
+        except SyntaxError as e:
+            logger.warning("无法解析 Python 文件 %s: %s", file_path, e)
 
         # 计算复杂度（简单估算：类数 + 函数数 + 条件语句数）
         complexity = len(classes) + len(functions)

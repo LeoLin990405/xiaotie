@@ -11,7 +11,7 @@
 
     # 基础用法
     sandbox = Sandbox()
-    result = sandbox.execute("print('Hello, World!')")
+    result = await sandbox.execute("print('Hello, World!')")
     print(result.stdout)  # Hello, World!
 
     # 配置选项
@@ -23,18 +23,23 @@
     sandbox = Sandbox(config)
 """
 
+from __future__ import annotations
+
+import asyncio
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Any, Callable
 import subprocess
 import tempfile
 import os
 import sys
-import signal
 import resource
 import threading
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class SandboxRuntime(Enum):
@@ -60,14 +65,14 @@ class SandboxConfig:
     memory_limit_mb: int = 256  # MB
     cpu_limit: float = 1.0  # CPU 核心数
     network_enabled: bool = False
-    allowed_imports: Optional[List[str]] = None  # None = 允许所有
-    blocked_imports: Optional[List[str]] = None  # 阻止的模块
+    allowed_imports: Optional[list[str]] = None  # None = 允许所有
+    blocked_imports: Optional[list[str]] = None  # 阻止的模块
     working_dir: Optional[str] = None
-    env_vars: Dict[str, str] = field(default_factory=dict)
+    env_vars: dict[str, str] = field(default_factory=dict)
 
     # Docker 特定配置
     docker_image: str = "python:3.9-slim"
-    docker_volumes: Dict[str, str] = field(default_factory=dict)
+    docker_volumes: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.blocked_imports is None:
@@ -97,7 +102,7 @@ class ExecutionResult:
     def success(self) -> bool:
         return self.status == ExecutionStatus.SUCCESS
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status.value,
             "stdout": self.stdout,
@@ -133,12 +138,12 @@ class SecurityError(SandboxError):
 class ImportChecker:
     """导入检查器"""
 
-    def __init__(self, allowed: Optional[List[str]] = None,
-                 blocked: Optional[List[str]] = None):
+    def __init__(self, allowed: Optional[list[str]] = None,
+                 blocked: Optional[list[str]] = None):
         self.allowed = set(allowed) if allowed else None
         self.blocked = set(blocked) if blocked else set()
 
-    def check_code(self, code: str) -> List[str]:
+    def check_code(self, code: str) -> list[str]:
         """检查代码中的导入，返回违规列表"""
         violations = []
 
@@ -393,7 +398,7 @@ class DockerExecutor:
                     error_message=str(e),
                 )
 
-    def _build_docker_command(self, temp_dir: str) -> List[str]:
+    def _build_docker_command(self, temp_dir: str) -> list[str]:
         """构建 Docker 命令"""
         cmd = [
             "docker", "run",
@@ -439,7 +444,7 @@ class Sandbox:
             blocked=self.config.blocked_imports,
         )
         self._executor = self._create_executor()
-        self._callbacks: List[Callable[[ExecutionResult], None]] = []
+        self._callbacks: list[Callable[[ExecutionResult], None]] = []
 
     def _create_executor(self):
         """创建执行器"""
@@ -456,7 +461,7 @@ class Sandbox:
         self._callbacks.append(callback)
         return self
 
-    def execute(self, code: str, check_imports: bool = True) -> ExecutionResult:
+    async def execute(self, code: str, check_imports: bool = True) -> ExecutionResult:
         """执行代码"""
         # 检查导入
         if check_imports:
@@ -469,15 +474,15 @@ class Sandbox:
                 self._notify_callbacks(result)
                 return result
 
-        # 执行代码
-        result = self._executor.execute(code)
+        # 在线程中执行阻塞的子进程调用
+        result = await asyncio.to_thread(self._executor.execute, code)
 
         # 通知回调
         self._notify_callbacks(result)
 
         return result
 
-    def execute_file(self, file_path: str, check_imports: bool = True) -> ExecutionResult:
+    async def execute_file(self, file_path: str, check_imports: bool = True) -> ExecutionResult:
         """执行文件"""
         path = Path(file_path)
         if not path.exists():
@@ -487,7 +492,7 @@ class Sandbox:
             )
 
         code = path.read_text()
-        return self.execute(code, check_imports=check_imports)
+        return await self.execute(code, check_imports=check_imports)
 
     def _notify_callbacks(self, result: ExecutionResult):
         """通知回调"""
@@ -495,7 +500,7 @@ class Sandbox:
             try:
                 callback(result)
             except Exception:
-                pass
+                logger.warning("沙箱回调执行失败", exc_info=True)
 
 
 class SandboxPool:
@@ -505,9 +510,9 @@ class SandboxPool:
                  pool_size: int = 4):
         self.config = config or SandboxConfig()
         self.pool_size = pool_size
-        self._sandboxes: List[Sandbox] = []
+        self._sandboxes: list[Sandbox] = []
         self._lock = threading.Lock()
-        self._available: List[Sandbox] = []
+        self._available: list[Sandbox] = []
 
         # 初始化沙箱池
         for _ in range(pool_size):
@@ -528,7 +533,7 @@ class SandboxPool:
             if sandbox in self._sandboxes and sandbox not in self._available:
                 self._available.append(sandbox)
 
-    def execute(self, code: str, timeout: float = 30.0) -> ExecutionResult:
+    async def execute(self, code: str, timeout: float = 30.0) -> ExecutionResult:
         """执行代码，自动管理沙箱"""
         sandbox = self.acquire()
         if sandbox is None:
@@ -538,7 +543,7 @@ class SandboxPool:
             )
 
         try:
-            return sandbox.execute(code)
+            return await sandbox.execute(code)
         finally:
             self.release(sandbox)
 

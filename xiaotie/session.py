@@ -7,11 +7,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import aiofiles
+
 from .schema import FunctionCall, Message, ToolCall
 
 
 class SessionManager:
-    """会话管理器"""
+    """会话管理器（异步 I/O）"""
 
     def __init__(self, sessions_dir: str = "~/.xiaotie/sessions"):
         self.sessions_dir = Path(sessions_dir).expanduser()
@@ -22,13 +24,14 @@ class SessionManager:
         """获取会话文件路径"""
         return self.sessions_dir / f"{session_id}.json"
 
-    def list_sessions(self) -> List[Dict[str, Any]]:
+    async def list_sessions(self) -> List[Dict[str, Any]]:
         """列出所有会话"""
         sessions = []
         for f in self.sessions_dir.glob("*.json"):
             try:
-                with open(f, "r", encoding="utf-8") as fp:
-                    data = json.load(fp)
+                async with aiofiles.open(f, "r", encoding="utf-8") as fp:
+                    raw = await fp.read()
+                    data = json.loads(raw)
                     sessions.append(
                         {
                             "id": f.stem,
@@ -44,7 +47,7 @@ class SessionManager:
         sessions.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
         return sessions
 
-    def create_session(self, title: Optional[str] = None) -> str:
+    async def create_session(self, title: Optional[str] = None) -> str:
         """创建新会话"""
         session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         if not title:
@@ -59,13 +62,13 @@ class SessionManager:
         }
 
         path = self._get_session_path(session_id)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        async with aiofiles.open(path, "w", encoding="utf-8") as f:
+            await f.write(json.dumps(data, ensure_ascii=False, indent=2))
 
         self.current_session = session_id
         return session_id
 
-    def save_session(
+    async def save_session(
         self,
         session_id: str,
         messages: List[Message],
@@ -76,8 +79,9 @@ class SessionManager:
 
         # 读取现有数据
         if path.exists():
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            async with aiofiles.open(path, "r", encoding="utf-8") as f:
+                raw = await f.read()
+                data = json.loads(raw)
         else:
             data = {
                 "id": session_id,
@@ -94,25 +98,26 @@ class SessionManager:
         data["messages"] = [self._message_to_dict(msg) for msg in messages]
 
         # 保存
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        async with aiofiles.open(path, "w", encoding="utf-8") as f:
+            await f.write(json.dumps(data, ensure_ascii=False, indent=2))
 
         return True
 
-    def load_session(self, session_id: str) -> Optional[List[Message]]:
+    async def load_session(self, session_id: str) -> Optional[List[Message]]:
         """加载会话"""
         path = self._get_session_path(session_id)
         if not path.exists():
             return None
 
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+            raw = await f.read()
+            data = json.loads(raw)
 
         messages = [self._dict_to_message(m) for m in data.get("messages", [])]
         self.current_session = session_id
         return messages
 
-    def delete_session(self, session_id: str) -> bool:
+    async def delete_session(self, session_id: str) -> bool:
         """删除会话"""
         path = self._get_session_path(session_id)
         if path.exists():
@@ -122,14 +127,15 @@ class SessionManager:
             return True
         return False
 
-    def get_session_title(self, session_id: str) -> Optional[str]:
+    async def get_session_title(self, session_id: str) -> Optional[str]:
         """获取会话标题"""
         path = self._get_session_path(session_id)
         if not path.exists():
             return None
 
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+            raw = await f.read()
+            data = json.loads(raw)
         return data.get("title")
 
     def _message_to_dict(self, msg: Message) -> Dict[str, Any]:
