@@ -14,6 +14,7 @@ from .web_tool import WebFetchTool, WebSearchTool
 from .charles_tool import CharlesProxyTool
 from .proxy_tool import ProxyServerTool
 from .scraper_tool import ScraperTool
+from .automation_tool import AutomationTool
 
 __all__ = [
     "Tool",
@@ -38,4 +39,5 @@ __all__ = [
     "CharlesProxyTool",
     "ProxyServerTool",
     "ScraperTool",
+    "AutomationTool",
 ]

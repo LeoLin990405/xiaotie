@@ -72,6 +72,16 @@ class ScraperConfig:
 
 
 @dataclass
+class AutomationConfig:
+    """macOS 自动化工具配置"""
+
+    enabled: bool = False
+    wechat_bundle_id: str = "com.tencent.xinWeChat"
+    screenshot_dir: Optional[str] = None
+    applescript_timeout: int = 30
+
+
+@dataclass
 class ToolsConfig:
     """工具配置"""
 
@@ -89,6 +99,8 @@ class ToolsConfig:
     proxy: ProxyConfig = field(default_factory=ProxyConfig)
     enable_scraper: bool = False
     scraper: ScraperConfig = field(default_factory=ScraperConfig)
+    enable_automation: bool = False
+    automation: AutomationConfig = field(default_factory=AutomationConfig)
 
 
 @dataclass
@@ -261,6 +273,15 @@ class Config:
             stability_threshold=scraper_data.get("stability_threshold", 0.9),
         )
 
+        # 自动化配置
+        automation_data = tools_data.get("automation", {})
+        automation_config = AutomationConfig(
+            enabled=automation_data.get("enabled", False),
+            wechat_bundle_id=automation_data.get("wechat_bundle_id", "com.tencent.xinWeChat"),
+            screenshot_dir=automation_data.get("screenshot_dir"),
+            applescript_timeout=automation_data.get("applescript_timeout", 30),
+        )
+
         tools_config = ToolsConfig(
             enable_file_tools=tools_data.get("enable_file_tools", True),
             enable_bash=tools_data.get("enable_bash", True),
@@ -276,6 +297,8 @@ class Config:
             proxy=proxy_config,
             enable_scraper=tools_data.get("enable_scraper", scraper_data.get("enabled", False)),
             scraper=scraper_config,
+            enable_automation=tools_data.get("enable_automation", automation_data.get("enabled", False)),
+            automation=automation_config,
         )
 
         # MCP 配置

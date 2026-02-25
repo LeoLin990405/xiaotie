@@ -28,6 +28,7 @@ from .plugins import PluginManager
 from .retry import RetryConfig
 from .session import SessionManager
 from .tools import (
+    AutomationTool,
     BashTool,
     CalculatorTool,
     CharlesProxyTool,
@@ -153,6 +154,14 @@ def create_tools(config: Config, workspace: Path) -> list:
             request_delay=config.tools.scraper.request_delay,
             num_runs=config.tools.scraper.num_runs,
             stability_threshold=config.tools.scraper.stability_threshold,
+        ))
+
+    # macOS 自动化工具
+    if config.tools.enable_automation:
+        tools.append(AutomationTool(
+            wechat_bundle_id=config.tools.automation.wechat_bundle_id,
+            screenshot_dir=config.tools.automation.screenshot_dir,
+            applescript_timeout=config.tools.automation.applescript_timeout,
         ))
 
     # 扩展工具

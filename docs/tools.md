@@ -24,6 +24,7 @@
 | Charles 代理 | `CharlesProxyTool` | 封装 Charles Proxy 抓包 |
 | **内置代理** | **`ProxyServerTool`** | **内置 HTTP/HTTPS 代理抓包** |
 | **爬虫工具** | **`ScraperTool`** | **结构化 Web 数据抓取，支持多线程和认证** |
+| **macOS 自动化** | **`AutomationTool`** | **macOS 微信/小程序自动化，AppleScript 控制** |
 
 ## ProxyServerTool
 
@@ -264,3 +265,107 @@ class MyTool(Tool):
 | `success` | `bool` | 操作是否成功 |
 | `content` | `str` | 操作结果描述 |
 | `error` | `str \| None` | 错误信息（失败时） |
+
+## AutomationTool
+
+macOS 原生自动化工具，通过 AppleScript 和 Accessibility API 控制微信及小程序。
+
+### 基本信息
+
+- **工具名称**: `automation`
+- **模块路径**: `xiaotie.tools.automation_tool`
+- **依赖**: 无外部依赖（使用 macOS 原生能力）
+
+### 参数定义
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["start", "stop", "status", "launch_app", "send_message", "screenshot", "execute"],
+      "description": "操作类型"
+    },
+    "app_name": {
+      "type": "string",
+      "description": "应用名称（launch_app 时使用）"
+    },
+    "contact": {
+      "type": "string",
+      "description": "联系人名称（send_message 时使用）"
+    },
+    "message": {
+      "type": "string",
+      "description": "消息内容（send_message 时使用）"
+    },
+    "window_name": {
+      "type": "string",
+      "description": "窗口名称（screenshot 时使用）"
+    },
+    "output_path": {
+      "type": "string",
+      "description": "截图保存路径"
+    },
+    "script": {
+      "type": "string",
+      "description": "AppleScript 脚本内容（execute 时使用）"
+    }
+  },
+  "required": ["action"]
+}
+```
+
+### 操作说明
+
+| action | 说明 | 关键参数 |
+|--------|------|----------|
+| `start` | 启动自动化会话（初始化 macOS 自动化引擎） | - |
+| `stop` | 停止自动化会话 | - |
+| `status` | 查看自动化状态 | - |
+| `launch_app` | 启动/激活 macOS 应用 | `app_name` |
+| `send_message` | 通过微信发送消息 | `contact`, `message` |
+| `screenshot` | 截取屏幕或窗口截图 | `window_name`, `output_path` |
+| `execute` | 执行自定义 AppleScript 脚本 | `script` |
+
+### 使用示例
+
+```python
+from xiaotie.tools.automation_tool import AutomationTool
+
+tool = AutomationTool()
+
+# 启动自动化
+await tool.execute(action="start")
+
+# 启动微信
+await tool.execute(action="launch_app", app_name="WeChat")
+
+# 发送消息
+await tool.execute(action="send_message", contact="文件传输助手", message="Hello")
+
+# 截图
+await tool.execute(action="screenshot", window_name="WeChat")
+
+# 执行自定义脚本
+await tool.execute(action="execute", script='tell application "WeChat" to activate')
+
+# 查看状态
+result = await tool.execute(action="status")
+print(result.content)
+
+# 停止
+await tool.execute(action="stop")
+```
+
+### 底层模块
+
+AutomationTool 封装了以下底层模块：
+
+| 模块 | 类 | 说明 |
+|------|-----|------|
+| `automation.macos.wechat_controller` | `WeChatController` | 微信窗口控制、状态检测 |
+| `automation.macos.miniapp_controller` | `MiniAppController` | 小程序页面导航与操作 |
+| `automation.macos.proxy_integration` | `ProxyIntegration` | 代理抓包集成 |
+
+详细文档参见 [macOS 小程序自动化指南](./macos-miniapp-automation-guide.md)。

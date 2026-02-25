@@ -42,6 +42,7 @@
 - 🔌 **内置代理** - HTTP/HTTPS 代理抓包，无需外部工具，支持小程序请求分析
 - 📡 **Charles 集成** - 封装 Charles Proxy 自动化抓包
 - 🕷️ **爬虫工具** - 结构化 Web 数据抓取，多线程并发、6 种认证、稳定性验证
+- 🤖 **macOS 自动化** - 微信/小程序自动化，AppleScript + Accessibility API，支持截图、消息发送、代理抓包集成
 
 ### 代码库感知 (RepoMap)
 - 📂 **目录树** - 可视化项目结构
@@ -533,6 +534,14 @@ xiaotie/
 │   │   ├── task_agent.py # 任务 Agent
 │   │   ├── coordinator.py # 协调器
 │   │   └── agent_tool.py # Agent 工具
+│   ├── automation/       # 自动化模块
+│   │   ├── __init__.py
+│   │   ├── appium_driver.py  # Appium 驱动封装
+│   │   ├── miniapp_automation.py # 小程序自动化
+│   │   └── macos/        # macOS 原生自动化
+│   │       ├── wechat_controller.py  # 微信控制器
+│   │       ├── miniapp_controller.py # 小程序控制
+│   │       └── proxy_integration.py  # 代理集成
 │   ├── tui/              # TUI 模块
 │   │   ├── __init__.py
 │   │   ├── app.py        # TUI 主应用
@@ -565,7 +574,8 @@ xiaotie/
 │       ├── semantic_search_tool.py # 语义搜索工具
 │       ├── charles_tool.py # Charles 代理封装
 │       ├── proxy_tool.py  # 内置代理服务器
-│       └── scraper_tool.py # 爬虫工具
+│       ├── scraper_tool.py # 爬虫工具
+│       └── automation_tool.py # macOS 自动化工具
 ├── tests/                # 测试目录
 │   ├── conftest.py       # 测试配置
 │   ├── fixtures/         # 测试数据
@@ -578,7 +588,9 @@ xiaotie/
 │   ├── v0.3.0-plan.md
 │   ├── v0.9.0-plan.md
 │   ├── v0.10.0-plan.md
-│   └── v0.11.0-plan.md
+│   ├── v0.11.0-plan.md
+│   ├── tools.md
+│   └── macos-miniapp-automation-guide.md
 ├── pyproject.toml
 └── README.md
 ```

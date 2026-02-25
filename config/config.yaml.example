@@ -65,6 +65,15 @@ tools:
   #   num_runs: 3                      # 稳定性验证运行次数
   #   stability_threshold: 0.9         # 稳定性阈值（0-1）
 
+  # macOS 自动化工具（默认关闭，仅 macOS）
+  # 通过 AppleScript 控制微信等应用，支持发送消息、截图等
+  # enable_automation: true
+  # automation:
+  #   enabled: true
+  #   wechat_bundle_id: com.tencent.xinWeChat  # 微信 Bundle ID
+  #   screenshot_dir: ~/.xiaotie/screenshots   # 截图保存目录
+  #   applescript_timeout: 30                  # AppleScript 执行超时（秒）
+
 # --- 其他 Provider 配置示例 ---
 # 取消注释并填入对应的 API Key 即可切换 Provider
 
