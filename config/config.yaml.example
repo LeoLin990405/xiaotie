@@ -40,6 +40,20 @@ logging:
 tools:
   enable_file_tools: true
   enable_bash: true
+  # Charles 代理抓包工具（默认关闭）
+  # enable_charles: true
+  # charles_path: /Applications/Charles.app/Contents/MacOS/Charles  # 自定义路径（可选）
+  # charles_proxy_port: 8888  # 自定义代理端口（可选）
+
+  # 内置代理服务器（基于 mitmproxy，默认关闭）
+  # 需要安装: pip install 'xiaotie[proxy]'
+  # enable_proxy: true
+  # proxy:
+  #   enabled: true
+  #   port: 8080                    # 代理监听端口
+  #   enable_https: true            # 启用 HTTPS 拦截
+  #   cert_path: ~/.xiaotie/certs   # CA 证书存储路径
+  #   storage_path: ~/.xiaotie/proxy_data  # 会话数据存储路径
 
 # --- 其他 Provider 配置示例 ---
 # 取消注释并填入对应的 API Key 即可切换 Provider

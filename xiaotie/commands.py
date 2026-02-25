@@ -783,3 +783,156 @@ class Commands:
     def completions_cmd_show(self) -> list[str]:
         """cmd-show 命令的补全"""
         return self.completions_run()
+
+    async def cmd_cache(self, args: str) -> tuple[bool, str]:
+        """缓存管理命令 (用法: /cache [stats|clear])"""
+        from . import get_cache_stats, clear_cache
+        
+        if not args:
+            args = "stats"
+        
+        if args.strip() == "stats":
+            result = await get_cache_stats()
+            if result["success"]:
+                stats = result["stats"]
+                lines = [
+                    "\n💾 缓存统计:\n",
+                    f"  大小: {stats['size']}/{stats['max_size']}",
+                    f"  默认TTL: {stats['default_ttl']}秒",
+                    f"  键数量: {len(stats['keys'])}",
+                ]
+                return True, "\n".join(lines)
+            else:
+                return True, f"❌ 获取缓存统计失败: {result['error']}"
+        
+        elif args.strip() == "clear":
+            result = await clear_cache()
+            if result["success"]:
+                return True, "✅ 缓存已清空"
+            else:
+                return True, f"❌ 清空缓存失败: {result['error']}"
+        
+        else:
+            return True, "用法: /cache [stats|clear]"
+
+    async def cmd_system_info(self, args: str) -> tuple[bool, str]:
+        """获取系统信息 (用法: /system-info [basic|detailed])"""
+        from . import get_system_info
+        
+        detail_level = args.strip() if args.strip() in ["basic", "detailed"] else "basic"
+        try:
+            info = await get_system_info(detail_level=detail_level)
+            lines = ["\n💻 系统信息:\n"]
+            
+            # 基本信息
+            for key in ["system", "release", "version", "machine", "processor", "node", "python_version"]:
+                if key in info:
+                    lines.append(f"  {key}: {info[key]}")
+            
+            # 详细信息
+            if detail_level == "detailed":
+                lines.append("\n📊 详细信息:")
+                for key in ["cpu_count", "cpu_percent", "memory_total", "memory_available", "memory_percent"]:
+                    if key in info:
+                        if key.endswith("_total") or key.endswith("_available"):
+                            # 转换字节为人类可读格式
+                            size = info[key]
+                            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                                if size < 1024.0:
+                                    lines.append(f"  {key}: {size:.2f}{unit}")
+                                    break
+                                size /= 1024.0
+                        else:
+                            lines.append(f"  {key}: {info[key]}")
+            
+            return True, "\n".join(lines)
+        except Exception as e:
+            return True, f"❌ 获取系统信息失败: {str(e)}"
+
+    async def cmd_process_manager(self, args: str) -> tuple[bool, str]:
+        """进程管理命令 (用法: /process-manager [list|status|start|stop] [参数])"""
+        from . import manage_process
+        
+        parts = args.split(maxsplit=1)
+        if not parts:
+            return True, "用法: /process-manager [list|status|start|stop] [参数]"
+        
+        action = parts[0].strip()
+        params = parts[1].strip() if len(parts) > 1 else ""
+        
+        if action == "list":
+            result = await manage_process("list")
+        elif action == "status":
+            if not params:
+                return True, "用法: /process-manager status <进程名>"
+            result = await manage_process("status", process_name=params)
+        elif action == "start":
+            if not params:
+                return True, "用法: /process-manager start <命令>"
+            result = await manage_process("start", command=params)
+        elif action == "stop":
+            if not params:
+                return True, "用法: /process-manager stop <进程名>"
+            result = await manage_process("stop", process_name=params)
+        else:
+            return True, "用法: /process-manager [list|status|start|stop] [参数]"
+        
+        if result["success"]:
+            if action == "list":
+                processes = result["processes"]
+                lines = [f"\n🔧 进程列表 (显示前{len(processes)}个):\n"]
+                for proc in processes[:20]:  # 只显示前20个
+                    lines.append(f"  PID: {proc['pid']}, Name: {proc['name']}, Status: {proc['status']}")
+                return True, "\n".join(lines)
+            elif action == "status":
+                proc_info = result["process"]
+                return True, f"🔍 进程状态: PID {proc_info['pid']}, Name: {proc_info['name']}, Status: {proc_info['status']}"
+            else:
+                return True, result["message"]
+        else:
+            return True, f"❌ 进程操作失败: {result['error']}"
+
+    async def cmd_network_tools(self, args: str) -> tuple[bool, str]:
+        """网络工具命令 (用法: /network-tools [ping|netstat|port-scan] [参数])"""
+        from . import network_operation
+        
+        parts = args.split(maxsplit=2)
+        if not parts:
+            return True, "用法: /network-tools [ping|netstat|port-scan] [参数]"
+        
+        action = parts[0].strip()
+        
+        if action == "ping":
+            if len(parts) < 2:
+                return True, "用法: /network-tools ping <主机>"
+            host = parts[1].strip()
+            result = await network_operation("ping", host=host)
+        elif action == "netstat":
+            result = await network_operation("netstat")
+        elif action == "port-scan":
+            if len(parts) < 3:
+                return True, "用法: /network-tools port-scan <主机> <端口列表(逗号分隔)>"
+            host = parts[1].strip()
+            ports_str = parts[2].strip()
+            try:
+                ports = [int(p.strip()) for p in ports_str.split(",")]
+            except ValueError:
+                return True, "错误: 端口号必须是数字，用逗号分隔"
+            result = await network_operation("port_scan", host=host, ports=ports)
+        else:
+            return True, "用法: /network-tools [ping|netstat|port-scan] [参数]"
+        
+        if result["success"]:
+            if action == "ping":
+                return True, f"\n🌐 Ping 结果:\n{result['output']}"
+            elif action == "netstat":
+                connections = result["connections"]
+                lines = [f"\n🌐 网络连接 (总数: {len(connections)}):\n"]
+                for conn in connections[:10]:  # 只显示前10个
+                    lines.append(f"  {conn['laddr']} -> {conn['raddr']} [{conn['status']}]")
+                return True, "\n".join(lines)
+            elif action == "port-scan":
+                open_ports = result["open_ports"]
+                return True, f"🔍 {result['host']} 端口扫描结果: {len(open_ports)}/{result['ports_scanned']} 个端口开放 - {open_ports}"
+        else:
+            return True, f"❌ 网络操作失败: {result['error']}"

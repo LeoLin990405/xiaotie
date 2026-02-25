@@ -203,6 +203,10 @@ class CommandPaletteScreen(ModalScreen):
         ("retry", "重试最后请求", ""),
         ("themes", "主题列表", "Ctrl+T"),
         ("models", "模型列表", "Ctrl+M"),
+        ("cache", "缓存管理", ""),
+        ("system-info", "系统信息", ""),
+        ("process-manager", "进程管理", ""),
+        ("network-tools", "网络工具", ""),
     ]
 
     def __init__(self, callback=None, **kwargs):

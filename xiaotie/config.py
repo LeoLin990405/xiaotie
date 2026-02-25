@@ -49,6 +49,17 @@ class AgentConfig:
 
 
 @dataclass
+class ProxyConfig:
+    """内置代理服务器配置"""
+
+    enabled: bool = False
+    port: int = 8080
+    enable_https: bool = True
+    cert_path: Optional[str] = None
+    storage_path: Optional[str] = None
+
+
+@dataclass
 class ToolsConfig:
     """工具配置"""
 
@@ -59,6 +70,11 @@ class ToolsConfig:
     enable_python: bool = True
     enable_calculator: bool = True
     enable_git: bool = True
+    enable_charles: bool = False
+    charles_path: Optional[str] = None
+    charles_proxy_port: int = 8888
+    enable_proxy: bool = False
+    proxy: ProxyConfig = field(default_factory=ProxyConfig)
 
 
 @dataclass
@@ -209,6 +225,17 @@ class Config:
 
         # 工具配置
         tools_data = data.get("tools", {})
+
+        # 代理配置
+        proxy_data = tools_data.get("proxy", {})
+        proxy_config = ProxyConfig(
+            enabled=proxy_data.get("enabled", False),
+            port=proxy_data.get("port", 8080),
+            enable_https=proxy_data.get("enable_https", True),
+            cert_path=proxy_data.get("cert_path"),
+            storage_path=proxy_data.get("storage_path"),
+        )
+
         tools_config = ToolsConfig(
             enable_file_tools=tools_data.get("enable_file_tools", True),
             enable_bash=tools_data.get("enable_bash", True),
@@ -217,6 +244,11 @@ class Config:
             enable_python=tools_data.get("enable_python", True),
             enable_calculator=tools_data.get("enable_calculator", True),
             enable_git=tools_data.get("enable_git", True),
+            enable_charles=tools_data.get("enable_charles", False),
+            charles_path=tools_data.get("charles_path"),
+            charles_proxy_port=tools_data.get("charles_proxy_port", 8888),
+            enable_proxy=tools_data.get("enable_proxy", proxy_data.get("enabled", False)),
+            proxy=proxy_config,
         )
 
         # MCP 配置

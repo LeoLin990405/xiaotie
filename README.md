@@ -39,6 +39,8 @@
 - 💻 **系统信息** - 获取系统硬件和软件信息
 - 🔧 **进程管理** - 管理和监控系统进程
 - 🌐 **网络工具** - 执行网络诊断和扫描操作
+- 🔌 **内置代理** - HTTP/HTTPS 代理抓包，无需外部工具，支持小程序请求分析
+- 📡 **Charles 集成** - 封装 Charles Proxy 自动化抓包
 
 ### 代码库感知 (RepoMap)
 - 📂 **目录树** - 可视化项目结构
@@ -559,7 +561,9 @@ xiaotie/
 │       ├── web_tool.py   # Web 工具
 │       ├── code_analysis.py # 代码分析
 │       ├── extended.py   # 扩展工具 (系统信息/进程/网络)
-│       └── semantic_search_tool.py # 语义搜索工具
+│       ├── semantic_search_tool.py # 语义搜索工具
+│       ├── charles_tool.py # Charles 代理封装
+│       └── proxy_tool.py  # 内置代理服务器
 ├── tests/                # 测试目录
 │   ├── conftest.py       # 测试配置
 │   ├── fixtures/         # 测试数据

@@ -30,11 +30,17 @@ from .session import SessionManager
 from .tools import (
     BashTool,
     CalculatorTool,
+    CharlesProxyTool,
     CodeAnalysisTool,
     EditTool,
+    EXTENDED_TOOLS,
     GitTool,
+    NetworkTool,
+    ProcessManagerTool,
+    ProxyServerTool,
     PythonTool,
     ReadTool,
+    SystemInfoTool,
     WebFetchTool,
     WebSearchTool,
     WriteTool,
@@ -104,18 +110,42 @@ def create_tools(config: Config, workspace: Path) -> list:
         tools.append(BashTool())
 
     # 代码工具
-    tools.append(PythonTool())
-    tools.append(CalculatorTool())
+    if config.tools.enable_python:
+        tools.append(PythonTool())
+    if config.tools.enable_calculator:
+        tools.append(CalculatorTool())
 
     # Git 工具
-    tools.append(GitTool(workspace_dir=str(workspace)))
+    if config.tools.enable_git:
+        tools.append(GitTool(workspace_dir=str(workspace)))
 
     # Web 工具
-    tools.append(WebSearchTool())
-    tools.append(WebFetchTool())
+    if config.tools.enable_web_tools:
+        tools.append(WebSearchTool())
+        tools.append(WebFetchTool())
 
     # 代码分析工具
-    tools.append(CodeAnalysisTool(workspace_dir=str(workspace)))
+    if config.tools.enable_code_analysis:
+        tools.append(CodeAnalysisTool(workspace_dir=str(workspace)))
+
+    # Charles 代理抓包工具
+    if config.tools.enable_charles:
+        tools.append(CharlesProxyTool(
+            charles_path=config.tools.charles_path,
+            proxy_port=config.tools.charles_proxy_port,
+        ))
+
+    # 内置代理服务器工具（基于 mitmproxy）
+    if config.tools.enable_proxy:
+        tools.append(ProxyServerTool(
+            proxy_port=config.tools.proxy.port,
+            enable_https=config.tools.proxy.enable_https,
+            cert_path=config.tools.proxy.cert_path,
+            storage_path=config.tools.proxy.storage_path,
+        ))
+
+    # 扩展工具
+    tools.extend(EXTENDED_TOOLS)
 
     return tools
 

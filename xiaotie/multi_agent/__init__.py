@@ -8,14 +8,19 @@
 """
 
 from .agent_tool import AgentTool
-from .coordinator import AgentCoordinator, TaskResult
+from .coordinator import MultiAgentSystem, BaseAgent, CoordinatorAgent, ExpertAgent, ExecutorAgent, SupervisorAgent, AgentRole, Task
 from .roles import AgentRole, RoleConfig, create_default_roles
 from .task_agent import TaskAgent, TaskAgentConfig
 
 __all__ = [
-    "AgentCoordinator",
-    "TaskResult",
+    "MultiAgentSystem",
+    "BaseAgent",
+    "CoordinatorAgent",
+    "ExpertAgent",
+    "ExecutorAgent",
+    "SupervisorAgent",
     "AgentRole",
+    "Task",
     "RoleConfig",
     "create_default_roles",
     "TaskAgent",

@@ -5,15 +5,24 @@
 支持多 LLM Provider、工具调用、事件驱动架构、MCP 协议。
 """
 
-__version__ = "0.9.0-dev"
+__version__ = "1.1.0"
 __author__ = "Leo"
 
 from .agent import Agent, AgentConfig, SessionState
 from .builder import AgentBuilder, AgentHooks, AgentSpec, create_agent
+from .cache import AsyncLRUCache, get_global_cache, cache_result
 from .custom_commands import (
     CustomCommand,
     CustomCommandExecutor,
     CustomCommandManager,
+)
+from .enhancements import (
+    get_system_info,
+    manage_process,
+    network_operation,
+    get_cache_stats,
+    clear_cache,
+    get_cached_system_info
 )
 from .events import (
     AgentStartEvent,
@@ -35,16 +44,109 @@ from .feedback import (
     LintResult,
     TestResult,
 )
+from .logging import LoggerManager, get_logger, debug, info, warning, error, critical
+from .memory.core import MemoryManager, ConversationMemory, MemoryChunk, MemoryType
+from .multi_agent.coordinator import (
+    MultiAgentSystem,
+    BaseAgent,
+    CoordinatorAgent,
+    ExpertAgent,
+    ExecutorAgent,
+    SupervisorAgent,
+    AgentRole,
+    Task as MultiAgentTask
+)
 from .permissions import (
     PermissionManager,
     PermissionRequest,
     PermissionRule,
     RiskLevel,
 )
+from .planning.core import (
+    PlanningSystem,
+    TaskManager,
+    PlanExecutor,
+    Task as PlanningTask,
+    TaskStatus,
+    Priority,
+    PlanStep
+)
 from .profiles import (
     ProfileConfig,
     ProfileManager,
     create_preset_profiles,
+)
+from .reflection.core import (
+    ReflectionManager,
+    ReflectiveAgentMixin,
+    Reflection,
+    ReflectionType
+)
+from .learning.core import (
+    AdaptiveLearner,
+    LearningAgentMixin,
+    LearningStrategy,
+    Skill
+)
+from .context.core import (
+    ContextManager,
+    ContextAwareAgentMixin,
+    ContextType,
+    ContextScope,
+    ContextEntity,
+    ContextFrame
+)
+from .context.window import (
+    ContextWindowManager,
+    ContextAwareWindowManager,
+    CompressionMethod,
+    WindowStrategy,
+    ContextWindow
+)
+from .decision.core import (
+    DecisionEngine,
+    DecisionAwareAgentMixin,
+    DecisionType,
+    DecisionStrategy,
+    DecisionOption,
+    DecisionOutcome
+)
+from .skills.core import (
+    SkillLearningAgentMixin,
+    SkillAcquirer,
+    SkillType,
+    SkillAcquisitionMethod,
+    SkillExample,
+    SkillDevelopmentStage
+)
+from .multimodal.core import (
+    MultimodalContentManager,
+    MultimodalAgentMixin,
+    ModalityType,
+    MediaType,
+    MediaContent,
+    ImageAnalysisTool,
+    DocumentAnalysisTool
+)
+from .rl.core import (
+    ReinforcementLearningEngine,
+    RLAgentMixin,
+    RLAlgorithm,
+    State,
+    Action,
+    Transition,
+    StateRepresentation
+)
+from .kg.core import (
+    KnowledgeGraphManager,
+    KnowledgeGraphAgentMixin,
+    KnowledgeGraphBuilder,
+    KnowledgeGraphQueryEngine,
+    NetworkXKnowledgeGraphStore,
+    KGNode,
+    KGEdge,
+    NodeType,
+    RelationType
 )
 from .schema import LLMResponse, Message, ToolCall, ToolResult
 
@@ -83,6 +185,110 @@ __all__ = [
     "AgentSpec",
     "AgentHooks",
     "create_agent",
+    # Cache
+    "AsyncLRUCache",
+    "get_global_cache",
+    "cache_result",
+    # Logging
+    "LoggerManager",
+    "get_logger",
+    "debug",
+    "info",
+    "warning",
+    "error",
+    "critical",
+    # Enhancements
+    "get_system_info",
+    "manage_process",
+    "network_operation",
+    "get_cache_stats",
+    "clear_cache",
+    "get_cached_system_info",
+    # Memory
+    "MemoryManager",
+    "ConversationMemory",
+    "MemoryChunk",
+    "MemoryType",
+    # Multi-Agent
+    "MultiAgentSystem",
+    "BaseAgent",
+    "CoordinatorAgent",
+    "ExpertAgent",
+    "ExecutorAgent",
+    "SupervisorAgent",
+    "AgentRole",
+    "MultiAgentTask",
+    # Planning
+    "PlanningSystem",
+    "TaskManager",
+    "PlanExecutor",
+    "PlanningTask",
+    "TaskStatus",
+    "Priority",
+    "PlanStep",
+    # Reflection
+    "ReflectionManager",
+    "ReflectiveAgentMixin",
+    "Reflection",
+    "ReflectionType",
+    # Learning
+    "AdaptiveLearner",
+    "LearningAgentMixin",
+    "LearningStrategy",
+    "Skill",
+    # Context
+    "ContextManager",
+    "ContextAwareAgentMixin",
+    "ContextType",
+    "ContextScope",
+    "ContextEntity",
+    "ContextFrame",
+    # Context Window
+    "ContextWindowManager",
+    "ContextAwareWindowManager",
+    "CompressionMethod",
+    "WindowStrategy",
+    "ContextWindow",
+    # Decision
+    "DecisionEngine",
+    "DecisionAwareAgentMixin",
+    "DecisionType",
+    "DecisionStrategy",
+    "DecisionOption",
+    "DecisionOutcome",
+    # Skills
+    "SkillLearningAgentMixin",
+    "SkillAcquirer",
+    "SkillType",
+    "SkillAcquisitionMethod",
+    "SkillExample",
+    "SkillDevelopmentStage",
+    # Multimodal
+    "MultimodalContentManager",
+    "MultimodalAgentMixin",
+    "ModalityType",
+    "MediaType",
+    "MediaContent",
+    "ImageAnalysisTool",
+    "DocumentAnalysisTool",
+    # Reinforcement Learning
+    "ReinforcementLearningEngine",
+    "RLAgentMixin",
+    "RLAlgorithm",
+    "State",
+    "Action",
+    "Transition",
+    "StateRepresentation",
+    # Knowledge Graph
+    "KnowledgeGraphManager",
+    "KnowledgeGraphAgentMixin",
+    "KnowledgeGraphBuilder",
+    "KnowledgeGraphQueryEngine",
+    "NetworkXKnowledgeGraphStore",
+    "KGNode",
+    "KGEdge",
+    "NodeType",
+    "RelationType",
     # Schema
     "Message",
     "ToolCall",
