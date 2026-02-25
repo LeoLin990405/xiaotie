@@ -458,7 +458,6 @@ THEMES: Dict[str, Theme] = {
         syntax_comment="#94a3b8",
     ),
 }
-}
 
 
 class ThemeManager:
