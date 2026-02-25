@@ -3,8 +3,8 @@
 轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，参考 [OpenCode](https://github.com/opencode-ai/opencode) 设计。
 
 ```
- ▄███▄     小铁 XiaoTie v0.9.0
- █ ⚙ █    GLM-4.7 · OpenAI
+ ▄███▄     小铁 XiaoTie v1.1.0
+ █ ⚙ █    GLM-4.7 · OpenAI · Claude
  ▀███▀     ~/workspace
 ```
 
@@ -76,6 +76,11 @@ pip install -e ".[search]"
 
 # 安装所有功能
 pip install -e ".[all]"
+
+# 或分别安装特定功能
+pip install -e ".[proxy]"      # 内置代理服务器
+pip install -e ".[scraper]"    # 爬虫模块
+pip install -e ".[automation]" # macOS自动化
 ```
 
 ## 配置
@@ -611,11 +616,72 @@ xiaotie/
 ## 版本历史
 
 ### v1.1.0 (当前版本)
+- 🔌 **内置HTTP/HTTPS代理服务器** - 基于mitmproxy的完整代理系统
+  - 支持HTTPS解密和小程序流量识别
+  - 自动证书管理、JSON/HAR导出
+  - 134个测试全部通过，覆盖率88-99%
+- 🕷️ **多线程网络爬虫模块** - 结构化Web数据抓取
+  - BaseScraper抽象基类、3次验证机制
+  - 6种认证方式、稳定性分析器
+  - 250个测试全部通过，覆盖率84-100%
+- 🤖 **macOS微信小程序自动化** - 端到端自动化工作流
+  - AppleScript + Accessibility API
+  - 系统代理自动配置、批量抓取
+  - 14个测试全部通过
 - 🧠 **认知架构增强** - 全面的认知能力提升
   - 自适应学习、上下文感知、智能决策、技能学习
   - 知识图谱、强化学习、规划系统、反思机制
+- ✅ **完整测试** - 1264个测试，97.4%通过率，55.15%代码覆盖率
 
 完整版本历史请参阅 [CHANGELOG.md](CHANGELOG.md)。
+
+## 快速开始示例
+
+### 内置代理服务器
+
+```python
+from xiaotie.proxy import ProxyServer
+
+async def main():
+    async with ProxyServer(port=8888) as proxy:
+        # 代理服务器已启动，配置手机/模拟器使用代理
+        await asyncio.sleep(60)  # 捕获60秒
+        # 导出数据
+        await proxy.export("requests.json", format="json")
+```
+
+### 多线程爬虫
+
+```python
+from xiaotie.scraper import BaseScraper, ScrapeResult
+
+class MyScraper(BaseScraper):
+    async def scrape(self, url: str, **kwargs) -> ScrapeResult:
+        session = await self.get_session()
+        async with session.get(url) as response:
+            data = await response.json()
+            return ScrapeResult(success=True, data=data)
+
+# 使用
+scraper = MyScraper()
+result = await scraper.scrape("https://api.example.com/data")
+```
+
+### macOS自动化
+
+```bash
+# 抓取单个小程序
+python examples/miniapp_auto_capture.py --name 美团 --engine macos
+
+# 批量抓取多个小程序
+python examples/miniapp_auto_capture.py --name 美团 饿了么 大众点评 --engine macos
+```
+
+更多示例请参阅：
+- [内置代理使用指南](docs/builtin-proxy-guide.md)
+- [爬虫模块使用指南](docs/scraper-guide.md)
+- [macOS自动化使用指南](docs/macos-miniapp-automation-guide.md)
+- [项目完整总结](PROJECT_SUMMARY.md)
 
 ## 致谢
 
