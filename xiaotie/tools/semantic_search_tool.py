@@ -29,6 +29,7 @@ class SemanticSearchTool(Tool):
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
     ):
+        super().__init__()
         self.workspace_dir = os.path.abspath(workspace_dir)
         self.persist_directory = persist_directory
         self.api_key = api_key

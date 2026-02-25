@@ -48,6 +48,7 @@ class CodeAnalysisTool(Tool):
     """代码分析工具"""
 
     def __init__(self, workspace_dir: str = "."):
+        super().__init__()
         self.workspace_dir = Path(workspace_dir).absolute()
 
     @property

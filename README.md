@@ -36,6 +36,9 @@
 - 🌐 **网页获取** - 获取网页内容
 - 📊 **代码分析** - 提取类、函数、依赖关系
 - 🔎 **语义搜索** - 基于向量的代码语义搜索
+- 💻 **系统信息** - 获取系统硬件和软件信息
+- 🔧 **进程管理** - 管理和监控系统进程
+- 🌐 **网络工具** - 执行网络诊断和扫描操作
 
 ### 代码库感知 (RepoMap)
 - 📂 **目录树** - 可视化项目结构
@@ -459,6 +462,45 @@ xiaotie/
 │   ├── display.py        # 显示增强
 │   ├── repomap.py        # 代码库映射
 │   ├── plugins.py        # 插件系统
+│   ├── builder.py        # AgentBuilder (v0.9.0)
+│   ├── cache.py          # 异步 LRU 缓存系统
+│   ├── events.py         # 事件系统 (Pub/Sub)
+│   ├── logging.py        # 统一日志管理
+│   ├── enhancements.py   # 性能增强与优化
+│   ├── database.py       # 数据库连接
+│   ├── feedback.py       # 反馈循环
+│   ├── input.py          # 增强输入
+│   ├── permissions.py    # 权限系统
+│   ├── profiles.py       # Profile 配置
+│   ├── orchestrator.py   # 编排器
+│   ├── sandbox.py        # 沙箱执行
+│   ├── api_tool.py       # API 工具
+│   ├── i18n.py           # 国际化
+│   ├── keybindings.py    # 快捷键绑定
+│   ├── config_watcher.py # 配置热更新
+│   ├── knowledge_base.py # 知识库
+│   ├── retry_v2.py       # 重试机制 v2
+│   ├── context/          # 上下文感知
+│   │   ├── core.py       # 上下文管理器
+│   │   └── window.py     # 上下文窗口管理
+│   ├── decision/         # 智能决策
+│   │   └── core.py       # 决策引擎
+│   ├── learning/         # 自适应学习
+│   │   └── core.py       # 自适应学习器
+│   ├── memory/           # 记忆系统
+│   │   └── core.py       # 记忆管理器
+│   ├── planning/         # 规划系统
+│   │   └── core.py       # 规划管理器
+│   ├── reflection/       # 反思机制
+│   │   └── core.py       # 反思管理器
+│   ├── skills/           # 技能学习
+│   │   └── core.py       # 技能学习器
+│   ├── multimodal/       # 多模态支持
+│   │   └── core.py       # 多模态内容管理
+│   ├── rl/               # 强化学习
+│   │   └── core.py       # 强化学习引擎
+│   ├── kg/               # 知识图谱
+│   │   └── core.py       # 知识图谱管理器
 │   ├── mcp/              # MCP 协议支持
 │   │   ├── __init__.py
 │   │   ├── protocol.py   # 协议类型定义
@@ -493,37 +535,44 @@ xiaotie/
 │   │   ├── app.py        # TUI 主应用
 │   │   ├── widgets.py    # 自定义组件
 │   │   ├── themes.py     # 主题系统
-│   │   ├── command_palette.py # 命令面板 (v0.9.0)
-│   │   ├── onboarding.py # 首次启动向导 (v0.9.0)
-│   │   ├── streaming.py  # 流式渲染 (v0.9.0)
+│   │   ├── command_palette.py # 命令面板
+│   │   ├── onboarding.py # 首次启动向导
+│   │   ├── streaming.py  # 流式渲染
 │   │   └── main.py       # TUI 入口
-│   ├── testing/          # 测试模块 (v0.9.0)
+│   ├── testing/          # 测试模块
 │   │   └── __init__.py   # Cassette/MockLLMClient
-│   ├── llm/
+│   ├── llm/              # LLM 客户端
+│   │   ├── __init__.py
 │   │   ├── base.py       # LLM 客户端基类
 │   │   ├── wrapper.py    # 统一包装器
-│   │   ├── providers.py  # Provider 适配层 (v0.9.0)
+│   │   ├── providers.py  # Provider 适配层
 │   │   ├── anthropic_client.py
 │   │   └── openai_client.py
-│   ├── builder.py        # AgentBuilder (v0.9.0)
-│   └── tools/
+│   └── tools/            # 工具系统
+│       ├── __init__.py
 │       ├── base.py       # 工具基类
 │       ├── file_tools.py # 文件工具
 │       ├── bash_tool.py  # Bash 工具
+│       ├── enhanced_bash.py # 增强 Bash
 │       ├── python_tool.py # Python/计算器
 │       ├── git_tool.py   # Git 工具
 │       ├── web_tool.py   # Web 工具
+│       ├── code_analysis.py # 代码分析
+│       ├── extended.py   # 扩展工具 (系统信息/进程/网络)
 │       └── semantic_search_tool.py # 语义搜索工具
 ├── tests/                # 测试目录
 │   ├── conftest.py       # 测试配置
+│   ├── fixtures/         # 测试数据
 │   ├── unit/             # 单元测试
 │   └── integration/      # 集成测试
 ├── config/
 │   ├── config.yaml.example
 │   └── system_prompt.md
 ├── docs/
-│   ├── v0.3.0-plan.md    # 迭代计划
-│   └── v0.9.0-plan.md    # v0.9.0 计划
+│   ├── v0.3.0-plan.md
+│   ├── v0.9.0-plan.md
+│   ├── v0.10.0-plan.md
+│   └── v0.11.0-plan.md
 ├── pyproject.toml
 └── README.md
 ```
@@ -569,6 +618,130 @@ xiaotie/
   - Cassette 录制/回放系统
   - MockLLMClient 测试客户端
   - Textual Pilot TUI 测试
+
+### v0.9.1
+- ⚡ **性能优化** - 改进事件系统，使用弱引用防止内存泄漏
+  - `AsyncLRUCache` 异步缓存系统，支持TTL和LRU淘汰
+  - `EventBroker` 使用弱引用优化内存管理
+- 🛠️ **架构改进** - 更灵活的配置系统
+  - 新增 `CacheConfig` 和 `LoggingConfig` 配置选项
+  - 工具模块化增强，支持细粒度开关控制
+  - 改进错误处理和恢复机制
+- 📦 **新工具** - 扩展工具集
+  - `SystemInfoTool` - 获取系统软硬件信息
+  - `ProcessManagerTool` - 管理和监控系统进程
+  - `NetworkTool` - 执行网络诊断和扫描操作
+- 📝 **日志系统** - 统一日志管理
+  - 支持文件和控制台输出
+  - 可配置的日志级别和格式
+  - 支持日志文件滚动
+
+### v0.9.2
+- 🧠 **多Agent协作** - 实现多Agent协同工作机制
+  - `MultiAgentSystem` - 多Agent系统管理器
+  - `CoordinatorAgent` - 任务协调者
+  - `ExpertAgent` - 专业领域专家
+  - `ExecutorAgent` - 任务执行者
+  - `SupervisorAgent` - 质量监督者
+- 🧩 **记忆系统** - 实现短期和长期记忆管理
+  - `MemoryManager` - 统一记忆管理
+  - `ConversationMemory` - 对话记忆管理
+  - 支持多种记忆类型 (短期、长期、情节、语义)
+  - 记忆检索和相似性搜索
+- 📋 **规划系统** - 实现任务分解和进度跟踪
+  - `PlanningSystem` - 统一规划管理
+  - `TaskManager` - 任务生命周期管理
+  - `PlanExecutor` - 计划执行器
+  - 支持任务依赖和优先级管理
+- 🤔 **反思机制** - 实现自我评估和学习能力
+  - `ReflectionManager` - 反思管理器
+  - `ReflectiveAgentMixin` - 反思式Agent混入
+  - 多种反思类型 (任务评估、策略调整、知识更新、行为学习)
+  - 学习成果应用和改进
+
+### v0.9.3
+- 🧠 **自适应学习** - 实现持续学习和自我改进
+  - `AdaptiveLearner` - 自适应学习器
+  - `LearningAgentMixin` - 学习型Agent混入
+  - 多种学习策略 (强化学习、监督学习、无监督学习)
+  - 技能熟练度管理
+  - 学习目标设定与追踪
+
+### v0.9.4
+- 🌐 **上下文感知** - 实现智能上下文理解和管理
+  - `ContextManager` - 上下文管理器
+  - `ContextAwareAgentMixin` - 上下文感知Agent混入
+  - 多种上下文类型 (对话、主题、时间、任务等)
+  - 实体提取和关系计算
+  - 显著性评分和话题转换检测
+
+### v0.9.5
+- 🤖 **智能决策引擎** - 实现基于上下文和学习经验的智能决策
+  - `DecisionEngine` - 决策引擎
+  - `DecisionAwareAgentMixin` - 决策感知Agent混入
+  - 多种决策策略 (效用基础、概率型、规则基础)
+  - 决策评估和影响分析
+  - 决策洞察和分析
+
+### v0.9.6
+- 🪟 **上下文窗口管理** - 实现动态上下文窗口管理和优化
+  - `ContextWindowManager` - 上下文窗口管理器
+  - `ContextAwareWindowManager` - 上下文感知窗口管理器
+  - 多种压缩方法 (摘要、截断、滑动窗口、相关性过滤)
+  - 自适应窗口大小调整
+  - 压缩分析和性能指标
+
+### v0.9.7
+- 🧩 **技能学习系统** - 实现Agent技能的获取、评估和改进
+  - `SkillLearningAgentMixin` - 技能学习Agent混入
+  - `SkillAcquirer` - 技能获取器
+  - 多种技能类型 (工具使用、沟通、问题解决等)
+  - 技能评估和反馈机制
+  - 知识迁移和推荐系统
+
+### v0.9.8
+- 🌈 **多模态支持** - 实现图像、音频、视频等多模态数据处理
+  - `MultimodalContentManager` - 多模态内容管理器
+  - `MultimodalAgentMixin` - 多模态Agent混入
+  - 支持文本、图像、音频、视频、文档等模态
+  - 图像分析和文档分析工具
+  - 内容缓存和内容搜索功能
+
+### v0.9.9
+- 🎯 **强化学习机制** - 实现基于奖励的强化学习算法
+  - `ReinforcementLearningEngine` - 强化学习引擎
+  - `RLAgentMixin` - 强化学习Agent混入
+  - 支持Q-Learning、SARSA、Monte Carlo等算法
+  - 动作价值评估和策略优化
+  - 自适应参数调整和经验回放
+
+### v1.0.0
+- 🧠 **知识图谱集成** - 实现知识图谱的构建、存储、查询和推理
+  - `KnowledgeGraphManager` - 知识图谱管理器
+  - `KnowledgeGraphAgentMixin` - 知识图谱Agent混入
+  - 基于NetworkX的图存储和分析
+  - 实体关系提取和路径推理
+  - 知识查询和概念映射功能
+
+### v1.0.1
+- ⚡ **性能优化** - 全面的性能优化和系统增强
+  - 事件系统优化 - 使用弱引用防止内存泄漏，改进异步性能
+  - 缓存系统增强 - 实现异步LRU缓存，支持TTL和LRU淘汰策略
+  - 记忆系统优化 - 改进容量管理，使用堆优化清理策略
+  - 工具执行监控 - 异步指标记录，不阻塞主执行流程
+  - 计划执行优化 - 支持并行执行模式，按依赖关系分组执行
+  - 异步性能改进 - 使用perf_counter高精度计时，优化异步任务调度
+
+### v1.1.0 (当前版本)
+- 🧠 **认知架构增强** - 全面的认知能力提升
+  - `AdaptiveLearner` - 自适应学习器，基于经验自我改进
+  - `ContextManager` - 上下文感知管理器，理解环境和历史
+  - `DecisionEngine` - 智能决策引擎，基于目标和上下文做决策
+  - `SkillLearningAgentMixin` - Agent技能学习混入
+  - `KnowledgeGraphManager` - 知识图谱管理器，实体关系推理
+  - `ReinforcementLearningEngine` - 强化学习引擎，基于奖励学习
+  - `PlanningSystem` - 智能规划系统，任务分解与执行
+  - `ReflectionManager` - 反思管理器，经验总结与改进
 
 ### v0.8.2
 - 🎨 **主题管理器** - 全局主题状态管理

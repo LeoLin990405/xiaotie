@@ -4,15 +4,17 @@
 - 非阻塞事件发布
 - 类型安全的事件订阅
 - 上下文感知的自动清理
+- 高效的事件传播机制
 """
 
 from __future__ import annotations
 
 import asyncio
+import weakref
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Set
 
 
 class EventType(Enum):
@@ -43,6 +45,13 @@ class EventType(Enum):
 
     # Token 事件
     TOKEN_UPDATE = "token_update"
+
+    # 会话事件
+    SESSION_START = "session_start"
+    SESSION_END = "session_end"
+
+    # 系统事件
+    SYSTEM_STATUS = "system_status"
 
 
 @dataclass
@@ -122,14 +131,40 @@ class TokenUpdateEvent(Event):
     total_tokens: int = 0
 
 
+@dataclass
+class SessionStartEvent(Event):
+    """会话开始事件"""
+
+    type: EventType = EventType.SESSION_START
+    session_name: str = ""
+
+
+@dataclass
+class SessionEndEvent(Event):
+    """会话结束事件"""
+
+    type: EventType = EventType.SESSION_END
+    session_name: str = ""
+    reason: str = ""
+
+
+@dataclass
+class SystemStatusEvent(Event):
+    """系统状态事件"""
+
+    type: EventType = EventType.SYSTEM_STATUS
+    status: str = ""
+    details: Dict[str, Any] = field(default_factory=dict)
+
+
 T = TypeVar("T", bound=Event)
 
 
 class EventBroker(Generic[T]):
     """事件代理 - 非阻塞发布/订阅"""
 
-    def __init__(self, buffer_size: int = 64):
-        self._subscribers: Dict[EventType, List[asyncio.Queue]] = {}
+    def __init__(self, buffer_size: int = 128):
+        self._subscribers: Dict[EventType, Set[weakref.ref]] = {}
         self._buffer_size = buffer_size
         self._lock = asyncio.Lock()
 
@@ -144,8 +179,8 @@ class EventBroker(Generic[T]):
         async with self._lock:
             for event_type in event_types:
                 if event_type not in self._subscribers:
-                    self._subscribers[event_type] = []
-                self._subscribers[event_type].append(queue)
+                    self._subscribers[event_type] = set()
+                self._subscribers[event_type].add(weakref.ref(queue))
 
         # 如果提供了取消事件，设置自动清理
         if cancel_event:
@@ -172,19 +207,38 @@ class EventBroker(Generic[T]):
         async with self._lock:
             for event_type in event_types:
                 if event_type in self._subscribers:
-                    try:
-                        self._subscribers[event_type].remove(queue)
-                    except ValueError:
-                        pass
+                    # 移除对已清理队列的引用
+                    dead_refs = set()
+                    for ref in self._subscribers[event_type]:
+                        if ref() is None or ref() is queue:
+                            dead_refs.add(ref)
+                    for ref in dead_refs:
+                        self._subscribers[event_type].discard(ref)
 
     async def publish(self, event: T):
         """发布事件（非阻塞）"""
         if event.type not in self._subscribers:
             return
 
-        for queue in self._subscribers[event.type]:
+        # 直接使用列表推导式获取活跃队列，减少锁持有时间
+        async with self._lock:
+            active_queues = []
+            dead_refs = []
+            
+            for ref in self._subscribers[event.type]:
+                queue = ref()
+                if queue is not None:
+                    active_queues.append(queue)
+                else:
+                    dead_refs.append(ref)
+            
+            # 批量移除无效的引用
+            for ref in dead_refs:
+                self._subscribers[event.type].discard(ref)
+
+        # 批量发布到活跃队列，使用更高效的错误处理
+        for queue in active_queues:
             try:
-                # 非阻塞放入，如果队列满则丢弃
                 queue.put_nowait(event)
             except asyncio.QueueFull:
                 # 队列满，丢弃旧事件
@@ -199,7 +253,22 @@ class EventBroker(Generic[T]):
         if event.type not in self._subscribers:
             return
 
-        for queue in self._subscribers[event.type]:
+        # 清理无效的弱引用并收集有效的队列
+        active_queues = []
+        dead_refs = set()
+        
+        for ref in self._subscribers.get(event.type, set()):
+            queue = ref()
+            if queue is not None:
+                active_queues.append(queue)
+            else:
+                dead_refs.add(ref)
+
+        # 移除无效的引用
+        for ref in dead_refs:
+            self._subscribers[event.type].discard(ref)
+
+        for queue in active_queues:
             try:
                 queue.put_nowait(event)
             except asyncio.QueueFull:

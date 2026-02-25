@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xiaotie"
-version = "0.8.2"
+version = "1.1.0"
 description = "小铁 - 轻量级 AI Agent 框架"
 readme = "README.md"
 license = "MIT"
@@ -33,6 +33,7 @@ dependencies = [
     "rich>=13.0",
     "prompt_toolkit>=3.0",
     "aiosqlite>=0.19.0",
+    "psutil>=5.8.0",
 ]
 
 [project.optional-dependencies]
@@ -58,9 +59,9 @@ xiaotie = "xiaotie.cli:main"
 xiaotie-tui = "xiaotie.tui.main:run_tui"
 
 [project.urls]
-Homepage = "https://github.com/leo/xiaotie"
-Documentation = "https://github.com/leo/xiaotie#readme"
-Repository = "https://github.com/leo/xiaotie"
+Homepage = "https://github.com/LeoLin990405/xiaotie"
+Documentation = "https://github.com/LeoLin990405/xiaotie#readme"
+Repository = "https://github.com/LeoLin990405/xiaotie"
 
 [tool.hatch.build.targets.wheel]
 packages = ["xiaotie"]

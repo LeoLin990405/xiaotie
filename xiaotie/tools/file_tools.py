@@ -47,6 +47,7 @@ class ReadTool(Tool):
     """读取文件工具"""
 
     def __init__(self, workspace_dir: str = "."):
+        super().__init__()
         self.workspace_dir = Path(workspace_dir).absolute()
 
     @property
@@ -100,6 +101,7 @@ class WriteTool(Tool):
     """写入文件工具"""
 
     def __init__(self, workspace_dir: str = "."):
+        super().__init__()
         self.workspace_dir = Path(workspace_dir).absolute()
 
     @property
@@ -148,6 +150,7 @@ class EditTool(Tool):
     """编辑文件工具"""
 
     def __init__(self, workspace_dir: str = "."):
+        super().__init__()
         self.workspace_dir = Path(workspace_dir).absolute()
 
     @property

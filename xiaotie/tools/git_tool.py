@@ -9,17 +9,39 @@
 
 from __future__ import annotations
 
+import re
+import shlex
 import subprocess
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .base import Tool, ToolResult
+
+
+# 禁止通过 args 注入的危险 git 选项
+_DANGEROUS_GIT_ARGS = re.compile(
+    r"^--(?:exec|upload-pack|receive-pack|config|work-tree|git-dir|exec-path)"
+    r"|^-c$"
+    r"|^--(?:no-verify|force)"
+)
+
+
+def _sanitize_git_args(args_str: str) -> List[str]:
+    """安全解析 git 参数，拒绝危险选项"""
+    if not args_str:
+        return []
+    parts = shlex.split(args_str)
+    for part in parts:
+        if _DANGEROUS_GIT_ARGS.match(part):
+            raise ValueError(f"不允许的 git 参数: {part}")
+    return parts
 
 
 class GitTool(Tool):
     """Git 操作工具"""
 
     def __init__(self, workspace_dir: str = "."):
+        super().__init__()
         self.workspace_dir = Path(workspace_dir).absolute()
 
     @property
@@ -154,9 +176,8 @@ class GitTool(Tool):
 
     async def _diff(self, args: str) -> ToolResult:
         """查看差异"""
-        git_args = ["diff", "--stat"]
-        if args:
-            git_args.extend(args.split())
+        safe_args = _sanitize_git_args(args)
+        git_args = ["diff", "--stat"] + safe_args
 
         result = self._run_git(*git_args)
 
@@ -164,9 +185,7 @@ class GitTool(Tool):
             return ToolResult(success=True, content="没有差异")
 
         # 获取详细差异（限制行数）
-        git_args_full = ["diff"]
-        if args:
-            git_args_full.extend(args.split())
+        git_args_full = ["diff"] + safe_args
 
         result_full = self._run_git(*git_args_full)
         diff_content = result_full.stdout
@@ -183,6 +202,7 @@ class GitTool(Tool):
 
     async def _log(self, args: str) -> ToolResult:
         """查看提交历史"""
+        safe_args = _sanitize_git_args(args)
         git_args = [
             "log",
             "--oneline",
@@ -190,9 +210,7 @@ class GitTool(Tool):
             "--decorate",
             "-n",
             "15",  # 最近 15 条
-        ]
-        if args:
-            git_args.extend(args.split())
+        ] + safe_args
 
         result = self._run_git(*git_args)
 
@@ -203,39 +221,38 @@ class GitTool(Tool):
 
     async def _branch(self, args: str) -> ToolResult:
         """分支操作"""
-        if not args:
+        safe_args = _sanitize_git_args(args)
+        if not safe_args:
             # 列出分支
             result = self._run_git("branch", "-a", "-v")
             return ToolResult(
                 success=True,
-                content=f"🌿 分支列表:\n\n{result.stdout}",
+                content=f"分支列表:\n\n{result.stdout}",
             )
         else:
-            # 创建或切换分支
-            parts = args.split()
-            if parts[0] == "-d":
+            if safe_args[0] == "-d" and len(safe_args) > 1:
                 # 删除分支
-                result = self._run_git("branch", "-d", parts[1])
-                return ToolResult(success=True, content=f"已删除分支: {parts[1]}")
+                result = self._run_git("branch", "-d", safe_args[1])
+                return ToolResult(success=True, content=f"已删除分支: {safe_args[1]}")
             else:
                 # 创建分支
-                result = self._run_git("branch", parts[0])
-                return ToolResult(success=True, content=f"已创建分支: {parts[0]}")
+                result = self._run_git("branch", safe_args[0])
+                return ToolResult(success=True, content=f"已创建分支: {safe_args[0]}")
 
     async def _add(self, args: str) -> ToolResult:
         """暂存文件"""
-        if not args:
+        safe_args = _sanitize_git_args(args)
+        if not safe_args:
             return ToolResult(
                 success=False,
                 error="请指定要暂存的文件，如 'git add .' 或 'git add file.py'",
             )
 
-        files = args.split()
-        self._run_git("add", *files)
+        self._run_git("add", *safe_args)
 
         return ToolResult(
             success=True,
-            content=f"✅ 已暂存: {', '.join(files)}",
+            content=f"已暂存: {', '.join(safe_args)}",
         )
 
     async def _commit(self, args: str) -> ToolResult:
@@ -263,7 +280,8 @@ class GitTool(Tool):
 
     async def _show(self, args: str) -> ToolResult:
         """查看提交详情"""
-        commit_ref = args.strip() if args else "HEAD"
+        safe_args = _sanitize_git_args(args)
+        commit_ref = safe_args[0] if safe_args else "HEAD"
 
         result = self._run_git("show", "--stat", commit_ref)
 

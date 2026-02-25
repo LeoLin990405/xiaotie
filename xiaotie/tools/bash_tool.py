@@ -14,6 +14,7 @@ class BashTool(Tool):
     """执行 Shell 命令"""
 
     def __init__(self):
+        super().__init__()
         self.is_windows = platform.system() == "Windows"
         self.shell_name = "PowerShell" if self.is_windows else "bash"
 

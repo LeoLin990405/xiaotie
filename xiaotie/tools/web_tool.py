@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
+import socket
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, List
@@ -111,7 +113,20 @@ class WebSearchTool(Tool):
 
 
 class WebFetchTool(Tool):
-    """网页获取工具"""
+    """网页获取工具（带 SSRF 防护）"""
+
+    # 禁止访问的私有/保留 IP 网段
+    _BLOCKED_NETWORKS = [
+        ipaddress.ip_network("127.0.0.0/8"),       # Loopback
+        ipaddress.ip_network("10.0.0.0/8"),         # Private A
+        ipaddress.ip_network("172.16.0.0/12"),      # Private B
+        ipaddress.ip_network("192.168.0.0/16"),     # Private C
+        ipaddress.ip_network("169.254.0.0/16"),     # Link-local
+        ipaddress.ip_network("0.0.0.0/8"),          # Current network
+        ipaddress.ip_network("::1/128"),            # IPv6 loopback
+        ipaddress.ip_network("fc00::/7"),           # IPv6 unique local
+        ipaddress.ip_network("fe80::/10"),          # IPv6 link-local
+    ]
 
     @property
     def name(self) -> str:
@@ -139,8 +154,47 @@ class WebFetchTool(Tool):
             "required": ["url"],
         }
 
+    def _is_private_ip(self, hostname: str) -> bool:
+        """检查主机名是否解析到私有 IP"""
+        try:
+            # 解析所有 IP 地址
+            addr_infos = socket.getaddrinfo(hostname, None)
+            for addr_info in addr_infos:
+                ip_str = addr_info[4][0]
+                ip = ipaddress.ip_address(ip_str)
+                for network in self._BLOCKED_NETWORKS:
+                    if ip in network:
+                        return True
+        except (socket.gaierror, ValueError):
+            # DNS 解析失败，拒绝请求
+            return True
+        return False
+
+    def _validate_url(self, url: str) -> str | None:
+        """验证 URL 安全性，返回错误信息或 None"""
+        parsed = urllib.parse.urlparse(url)
+
+        # 仅允许 http/https
+        if parsed.scheme not in ("http", "https"):
+            return f"不支持的协议: {parsed.scheme}，仅允许 http/https"
+
+        hostname = parsed.hostname
+        if not hostname:
+            return "无效的 URL: 缺少主机名"
+
+        # 检查是否为私有 IP
+        if self._is_private_ip(hostname):
+            return f"安全限制: 不允许访问内部网络地址 ({hostname})"
+
+        return None
+
     async def execute(self, url: str, max_length: int = 5000) -> ToolResult:
-        """获取网页内容"""
+        """获取网页内容（带 SSRF 防护）"""
+        # URL 安全验证
+        error = self._validate_url(url)
+        if error:
+            return ToolResult(success=False, error=error)
+
         try:
             req = urllib.request.Request(
                 url,
@@ -151,6 +205,14 @@ class WebFetchTool(Tool):
             )
 
             with urllib.request.urlopen(req, timeout=15) as response:
+                # 二次检查：验证实际连接的 IP（防止 DNS rebinding）
+                actual_host = urllib.parse.urlparse(response.url).hostname
+                if actual_host and self._is_private_ip(actual_host):
+                    return ToolResult(
+                        success=False,
+                        error=f"安全限制: 重定向到内部网络地址 ({actual_host})",
+                    )
+
                 content_type = response.headers.get("Content-Type", "")
                 if "text" not in content_type and "html" not in content_type:
                     return ToolResult(
@@ -169,7 +231,7 @@ class WebFetchTool(Tool):
 
             return ToolResult(
                 success=True,
-                content=f"📄 网页内容 ({url}):\n\n{text}",
+                content=f"网页内容 ({url}):\n\n{text}",
             )
 
         except urllib.error.HTTPError as e:

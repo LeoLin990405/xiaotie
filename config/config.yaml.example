@@ -20,7 +20,44 @@ retry:
   max_delay: 60.0
   exponential_base: 2.0
 
+# 缓存配置
+cache:
+  enabled: true
+  max_size: 1000        # 最大缓存条目数
+  ttl: 3600             # 缓存过期时间 (秒)
+  strategy: lru         # 淘汰策略: lru, fifo
+
+# 日志配置
+logging:
+  level: INFO           # DEBUG, INFO, WARNING, ERROR
+  file: ~/.xiaotie/logs/xiaotie.log
+  max_file_size: 10485760  # 10MB
+  backup_count: 5       # 保留日志文件数
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  console: true         # 是否输出到控制台
+
 # 工具配置
 tools:
   enable_file_tools: true
   enable_bash: true
+
+# --- 其他 Provider 配置示例 ---
+# 取消注释并填入对应的 API Key 即可切换 Provider
+
+# Google Gemini
+# api_key: YOUR_GEMINI_API_KEY
+# api_base: https://generativelanguage.googleapis.com
+# model: gemini-2.0-flash
+# provider: openai
+
+# DeepSeek
+# api_key: YOUR_DEEPSEEK_API_KEY
+# api_base: https://api.deepseek.com
+# model: deepseek-chat
+# provider: openai
+
+# 通义千问 (Qwen)
+# api_key: YOUR_QWEN_API_KEY
+# api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+# model: qwen-plus
+# provider: openai

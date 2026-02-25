@@ -169,10 +169,24 @@ class PersistentShell:
 INJECTION_PATTERNS = [
     r"`[^`]+`",  # 反引号命令替换
     r"\$\([^)]+\)",  # $() 命令替换
+    r"\$\{[^}]+\}",  # ${} 变量替换（可能包含命令）
     r";\s*[a-z]",  # 分号后跟命令
     r"\|\s*[a-z]",  # 管道后跟命令（可能是恶意的）
     r"&&\s*rm\s",  # && 后跟 rm
     r"\|\|\s*rm\s",  # || 后跟 rm
+    r">\s*/etc/",  # 重定向到系统目录
+    r">\s*/dev/sd",  # 重定向到块设备
+    r"curl\s.*\|\s*(ba)?sh",  # curl 管道到 shell
+    r"wget\s.*\|\s*(ba)?sh",  # wget 管道到 shell
+    r"eval\s+",  # eval 命令
+    r"\bsudo\s+",  # sudo 提权
+    r"\bchmod\s+[0-7]*7[0-7]*\s",  # chmod 过于宽松的权限
+    r"\bdd\s+if=",  # dd 磁盘操作
+    r"\bmkfs\b",  # 格式化文件系统
+    r"\brm\s+-[rf]*\s+/\s",  # rm -rf / 根目录
+    r"\bnc\s+-[el]",  # netcat 监听（反弹 shell）
+    r"python[23]?\s+-c\s+['\"].*import\s+os",  # python -c 执行系统命令
+    r"\bbase64\s.*\|\s*(ba)?sh",  # base64 解码后执行
 ]
 
 
@@ -198,6 +212,7 @@ class EnhancedBashTool(Tool):
         persistent: bool = True,
         check_injection: bool = True,
     ):
+        super().__init__()
         self.working_dir = working_dir or os.getcwd()
         self.persistent = persistent
         self.check_injection_enabled = check_injection
@@ -211,7 +226,7 @@ class EnhancedBashTool(Tool):
 
     @property
     def name(self) -> str:
-        return "bash"
+        return "enhanced_bash"
 
     @property
     def description(self) -> str:

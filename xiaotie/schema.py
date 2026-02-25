@@ -36,8 +36,8 @@ class Message(BaseModel):
 class TokenUsage(BaseModel):
     """Token 使用统计"""
 
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
     total_tokens: int = 0
 
 
