@@ -58,6 +58,9 @@ nav:
   - 首页: index.md
   - 架构设计: architecture.md
   - 认知架构指南: cognitive-architecture.md
+  - 爬虫模块:
+      - 使用指南: scraper-guide.md
+      - 竞品对比: scraper-vs-competitors.md
   - API 参考:
       - Agent 核心: api/agent.md
       - 记忆系统: api/memory.md

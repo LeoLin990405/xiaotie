@@ -60,6 +60,18 @@ class ProxyConfig:
 
 
 @dataclass
+class ScraperConfig:
+    """爬虫工具配置"""
+
+    enabled: bool = False
+    scraper_dir: Optional[str] = None
+    max_workers: int = 4
+    request_delay: float = 1.0
+    num_runs: int = 3
+    stability_threshold: float = 0.9
+
+
+@dataclass
 class ToolsConfig:
     """工具配置"""
 
@@ -75,6 +87,8 @@ class ToolsConfig:
     charles_proxy_port: int = 8888
     enable_proxy: bool = False
     proxy: ProxyConfig = field(default_factory=ProxyConfig)
+    enable_scraper: bool = False
+    scraper: ScraperConfig = field(default_factory=ScraperConfig)
 
 
 @dataclass
@@ -236,6 +250,17 @@ class Config:
             storage_path=proxy_data.get("storage_path"),
         )
 
+        # 爬虫配置
+        scraper_data = tools_data.get("scraper", {})
+        scraper_config = ScraperConfig(
+            enabled=scraper_data.get("enabled", False),
+            scraper_dir=scraper_data.get("scraper_dir"),
+            max_workers=scraper_data.get("max_workers", 4),
+            request_delay=scraper_data.get("request_delay", 1.0),
+            num_runs=scraper_data.get("num_runs", 3),
+            stability_threshold=scraper_data.get("stability_threshold", 0.9),
+        )
+
         tools_config = ToolsConfig(
             enable_file_tools=tools_data.get("enable_file_tools", True),
             enable_bash=tools_data.get("enable_bash", True),
@@ -249,6 +274,8 @@ class Config:
             charles_proxy_port=tools_data.get("charles_proxy_port", 8888),
             enable_proxy=tools_data.get("enable_proxy", proxy_data.get("enabled", False)),
             proxy=proxy_config,
+            enable_scraper=tools_data.get("enable_scraper", scraper_data.get("enabled", False)),
+            scraper=scraper_config,
         )
 
         # MCP 配置

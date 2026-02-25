@@ -55,6 +55,16 @@ tools:
   #   cert_path: ~/.xiaotie/certs   # CA 证书存储路径
   #   storage_path: ~/.xiaotie/proxy_data  # 会话数据存储路径
 
+  # 爬虫工具（默认关闭）
+  # enable_scraper: true
+  # scraper:
+  #   enabled: true
+  #   scraper_dir: ./scrapers          # 自定义爬虫脚本目录
+  #   max_workers: 4                   # 最大并发数
+  #   request_delay: 1.0               # 请求间隔（秒）
+  #   num_runs: 3                      # 稳定性验证运行次数
+  #   stability_threshold: 0.9         # 稳定性阈值（0-1）
+
 # --- 其他 Provider 配置示例 ---
 # 取消注释并填入对应的 API Key 即可切换 Provider
 

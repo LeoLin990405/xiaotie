@@ -40,6 +40,7 @@ from .tools import (
     ProxyServerTool,
     PythonTool,
     ReadTool,
+    ScraperTool,
     SystemInfoTool,
     WebFetchTool,
     WebSearchTool,
@@ -142,6 +143,16 @@ def create_tools(config: Config, workspace: Path) -> list:
             enable_https=config.tools.proxy.enable_https,
             cert_path=config.tools.proxy.cert_path,
             storage_path=config.tools.proxy.storage_path,
+        ))
+
+    # 爬虫工具
+    if config.tools.enable_scraper:
+        tools.append(ScraperTool(
+            scraper_dir=config.tools.scraper.scraper_dir,
+            max_workers=config.tools.scraper.max_workers,
+            request_delay=config.tools.scraper.request_delay,
+            num_runs=config.tools.scraper.num_runs,
+            stability_threshold=config.tools.scraper.stability_threshold,
         ))
 
     # 扩展工具

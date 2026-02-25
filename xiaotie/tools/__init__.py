@@ -13,6 +13,7 @@ from .semantic_search_tool import SemanticSearchTool
 from .web_tool import WebFetchTool, WebSearchTool
 from .charles_tool import CharlesProxyTool
 from .proxy_tool import ProxyServerTool
+from .scraper_tool import ScraperTool
 
 __all__ = [
     "Tool",
@@ -36,4 +37,5 @@ __all__ = [
     "SemanticSearchTool",
     "CharlesProxyTool",
     "ProxyServerTool",
+    "ScraperTool",
 ]

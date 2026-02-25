@@ -47,6 +47,10 @@ search = [
 proxy = [
     "mitmproxy>=10.0.0",
 ]
+scraper = [
+    "aiohttp>=3.9.0",
+    "tqdm>=4.65.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
@@ -64,6 +68,7 @@ all = [
     "xiaotie[tui]",
     "xiaotie[search]",
     "xiaotie[proxy]",
+    "xiaotie[scraper]",
     "xiaotie[docs]",
 ]
 

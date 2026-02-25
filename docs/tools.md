@@ -23,6 +23,7 @@
 | 网络工具 | `NetworkTool` | 网络诊断和扫描 |
 | Charles 代理 | `CharlesProxyTool` | 封装 Charles Proxy 抓包 |
 | **内置代理** | **`ProxyServerTool`** | **内置 HTTP/HTTPS 代理抓包** |
+| **爬虫工具** | **`ScraperTool`** | **结构化 Web 数据抓取，支持多线程和认证** |
 
 ## ProxyServerTool
 
@@ -124,6 +125,84 @@ await proxy.execute(action="stop")
 ```
 
 详细文档参见 [内置代理使用指南](./builtin-proxy-guide.md)。
+
+## ScraperTool
+
+结构化 Web 数据抓取工具，基于 `BaseScraper` 框架，支持多线程并发、6 种认证方式和数据稳定性验证。
+
+### 基本信息
+
+- **工具名称**: `scraper`
+- **模块路径**: `xiaotie.tools.scraper_tool`
+- **依赖**: `requests`, `pandas`, `tqdm`
+
+### 参数定义
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["run", "status", "list_brands", "configure"],
+      "description": "操作类型"
+    },
+    "brand": {
+      "type": "string",
+      "description": "品牌名称或 ID"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["test", "full"],
+      "description": "运行模式（默认 test）",
+      "default": "test"
+    },
+    "output_dir": {
+      "type": "string",
+      "description": "输出目录"
+    },
+    "auth_token": {
+      "type": "string",
+      "description": "认证 Token（可选）"
+    }
+  },
+  "required": ["action"]
+}
+```
+
+### 操作说明
+
+| action | 说明 | 关键参数 |
+|--------|------|----------|
+| `run` | 执行爬虫抓取（3 次运行验证） | `brand`, `mode`, `output_dir` |
+| `status` | 查看当前爬虫运行状态 | - |
+| `list_brands` | 列出所有已注册的品牌爬虫 | - |
+| `configure` | 配置品牌认证信息 | `brand`, `auth_token` |
+
+### 使用示例
+
+```python
+from xiaotie.tools import ScraperTool
+
+scraper = ScraperTool()
+
+# 列出可用品牌
+result = await scraper.execute(action="list_brands")
+print(result.content)
+
+# 测试模式运行
+result = await scraper.execute(action="run", brand="熊猫球社", mode="test")
+print(result.content)
+
+# 完整模式运行
+result = await scraper.execute(action="run", brand="熊猫球社", mode="full")
+print(result.content)
+
+# 配置认证
+await scraper.execute(action="configure", brand="碰碰捌", auth_token="xxx")
+```
+
+详细文档参见 [爬虫模块使用指南](./scraper-guide.md) 和 [竞品对比](./scraper-vs-competitors.md)。
 
 ## CharlesProxyTool
 
