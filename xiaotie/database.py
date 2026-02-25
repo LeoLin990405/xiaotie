@@ -367,7 +367,7 @@ class DatabaseTool:
             )
         elif driver == DatabaseDriver.MYSQL:
             return self.query("SHOW TABLES")
-        return QueryResult(success=False, error_message="Unknown driver")
+        return QueryResult(success=False, error_message="未知的数据库驱动")
 
     def get_columns(self, table: str) -> QueryResult:
         """获取表的列信息"""
@@ -375,7 +375,7 @@ class DatabaseTool:
         if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table):
             return QueryResult(
                 success=False,
-                error_message="Invalid table name",
+                error_message="无效的表名",
             )
 
         driver = DatabaseDriver(self.config.driver)
@@ -387,7 +387,7 @@ class DatabaseTool:
                 "WHERE table_name = ?",
                 [table]
             )
-        return QueryResult(success=False, error_message="Unknown driver")
+        return QueryResult(success=False, error_message="未知的数据库驱动")
 
     def count(self, table: str, where: Optional[str] = None) -> int:
         """统计行数"""

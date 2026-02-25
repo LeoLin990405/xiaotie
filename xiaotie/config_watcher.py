@@ -110,9 +110,9 @@ class ConfigValidator:
                 for rule, message in rules:
                     try:
                         if not rule(value):
-                            errors.append(message or f"Validation failed for {path}")
+                            errors.append(message or f"校验失败: {path}")
                     except Exception as e:
-                        errors.append(f"Validation error for {path}: {e}")
+                        errors.append(f"校验错误 {path}: {e}")
 
         return errors
 

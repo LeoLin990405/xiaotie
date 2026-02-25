@@ -59,11 +59,11 @@ class HTTPMethod(Enum):
 class AuthConfig:
     """认证配置"""
     type: str = "none"
-    token: Optional[str] = None  # Bearer token
-    username: Optional[str] = None  # Basic auth
-    password: Optional[str] = None  # Basic auth
-    api_key: Optional[str] = None  # API key
-    api_key_header: str = "X-API-Key"  # API key header name
+    token: Optional[str] = None  # Bearer 令牌
+    username: Optional[str] = None  # Basic 认证用户名
+    password: Optional[str] = None  # Basic 认证密码
+    api_key: Optional[str] = None  # API 密钥
+    api_key_header: str = "X-API-Key"  # API 密钥请求头名称
     custom_headers: Dict[str, str] = field(default_factory=dict)
 
     def get_headers(self) -> Dict[str, str]:
@@ -304,7 +304,7 @@ class HTTPClient:
             return APIResponse(
                 success=False,
                 elapsed_time=time.time() - start_time,
-                error_message=f"Request timed out: {e}",
+                error_message=f"请求超时: {e}",
             )
         except Exception as e:
             return APIResponse(

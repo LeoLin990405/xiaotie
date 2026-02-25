@@ -51,7 +51,7 @@ class RetryableError(Exception):
 class RateLimitError(RetryableError):
     """速率限制错误"""
 
-    def __init__(self, message: str = "Rate limit exceeded", retry_after: Optional[float] = None):
+    def __init__(self, message: str = "请求频率超限", retry_after: Optional[float] = None):
         super().__init__(message)
         self.retry_after = retry_after
 
@@ -65,7 +65,7 @@ class TimeoutError(RetryableError):
 class ServerError(RetryableError):
     """服务器错误 (5xx)"""
 
-    def __init__(self, message: str = "Server error", status_code: int = 500):
+    def __init__(self, message: str = "服务器错误", status_code: int = 500):
         super().__init__(message)
         self.status_code = status_code
 
@@ -351,7 +351,7 @@ async def retry_with_backoff(
             await asyncio.sleep(delay)
 
     # 不应该到达这里
-    raise state.errors[-1] if state.errors else RuntimeError("Retry failed")
+    raise state.errors[-1] if state.errors else RuntimeError("重试失败")
 
 
 class RetryExecutor:
@@ -481,7 +481,7 @@ class RetryExecutor:
                 await asyncio.sleep(delay)
 
         # 不应该到达这里
-        raise state.errors[-1] if state.errors else RuntimeError("Retry failed")
+        raise state.errors[-1] if state.errors else RuntimeError("重试失败")
 
     async def _execute_fallback(self, *args, **kwargs) -> T:
         """执行降级函数"""

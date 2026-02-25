@@ -121,15 +121,15 @@ class WebFetchTool(Tool):
 
     # 禁止访问的私有/保留 IP 网段
     _BLOCKED_NETWORKS = [
-        ipaddress.ip_network("127.0.0.0/8"),       # Loopback
-        ipaddress.ip_network("10.0.0.0/8"),         # Private A
-        ipaddress.ip_network("172.16.0.0/12"),      # Private B
-        ipaddress.ip_network("192.168.0.0/16"),     # Private C
-        ipaddress.ip_network("169.254.0.0/16"),     # Link-local
-        ipaddress.ip_network("0.0.0.0/8"),          # Current network
-        ipaddress.ip_network("::1/128"),            # IPv6 loopback
-        ipaddress.ip_network("fc00::/7"),           # IPv6 unique local
-        ipaddress.ip_network("fe80::/10"),          # IPv6 link-local
+        ipaddress.ip_network("127.0.0.0/8"),       # 回环地址
+        ipaddress.ip_network("10.0.0.0/8"),         # 私有网段 A
+        ipaddress.ip_network("172.16.0.0/12"),      # 私有网段 B
+        ipaddress.ip_network("192.168.0.0/16"),     # 私有网段 C
+        ipaddress.ip_network("169.254.0.0/16"),     # 链路本地
+        ipaddress.ip_network("0.0.0.0/8"),          # 当前网络
+        ipaddress.ip_network("::1/128"),            # IPv6 回环
+        ipaddress.ip_network("fc00::/7"),           # IPv6 唯一本地
+        ipaddress.ip_network("fe80::/10"),          # IPv6 链路本地
     ]
 
     @property

@@ -16,19 +16,19 @@ from .tools import MCPToolWrapper
 from .transport import StdioTransport, TransportError
 
 __all__ = [
-    # Protocol types
+    # 协议类型
     "JSONRPCRequest",
     "JSONRPCResponse",
     "JSONRPCError",
     "MCPTool",
     "MCPToolCall",
     "MCPToolResult",
-    # Transport
+    # 传输层
     "StdioTransport",
     "TransportError",
-    # Client
+    # 客户端
     "MCPClient",
     "MCPClientError",
-    # Tools
+    # 工具
     "MCPToolWrapper",
 ]

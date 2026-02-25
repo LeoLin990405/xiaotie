@@ -80,73 +80,117 @@ class BaseMemoryBackend(ABC):
 
 class InMemoryBackend(BaseMemoryBackend):
     """内存后端实现"""
-    
+
     def __init__(self):
         self.memory_store: Dict[str, MemoryChunk] = {}
         self.tag_index: Dict[str, List[str]] = {}  # tag -> [memory_ids]
-    
+        self._word_index: Dict[str, set] = {}  # word -> {chunk_ids} 倒排索引
+
+    @staticmethod
+    def _tokenize(text: str) -> set:
+        """将文本拆分为小写词集合"""
+        return set(text.lower().split())
+
+    def _index_chunk(self, chunk: MemoryChunk):
+        """将 chunk 加入倒排索引"""
+        words = self._tokenize(chunk.content)
+        for tag in chunk.tags:
+            words.update(self._tokenize(tag))
+        for word in words:
+            if word not in self._word_index:
+                self._word_index[word] = set()
+            self._word_index[word].add(chunk.id)
+
+    def _unindex_chunk(self, chunk: MemoryChunk):
+        """将 chunk 从倒排索引移除"""
+        words = self._tokenize(chunk.content)
+        for tag in chunk.tags:
+            words.update(self._tokenize(tag))
+        for word in words:
+            if word in self._word_index:
+                self._word_index[word].discard(chunk.id)
+                if not self._word_index[word]:
+                    del self._word_index[word]
+
     async def store(self, chunk: MemoryChunk) -> bool:
         """存储记忆块"""
+        # 如果已存在，先移除旧索引
+        if chunk.id in self.memory_store:
+            self._unindex_chunk(self.memory_store[chunk.id])
+
         self.memory_store[chunk.id] = chunk
-        
+
         # 更新标签索引
         for tag in chunk.tags:
             if tag not in self.tag_index:
                 self.tag_index[tag] = []
             if chunk.id not in self.tag_index[tag]:
                 self.tag_index[tag].append(chunk.id)
-        
+
+        # 更新倒排索引
+        self._index_chunk(chunk)
+
         return True
-    
+
     async def retrieve(self, query: str, top_k: int = 5) -> List[MemoryChunk]:
-        """检索记忆块 - 基于字符串匹配的简单实现"""
-        # 简单的文本匹配，实际应用中应该使用向量相似度
-        results = []
+        """检索记忆块 - 使用倒排索引快速定位候选集 O(k)"""
         query_lower = query.lower()
-        
-        for chunk in self.memory_store.values():
+        query_words = query_lower.split()
+
+        # 通过倒排索引收集候选 chunk id
+        candidate_ids: set = set()
+        for word in query_words:
+            if word in self._word_index:
+                candidate_ids.update(self._word_index[word])
+
+        # 仅对候选集评分，而非全量扫描
+        results = []
+        for cid in candidate_ids:
+            chunk = self.memory_store.get(cid)
+            if chunk is None:
+                continue
             content_score = 0
             if query_lower in chunk.content.lower():
                 content_score += 1
-            # 增加标签匹配分数
             for tag in chunk.tags:
                 if query_lower in tag.lower():
                     content_score += 0.5
-            
+
             if content_score > 0:
-                # 综合考虑内容匹配度、重要性和时间衰减
                 age_hours = (time.time() - chunk.timestamp) / 3600
-                time_decay = max(0.1, 1.0 - age_hours * 0.01)  # 随时间衰减
+                time_decay = max(0.1, 1.0 - age_hours * 0.01)
                 score = content_score + chunk.importance + time_decay
                 results.append((chunk, score))
-        
-        # 按分数排序并返回前top_k个
+
         results.sort(key=lambda x: x[1], reverse=True)
         return [chunk for chunk, score in results[:top_k]]
     
     async def update(self, chunk: MemoryChunk) -> bool:
         """更新记忆块"""
         if chunk.id in self.memory_store:
-            # 更新标签索引
             old_chunk = self.memory_store[chunk.id]
             # 移除旧标签索引
             for tag in old_chunk.tags:
                 if tag in self.tag_index and chunk.id in self.tag_index[tag]:
                     self.tag_index[tag].remove(chunk.id)
-            
+            # 移除旧倒排索引
+            self._unindex_chunk(old_chunk)
+
             # 存储新块
             self.memory_store[chunk.id] = chunk
-            
+
             # 更新新标签索引
             for tag in chunk.tags:
                 if tag not in self.tag_index:
                     self.tag_index[tag] = []
                 if chunk.id not in self.tag_index[tag]:
                     self.tag_index[tag].append(chunk.id)
-            
+            # 更新新倒排索引
+            self._index_chunk(chunk)
+
             return True
         return False
-    
+
     async def delete(self, memory_id: str) -> bool:
         """删除记忆块"""
         if memory_id in self.memory_store:
@@ -155,7 +199,9 @@ class InMemoryBackend(BaseMemoryBackend):
             for tag in chunk.tags:
                 if tag in self.tag_index and memory_id in self.tag_index[tag]:
                     self.tag_index[tag].remove(memory_id)
-            
+            # 从倒排索引中移除
+            self._unindex_chunk(chunk)
+
             del self.memory_store[memory_id]
             return True
         return False

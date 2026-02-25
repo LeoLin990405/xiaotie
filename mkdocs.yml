@@ -1,0 +1,73 @@
+site_name: 小铁 (XiaoTie) 文档
+site_description: 轻量级 AI Agent 框架 - API 参考与架构文档
+site_url: https://github.com/LeoLin990405/xiaotie
+repo_url: https://github.com/LeoLin990405/xiaotie
+repo_name: LeoLin990405/xiaotie
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到暗色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到亮色模式
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - mermaid2
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 3
+            docstring_style: google
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2_plugin.fence_mermaid_custom
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - toc:
+      permalink: true
+
+nav:
+  - 首页: index.md
+  - 架构设计: architecture.md
+  - 认知架构指南: cognitive-architecture.md
+  - API 参考:
+      - Agent 核心: api/agent.md
+      - 记忆系统: api/memory.md
+      - 上下文管理: api/context.md
+      - 决策引擎: api/decision.md
+      - 学习系统: api/learning.md
+      - 反思系统: api/reflection.md
+      - 规划系统: api/planning.md
+      - 技能习得: api/skills.md
+      - 强化学习: api/rl.md
+      - 知识图谱: api/kg.md
+      - 事件系统: api/events.md
+      - 多模态: api/multimodal.md

@@ -152,7 +152,7 @@ class LLMClient:
         """从 provider 名称创建客户端"""
         config = get_provider_config(provider)
         if not config:
-            raise ValueError(f"Unknown provider: {provider}")
+            raise ValueError(f"未知的 Provider: {provider}")
 
         return cls(
             provider=provider,

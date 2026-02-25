@@ -256,7 +256,7 @@ class Pipeline(Workflow):
                 kwargs = step[2] if len(step) > 2 else {}
                 normalized.append(Step(name=name, agent=agent, **kwargs))
             else:
-                raise ValueError(f"Invalid step type: {type(step)}")
+                raise ValueError(f"无效的步骤类型: {type(step)}")
         return normalized
 
     async def run(self, input_data: Any) -> WorkflowResult:
@@ -386,7 +386,7 @@ class Router(Workflow):
             name, agent = step[0], step[1]
             kwargs = step[2] if len(step) > 2 else {}
             return Step(name=name, agent=agent, **kwargs)
-        raise ValueError(f"Invalid step type: {type(step)}")
+        raise ValueError(f"无效的步骤类型: {type(step)}")
 
     async def run(self, input_data: Any) -> WorkflowResult:
         """根据条件路由执行"""

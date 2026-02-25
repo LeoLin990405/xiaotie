@@ -245,7 +245,7 @@ class SubprocessExecutor:
                         stderr=stderr_str,
                         execution_time=execution_time,
                         exit_code=process.returncode,
-                        error_message=stderr_str or f"Exit code: {process.returncode}",
+                        error_message=stderr_str or f"退出码: {process.returncode}",
                     )
 
             except subprocess.TimeoutExpired:
@@ -254,7 +254,7 @@ class SubprocessExecutor:
                 return ExecutionResult(
                     status=ExecutionStatus.TIMEOUT,
                     execution_time=self.config.timeout,
-                    error_message=f"Execution timed out after {self.config.timeout}s",
+                    error_message=f"执行超时（{self.config.timeout}秒）",
                 )
 
         finally:
@@ -315,11 +315,11 @@ class DockerExecutor:
                 timeout=5,
             )
             if result.returncode != 0:
-                raise SandboxError("Docker is not available")
+                raise SandboxError("Docker 不可用")
         except FileNotFoundError:
-            raise SandboxError("Docker is not installed")
+            raise SandboxError("Docker 未安装")
         except subprocess.TimeoutExpired:
-            raise SandboxError("Docker check timed out")
+            raise SandboxError("Docker 检查超时")
 
     def execute(self, code: str) -> ExecutionResult:
         """在 Docker 容器中执行代码"""
@@ -365,7 +365,7 @@ class DockerExecutor:
                             stderr=stderr_str,
                             execution_time=execution_time,
                             exit_code=137,
-                            error_message="Container killed due to memory limit",
+                            error_message="容器因内存超限被终止",
                         )
                     else:
                         return ExecutionResult(
@@ -374,7 +374,7 @@ class DockerExecutor:
                             stderr=stderr_str,
                             execution_time=execution_time,
                             exit_code=process.returncode,
-                            error_message=stderr_str or f"Exit code: {process.returncode}",
+                            error_message=stderr_str or f"退出码: {process.returncode}",
                         )
 
                 except subprocess.TimeoutExpired:
@@ -388,7 +388,7 @@ class DockerExecutor:
                     return ExecutionResult(
                         status=ExecutionStatus.TIMEOUT,
                         execution_time=self.config.timeout,
-                        error_message=f"Execution timed out after {self.config.timeout}s",
+                        error_message=f"执行超时（{self.config.timeout}秒）",
                     )
 
             except Exception as e:
@@ -454,7 +454,7 @@ class Sandbox:
         elif runtime == SandboxRuntime.DOCKER:
             return DockerExecutor(self.config)
         else:
-            raise ValueError(f"Unknown runtime: {self.config.runtime}")
+            raise ValueError(f"未知的运行时: {self.config.runtime}")
 
     def on_complete(self, callback: Callable[[ExecutionResult], None]) -> "Sandbox":
         """注册执行完成回调"""
@@ -469,7 +469,7 @@ class Sandbox:
             if violations:
                 result = ExecutionResult(
                     status=ExecutionStatus.ERROR,
-                    error_message=f"Blocked imports: {', '.join(violations)}",
+                    error_message=f"被阻止的导入: {', '.join(violations)}",
                 )
                 self._notify_callbacks(result)
                 return result
@@ -488,7 +488,7 @@ class Sandbox:
         if not path.exists():
             return ExecutionResult(
                 status=ExecutionStatus.ERROR,
-                error_message=f"File not found: {file_path}",
+                error_message=f"文件未找到: {file_path}",
             )
 
         code = path.read_text()
@@ -539,7 +539,7 @@ class SandboxPool:
         if sandbox is None:
             return ExecutionResult(
                 status=ExecutionStatus.ERROR,
-                error_message="No available sandbox in pool",
+                error_message="沙箱池中没有可用的沙箱",
             )
 
         try:

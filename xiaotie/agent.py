@@ -583,6 +583,25 @@ class Agent:
         thinking_started = False
         content_started = False
 
+        # 事件缓冲区 + 批量发布
+        _event_buffer: list[Event] = []
+        _FLUSH_SIZE = 10
+
+        async def _flush_events():
+            """批量发布缓冲的事件"""
+            if not _event_buffer:
+                return
+            for evt in _event_buffer:
+                evt.session_id = self.session_id
+            await self._event_broker.publish_batch(_event_buffer) if hasattr(self._event_broker, 'publish_batch') else [await self._event_broker.publish(e) for e in _event_buffer]
+            _event_buffer.clear()
+
+        def _buffer_event(event: Event):
+            """将事件加入缓冲区，满时同步调度 flush"""
+            _event_buffer.append(event)
+            if len(_event_buffer) >= _FLUSH_SIZE:
+                asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(_flush_events()))
+
         async def on_thinking(text: str):
             nonlocal thinking_started
             if self.quiet:
@@ -594,8 +613,8 @@ class Agent:
                 thinking_started = True
                 await self._publish_event(Event(type=EventType.THINKING_START))
 
-            # 发布思考增量事件
-            await self._publish_event(ThinkingDeltaEvent(content=text))
+            # 缓冲思考增量事件
+            _buffer_event(ThinkingDeltaEvent(content=text))
 
             # 调用回调
             if self.on_thinking:
@@ -616,19 +635,19 @@ class Agent:
             if not self.on_content:
                 print(text, end="", flush=True)
 
-            # 发布消息增量事件
-            await self._publish_event(MessageDeltaEvent(content=text))
+            # 缓冲消息增量事件
+            _buffer_event(MessageDeltaEvent(content=text))
 
             # 调用回调
             if self.on_content:
                 self.on_content(text)
 
-        # 包装同步回调为异步
+        # 包装异步回调为同步（使用缓冲，不再创建 fire-and-forget task）
         def sync_on_thinking(text: str):
-            asyncio.create_task(on_thinking(text))
+            asyncio.ensure_future(on_thinking(text))
 
         def sync_on_content(text: str):
-            asyncio.create_task(on_content(text))
+            asyncio.ensure_future(on_content(text))
 
         response = await self.llm.generate_stream(
             messages=self.messages,
@@ -637,6 +656,9 @@ class Agent:
             on_content=sync_on_content,
             enable_thinking=self.config.enable_thinking,
         )
+
+        # 刷新剩余缓冲事件
+        await _flush_events()
 
         if content_started and not self.quiet:
             print()  # 换行
