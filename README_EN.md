@@ -1,7 +1,7 @@
 <div align="center">
 
 ```
- ▄███▄     XiaoTie v2.0
+ ▄███▄     XiaoTie v2.1
  █ ⚙ █    State Machine Agent · tree-sitter RepoMap · OS Sandbox
  ▀███▀
 ```
@@ -12,9 +12,9 @@
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Tests](https://img.shields.io/badge/Tests-1686%20passed-brightgreen)
-![Coverage](https://img.shields.io/badge/Coverage-59%25-yellow)
-![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![Tests](https://img.shields.io/badge/Tests-1703%20passed-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-61%25-yellow)
+![Version](https://img.shields.io/badge/Version-2.1.0-blue)
 
 [中文](./README.md) · [Changelog](./CHANGELOG.md) · [API Reference](./docs/api-reference.md)
 
@@ -35,7 +35,7 @@
 ### Architecture Overview
 
 <div align="center">
-<img src="docs/images/architecture.svg" alt="v2.0 Architecture" width="750"/>
+<img src="docs/images/architecture.svg" alt="v2.1 Architecture" width="750"/>
 </div>
 
 > 5-layer architecture: Interaction → Orchestration (state machine) → Cognition → Tools → Foundation
@@ -60,17 +60,25 @@
 
 ## Features
 
-### v2.0 Highlights
+### v2.1 Highlights
 
-| Module | Description |
-|--------|-------------|
-| **AgentRuntime** | State machine driven (IDLE→THINKING→ACTING→OBSERVING→REFLECTING) |
-| **ToolExecutor** | Parallel tool execution, permission checks, audit logging, sensitive output redaction |
-| **ResponseHandler** | Unified streaming/non-streaming, token budget management, auto-summarization |
-| **ContextEngine** | Priority-based token-budgeted context assembly (system/repo_map/memory/conversation) |
-| **RepoMapEngine** | tree-sitter AST + NetworkX PageRank code navigation (8 languages) |
-| **SandboxManager** | OS-level sandboxing (macOS Seatbelt / Linux Bubblewrap / Fallback rlimits) |
-| **SecretManager** | Layered secret management (keyring → env vars → config), `${secret:...}` syntax |
+| Module | Description | Status |
+|--------|-------------|--------|
+| **AgentRuntime** | State machine driven (IDLE→THINKING→ACTING→OBSERVING→REFLECTING), replaces legacy Agent | ✅ Wired into CLI/TUI |
+| **ToolExecutor** | Parallel tool execution, permission checks, audit logging, sensitive output redaction | ✅ Fully integrated |
+| **ResponseHandler** | Unified streaming/non-streaming, token budget management, auto-summarization | ✅ Fully integrated |
+| **ContextEngine** | Priority-based token-budgeted context assembly (system/repo_map/memory/conversation) | ✅ Wired into AgentRuntime |
+| **RepoMapEngine** | tree-sitter AST + NetworkX PageRank code navigation (8 languages) | ✅ Wired into AgentRuntime |
+| **SandboxManager** | OS-level sandboxing (macOS Seatbelt / Linux Bubblewrap / Fallback rlimits) | ✅ Fully integrated |
+| **SecretManager** | Layered secret management (keyring → env vars → config), `${secret:...}` syntax | ✅ Wired into config loading |
+
+### v2.1 Integration Progress (vs v2.0)
+
+- ✅ **AgentRuntime wired into CLI/TUI** — Replaces old Agent class, legacy API marked deprecated
+- ✅ **ContextEngine + RepoMap wired into AgentRuntime** — Auto-assembles token-budgeted context before LLM calls
+- ✅ **SecretManager wired into config loading** — Config.load() auto-resolves `${secret:...}` / `${env:...}` placeholders
+- ✅ **`/secret` command registered** — Manage secrets directly in interactive mode
+- ✅ **Core module coverage ≥ 90%** — runtime 97%, executor 90%, secrets 91%, context_engine 90%
 
 ### Core Capabilities
 
@@ -78,14 +86,24 @@
 - Streaming output, deep thinking (thinking mode)
 - Session management, automatic token summarization
 - Parallel tool execution, graceful cancellation (Ctrl+C)
-- TUI mode (Textual), non-interactive mode (JSON output)
+- TUI mode (Textual) with first-run onboarding wizard, non-interactive mode (JSON output)
 - MCP protocol support (connect to external MCP servers)
 - Plugin system, custom commands
 - Multi-LLM support (Anthropic / OpenAI / GLM / Gemini / DeepSeek / Qwen / MiniMax)
+- Multi-agent coordination (Coordinator / Expert / Executor / Supervisor roles)
+- Memory system (short-term / long-term / episodic / semantic / working memory)
+- Semantic search (chromadb vector store)
 
 ### Tool System
 
-20+ built-in tools: file operations, bash commands, Python execution, Git, web search/fetch, code analysis, semantic search, system info, process management, network tools, built-in proxy, web scraping, macOS automation.
+20+ built-in tools:
+
+| Category | Tools |
+|----------|-------|
+| **File & Code** | read_file, write_file, edit_file, code_analysis, python |
+| **System** | bash, git, system_info, process_manager |
+| **Web & Network** | web_search, web_fetch, network, proxy_server |
+| **Advanced** | scraper, semantic_search, telegram, macos_automation |
 
 ---
 
@@ -104,7 +122,7 @@ pip install -e .
 pip install -e ".[all]"
 
 # Or install selectively
-pip install -e ".[tui]"        # TUI interface
+pip install -e ".[tui]"        # TUI interface (with onboarding wizard)
 pip install -e ".[repomap]"    # tree-sitter code navigation
 pip install -e ".[secrets]"    # keyring secret management
 pip install -e ".[search]"     # semantic search
@@ -127,6 +145,14 @@ xiaotie secret set api_key
 
 ```bash
 export XIAOTIE_API_KEY="your-key"
+```
+
+**TUI onboarding wizard (easiest)**
+
+```bash
+pip install -e ".[tui]"
+xiaotie --tui
+# The wizard will collect your API key, model, provider and generate config
 ```
 
 ### Run
@@ -242,13 +268,14 @@ IDLE ──→ THINKING ──→ ACTING ──→ OBSERVING ──→ REFLECTIN
 | DeepSeek | https://api.deepseek.com | DeepSeek Chat/Coder |
 | Qwen | https://dashscope.aliyuncs.com | Qwen |
 | MiniMax | https://api.minimax.io | abab series |
+| Ollama | http://localhost:11434 | Local models |
 | Custom | Any URL | Any OpenAI-compatible API |
 
 ---
 
 ## Code Usage
 
-### AgentRuntime (v2.0 Recommended)
+### AgentRuntime (Recommended)
 
 ```python
 import asyncio
@@ -267,16 +294,23 @@ async def main():
     tools = [ReadTool(workspace_dir="."), WriteTool(workspace_dir="."), BashTool()]
 
     runtime = AgentRuntime(llm, system_prompt="You are XiaoTie", tools=tools, config=config)
+
+    # Optional: integrate ContextEngine and RepoMap
+    from xiaotie.context_engine import ContextEngine
+    from xiaotie.repomap_v2 import RepoMapEngine
+    runtime.set_context_engine(ContextEngine(token_budget=100_000))
+    runtime.set_repomap_engine(RepoMapEngine(workspace_dir="."))
+
     result = await runtime.run("Create a hello.py file")
     print(result)
 
 asyncio.run(main())
 ```
 
-### Agent (v1 Compatible)
+### Agent (v1 Compatible, deprecated)
 
 ```python
-from xiaotie.agent import Agent
+from xiaotie.agent import Agent  # ⚠️ Will be removed in v3.0
 from xiaotie.llm import LLMClient
 from xiaotie.tools import ReadTool, WriteTool, BashTool
 
@@ -289,6 +323,20 @@ agent = Agent(
 )
 result = await agent.run("Hello")
 ```
+
+---
+
+## Project Stats
+
+| Metric | Value |
+|--------|-------|
+| Source files | 140 Python files |
+| Lines of code | ~48,000 |
+| Test cases | 1,703 passed / 15 skipped |
+| Test coverage | 61% (core modules ≥ 90%) |
+| Built-in tools | 20+ |
+| LLM providers | 8+ |
+| Languages (RepoMap) | Python, JS, TS, Go, Rust, Java, C, C++ |
 
 ---
 
@@ -347,6 +395,25 @@ Contributions welcome! Please follow these steps:
 - New features must include unit tests
 - Maintain backward API compatibility
 - Security-sensitive code must pass bandit scan
+
+---
+
+## Roadmap
+
+### v2.2 Planned
+
+- [ ] Memory system integration into agent loop (auto store/retrieve)
+- [ ] Semantic search auto-wired as built-in tool
+- [ ] Cross-session conversation persistence
+- [ ] Web UI frontend
+- [ ] More pre-configured MCP servers
+
+### Future Directions
+
+- Multi-agent automatic orchestration
+- Built-in RAG pipeline
+- Native vision model support (screenshot understanding)
+- VS Code / JetBrains plugins
 
 ---
 

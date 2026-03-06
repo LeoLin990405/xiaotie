@@ -6,7 +6,7 @@ import sys
 import time
 
 # 版本号
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 # 小铁 Logo - 8球风格像素图案
 LOGO_FRAMES = [

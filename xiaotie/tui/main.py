@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from ..agent import Agent
+from ..agent import AgentConfig, AgentRuntime
 from ..commands import Commands
 from ..config import Config
 from ..llm import LLMClient
@@ -133,15 +133,19 @@ def run_tui():
     # 创建会话管理器
     session_mgr = SessionManager()
 
-    # 创建 Agent
-    agent = Agent(
+    # 创建 Agent (v2 state-machine runtime)
+    agent_config = AgentConfig(
+        max_steps=config.agent.max_steps,
+        stream=True,
+        enable_thinking=True,
+    )
+
+    agent = AgentRuntime(
         llm_client=llm_client,
         system_prompt=system_prompt,
         tools=tools,
-        max_steps=config.agent.max_steps,
+        config=agent_config,
         workspace_dir=str(workspace),
-        stream=True,  # 开启 TUI 模式下的流式输出
-        enable_thinking=True,
     )
 
     # 创建命令管理器

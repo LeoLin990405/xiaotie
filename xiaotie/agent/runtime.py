@@ -215,6 +215,61 @@ class AgentRuntime:
             self._state = RuntimeState.IDLE
             await _session_state.release(self.session_id)
 
+    async def _build_context_messages(self) -> list[Message]:
+        """使用 ContextEngine + RepoMap 构建优化后的消息列表
+
+        如果未设置 ContextEngine，直接返回原始消息。
+        """
+        if self._context_engine is None:
+            return self.messages
+
+        # 提取系统提示和用户查询
+        system_prompt = ""
+        query = ""
+        for msg in self.messages:
+            if msg.role == "system":
+                system_prompt = msg.content or ""
+            elif msg.role == "user":
+                query = msg.content or ""  # 使用最后一条用户消息
+
+        # 生成 repo map (如果可用)
+        repo_map_str = None
+        if self._repomap_engine is not None:
+            try:
+                # 从对话中提取提到的文件路径作为 chat_files
+                chat_files = self._extract_mentioned_files()
+                repo_map_str = self._repomap_engine.get_ranked_map(
+                    chat_fnames=chat_files,
+                    other_fnames=[],
+                    max_map_tokens=int(self.config.token_limit * 0.15),
+                )
+            except Exception as e:
+                logger.warning("RepoMap 生成失败，跳过: %s", e)
+
+        # 使用 ContextEngine 组装上下文
+        try:
+            bundle = await self._context_engine.compose_context(
+                query=query,
+                conversation=self.messages,
+                repo_map=repo_map_str,
+                system_prompt=system_prompt,
+            )
+            return bundle.to_messages(system_prompt)
+        except Exception as e:
+            logger.warning("ContextEngine 组装失败，使用原始消息: %s", e)
+            return self.messages
+
+    def _extract_mentioned_files(self) -> list[str]:
+        """从对话历史中提取提到的文件路径"""
+        import re
+        files = set()
+        pattern = re.compile(r'[\w./\\-]+\.(?:py|js|ts|go|rs|java|c|cpp|h)')
+        for msg in self.messages:
+            if msg.content:
+                matches = pattern.findall(msg.content)
+                files.update(matches)
+        return list(files)[:20]  # 限制数量避免过载
+
     async def _loop(self) -> str:
         """状态机主循环"""
         for step in range(self.config.max_steps):
@@ -235,12 +290,15 @@ class AgentRuntime:
             # Token 管理
             self.messages = await self.response_handler.maybe_summarize(self.messages)
 
+            # 构建上下文优化后的消息 (ContextEngine + RepoMap)
+            context_messages = await self._build_context_messages()
+
             # 调用 LLM
             tool_schemas = [t.to_schema() for t in self.executor.tools.values()]
             llm_start = time.perf_counter()
             try:
                 response = await self.response_handler.generate(
-                    messages=self.messages,
+                    messages=context_messages,
                     tool_schemas=tool_schemas,
                     stream=self.config.stream,
                 )
@@ -344,6 +402,86 @@ class AgentRuntime:
 
         self._transition(RuntimeState.REFLECTING)
         return RuntimeState.REFLECTING, response.content
+
+    # ── Compatibility shims for Commands / CLI / TUI ──────────────────
+    # These properties let code that was written for the old Agent class
+    # work unchanged with AgentRuntime.
+
+    @property
+    def tools(self) -> dict:
+        return self.executor.tools
+
+    @property
+    def llm(self) -> LLMClient:
+        return self.response_handler.llm
+
+    @property
+    def stream(self) -> bool:
+        return self.config.stream
+
+    @stream.setter
+    def stream(self, value: bool):
+        self.config.stream = value
+
+    @property
+    def enable_thinking(self) -> bool:
+        return self.config.enable_thinking
+
+    @enable_thinking.setter
+    def enable_thinking(self, value: bool):
+        self.config.enable_thinking = value
+
+    @property
+    def parallel_tools(self) -> bool:
+        return self.config.parallel_tools
+
+    @parallel_tools.setter
+    def parallel_tools(self, value: bool):
+        self.config.parallel_tools = value
+
+    @property
+    def max_steps(self) -> int:
+        return self.config.max_steps
+
+    @property
+    def token_limit(self) -> int:
+        return self.config.token_limit
+
+    @property
+    def quiet(self) -> bool:
+        return self.config.quiet
+
+    @property
+    def api_total_tokens(self) -> int:
+        return self.response_handler.api_total_tokens
+
+    @property
+    def api_input_tokens(self) -> int:
+        return self.response_handler.api_input_tokens
+
+    @property
+    def api_output_tokens(self) -> int:
+        return self.response_handler.api_output_tokens
+
+    @property
+    def on_thinking(self):
+        return self.response_handler.on_thinking
+
+    @on_thinking.setter
+    def on_thinking(self, value):
+        self.response_handler.on_thinking = value
+
+    @property
+    def on_content(self):
+        return self.response_handler.on_content
+
+    @on_content.setter
+    def on_content(self, value):
+        self.response_handler.on_content = value
+
+    def _estimate_tokens(self) -> int:
+        """Compatibility: estimate tokens for current messages."""
+        return self.response_handler.estimate_tokens(self.messages)
 
     def reset(self):
         """重置运行时"""

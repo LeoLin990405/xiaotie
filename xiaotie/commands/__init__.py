@@ -24,6 +24,7 @@ from .metrics import MetricsCommandsMixin
 from .quality import QualityCommandsMixin
 from .profiles import ProfilesCommandsMixin
 from .custom import CustomCommandsMixin
+from .secret_cmd import SecretCommands
 
 
 class Commands(
@@ -36,6 +37,7 @@ class Commands(
     QualityCommandsMixin,
     ProfilesCommandsMixin,
     CustomCommandsMixin,
+    SecretCommands,
 ):
     """
     命令管理器

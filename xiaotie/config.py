@@ -232,6 +232,13 @@ class Config(BaseModel):
         if not data:
             raise ValueError("配置文件为空")
 
+        # 解析 ${secret:...} 和 ${env:...} 占位符
+        try:
+            from xiaotie.secrets import get_secret_manager
+            data = get_secret_manager().resolve_config(data)
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"密钥解析失败，使用原始配置: {e}")
+
         # 获取 API key（支持环境变量）
         # 兼容老版本配置（llm_data打平在最外层）
         llm_data = data.get("llm", {})

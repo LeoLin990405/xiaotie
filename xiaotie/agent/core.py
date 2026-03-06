@@ -16,6 +16,7 @@ import logging
 import re
 import time
 import uuid
+import warnings
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
@@ -81,6 +82,12 @@ class Agent:
             session_id: 会话 ID，用于并发控制。默认自动生成。
         """
         self.llm = llm_client
+        warnings.warn(
+            "Agent class is deprecated, use AgentRuntime instead. "
+            "Agent will be removed in v3.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.tools: dict[str, Tool] = {t.name: t for t in tools}
         self.workspace_dir = workspace_dir
         self.session_id = session_id or str(uuid.uuid4())[:8]

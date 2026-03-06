@@ -14,11 +14,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
 from pathlib import Path
 
-from .agent import Agent
+logger = logging.getLogger(__name__)
+
+from .agent import AgentConfig, AgentRuntime
 from .banner import VERSION, print_banner, print_ready, print_status
 from .commands import Commands
 from .config import Config
@@ -229,10 +232,10 @@ async def _setup_agent(
     stream: bool = True,
     thinking: bool = True,
     quiet: bool = False,
-) -> tuple[Agent, PluginManager, list]:
-    """Shared setup: workspace, tools, plugins, MCP, LLM client, Agent.
+) -> tuple[AgentRuntime, PluginManager, list]:
+    """Shared setup: workspace, tools, plugins, MCP, LLM client, AgentRuntime.
 
-    Returns (agent, plugin_manager, mcp_tools).
+    Returns (runtime, plugin_manager, mcp_tools).
     """
     workspace = Path(config.agent.workspace_dir).absolute()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -271,23 +274,45 @@ async def _setup_agent(
         retry_config=retry_config,
     )
 
-    # Agent
-    agent = Agent(
-        llm_client=llm_client,
-        system_prompt=system_prompt,
-        tools=tools,
+    # AgentRuntime (v2 state-machine agent)
+    agent_config = AgentConfig(
         max_steps=config.agent.max_steps,
-        workspace_dir=str(workspace),
         stream=stream,
         enable_thinking=thinking,
         quiet=quiet,
     )
 
-    return agent, plugin_mgr, mcp_tools
+    runtime = AgentRuntime(
+        llm_client=llm_client,
+        system_prompt=system_prompt,
+        tools=tools,
+        config=agent_config,
+        workspace_dir=str(workspace),
+    )
+
+    # 集成 ContextEngine (token 预算管理)
+    try:
+        from xiaotie.context_engine import ContextEngine
+        context_engine = ContextEngine(token_budget=agent_config.token_limit)
+        runtime.set_context_engine(context_engine)
+        logger.debug("ContextEngine 已集成 (budget=%d)", agent_config.token_limit)
+    except Exception as e:
+        logger.debug("ContextEngine 未启用: %s", e)
+
+    # 集成 RepoMapEngine (代码导航)
+    try:
+        from xiaotie.repomap_v2 import RepoMapEngine
+        repomap_engine = RepoMapEngine(workspace_dir=str(workspace))
+        runtime.set_repomap_engine(repomap_engine)
+        logger.debug("RepoMapEngine 已集成 (workspace=%s)", workspace)
+    except Exception as e:
+        logger.debug("RepoMapEngine 未启用: %s", e)
+
+    return runtime, plugin_mgr, mcp_tools
 
 
 async def interactive_loop(
-    agent: Agent,
+    agent: AgentRuntime,
     session_mgr: SessionManager,
     plugin_mgr: PluginManager,
     display: Display,

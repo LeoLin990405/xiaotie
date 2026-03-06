@@ -378,6 +378,175 @@ class TestGetStats:
 
 
 # ---------------------------------------------------------------------------
+# _build_context_messages() - ContextEngine + RepoMap integration
+# ---------------------------------------------------------------------------
+
+class TestBuildContextMessages:
+    async def test_no_context_engine_returns_raw_messages(self, runtime):
+        """Without ContextEngine, _build_context_messages returns self.messages as-is."""
+        runtime.messages.append(Message(role="user", content="hello"))
+        result = await runtime._build_context_messages()
+        assert result is runtime.messages
+
+    async def test_with_context_engine(self, runtime):
+        """With ContextEngine, compose_context is called and to_messages returns optimized list."""
+        mock_bundle = MagicMock()
+        optimized = [Message(role="system", content="optimized")]
+        mock_bundle.to_messages.return_value = optimized
+
+        mock_engine = AsyncMock()
+        mock_engine.compose_context = AsyncMock(return_value=mock_bundle)
+
+        runtime.set_context_engine(mock_engine)
+        runtime.messages.append(Message(role="user", content="test query"))
+
+        result = await runtime._build_context_messages()
+
+        assert result == optimized
+        mock_engine.compose_context.assert_called_once()
+        call_kwargs = mock_engine.compose_context.call_args
+        assert call_kwargs.kwargs.get("query") == "test query"
+
+    async def test_with_repomap_engine(self, runtime):
+        """RepoMap is called and its output passed to compose_context."""
+        mock_bundle = MagicMock()
+        mock_bundle.to_messages.return_value = [Message(role="system", content="ok")]
+
+        mock_context = AsyncMock()
+        mock_context.compose_context = AsyncMock(return_value=mock_bundle)
+
+        mock_repomap = MagicMock()
+        mock_repomap.get_ranked_map.return_value = "src/main.py:\n  main (L1)"
+
+        runtime.set_context_engine(mock_context)
+        runtime.set_repomap_engine(mock_repomap)
+        runtime.messages.append(Message(role="user", content="show me the code"))
+
+        result = await runtime._build_context_messages()
+
+        mock_repomap.get_ranked_map.assert_called_once()
+        compose_kwargs = mock_context.compose_context.call_args.kwargs
+        assert compose_kwargs.get("repo_map") == "src/main.py:\n  main (L1)"
+
+    async def test_context_engine_failure_falls_back(self, runtime):
+        """If ContextEngine raises, fallback to raw messages."""
+        mock_engine = AsyncMock()
+        mock_engine.compose_context = AsyncMock(side_effect=RuntimeError("boom"))
+
+        runtime.set_context_engine(mock_engine)
+        runtime.messages.append(Message(role="user", content="test"))
+
+        result = await runtime._build_context_messages()
+        assert result is runtime.messages
+
+    async def test_repomap_failure_still_composes(self, runtime):
+        """If RepoMap fails, compose_context is still called with repo_map=None."""
+        mock_bundle = MagicMock()
+        mock_bundle.to_messages.return_value = [Message(role="system", content="ok")]
+
+        mock_context = AsyncMock()
+        mock_context.compose_context = AsyncMock(return_value=mock_bundle)
+
+        mock_repomap = MagicMock()
+        mock_repomap.get_ranked_map.side_effect = Exception("tree-sitter fail")
+
+        runtime.set_context_engine(mock_context)
+        runtime.set_repomap_engine(mock_repomap)
+        runtime.messages.append(Message(role="user", content="test"))
+
+        result = await runtime._build_context_messages()
+        compose_kwargs = mock_context.compose_context.call_args.kwargs
+        assert compose_kwargs.get("repo_map") is None
+
+
+# ---------------------------------------------------------------------------
+# _extract_mentioned_files()
+# ---------------------------------------------------------------------------
+
+class TestExtractMentionedFiles:
+    def test_extracts_python_files(self, runtime):
+        runtime.messages.append(Message(role="user", content="edit src/main.py and utils/helper.py"))
+        files = runtime._extract_mentioned_files()
+        assert "src/main.py" in files
+        assert "utils/helper.py" in files
+
+    def test_extracts_multiple_languages(self, runtime):
+        runtime.messages.append(Message(role="user", content="check app.ts and lib.go and main.rs"))
+        files = runtime._extract_mentioned_files()
+        assert "app.ts" in files
+        assert "lib.go" in files
+        assert "main.rs" in files
+
+    def test_limits_to_20(self, runtime):
+        many_files = " ".join([f"file{i}.py" for i in range(30)])
+        runtime.messages.append(Message(role="user", content=many_files))
+        files = runtime._extract_mentioned_files()
+        assert len(files) <= 20
+
+    def test_no_files_returns_empty(self, runtime):
+        runtime.messages.append(Message(role="user", content="hello world"))
+        files = runtime._extract_mentioned_files()
+        assert files == []
+
+
+# ---------------------------------------------------------------------------
+# Compatibility shims
+# ---------------------------------------------------------------------------
+
+class TestCompatibilityShims:
+    def test_tools_property(self, runtime):
+        assert isinstance(runtime.tools, dict)
+        assert "dummy" in runtime.tools
+
+    def test_llm_property(self, runtime, mock_llm):
+        assert runtime.llm is mock_llm
+
+    def test_stream_property(self, runtime):
+        assert runtime.stream is False  # config.stream = False
+        runtime.stream = True
+        assert runtime.config.stream is True
+
+    def test_enable_thinking_property(self, runtime):
+        original = runtime.enable_thinking
+        runtime.enable_thinking = not original
+        assert runtime.config.enable_thinking is not original
+
+    def test_parallel_tools_property(self, runtime):
+        original = runtime.parallel_tools
+        runtime.parallel_tools = not original
+        assert runtime.config.parallel_tools is not original
+
+    def test_max_steps_property(self, runtime):
+        assert runtime.max_steps == 5
+
+    def test_token_limit_property(self, runtime):
+        assert runtime.token_limit == runtime.config.token_limit
+
+    def test_quiet_property(self, runtime):
+        assert runtime.quiet is True
+
+    def test_token_counters(self, runtime):
+        assert runtime.api_total_tokens == 0
+        assert runtime.api_input_tokens == 0
+        assert runtime.api_output_tokens == 0
+
+    def test_on_thinking_callback(self, runtime):
+        cb = lambda x: x
+        runtime.on_thinking = cb
+        assert runtime.response_handler.on_thinking is cb
+
+    def test_on_content_callback(self, runtime):
+        cb = lambda x: x
+        runtime.on_content = cb
+        assert runtime.response_handler.on_content is cb
+
+    def test_estimate_tokens(self, runtime):
+        tokens = runtime._estimate_tokens()
+        assert isinstance(tokens, int)
+        assert tokens >= 0
+
+
+# ---------------------------------------------------------------------------
 # set_context_engine / set_repomap_engine
 # ---------------------------------------------------------------------------
 
