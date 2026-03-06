@@ -6,7 +6,6 @@
 
 import asyncio
 import json
-import pickle
 import sqlite3
 import time
 from abc import ABC, abstractmethod
@@ -15,8 +14,12 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
 
+import logging
+
 from ..schema import Message
 from ..storage.database import Database
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryType(Enum):
@@ -249,7 +252,7 @@ class DatabaseBackend(BaseMemoryBackend):
     async def store(self, chunk: MemoryChunk) -> bool:
         """存储记忆块"""
         try:
-            embedding_blob = pickle.dumps(chunk.embedding) if chunk.embedding else None
+            embedding_blob = json.dumps(chunk.embedding).encode('utf-8') if chunk.embedding else None
             metadata_json = json.dumps(chunk.metadata) if chunk.metadata else '{}'
             tags_json = json.dumps(chunk.tags) if chunk.tags else '[]'
             
@@ -263,7 +266,7 @@ class DatabaseBackend(BaseMemoryBackend):
             ))
             return True
         except Exception as e:
-            print(f"存储记忆块失败: {e}")
+            logger.error("Failed to store memory chunk: %s", e)
             return False
     
     async def retrieve(self, query: str, top_k: int = 5) -> List[MemoryChunk]:
@@ -279,7 +282,7 @@ class DatabaseBackend(BaseMemoryBackend):
             
             chunks = []
             for row in rows:
-                embedding = pickle.loads(row['embedding']) if row['embedding'] else None
+                embedding = json.loads(row['embedding']) if row['embedding'] else None
                 metadata = json.loads(row['metadata']) if row['metadata'] else {}
                 tags = json.loads(row['tags']) if row['tags'] else []
                 
@@ -297,7 +300,7 @@ class DatabaseBackend(BaseMemoryBackend):
             
             return chunks
         except Exception as e:
-            print(f"检索记忆块失败: {e}")
+            logger.error("Failed to retrieve memory chunks: %s", e)
             return []
     
     async def update(self, chunk: MemoryChunk) -> bool:
@@ -310,7 +313,7 @@ class DatabaseBackend(BaseMemoryBackend):
             await self.db.execute_async("DELETE FROM memories WHERE id = ?", (memory_id,))
             return self.db.cursor.rowcount > 0
         except Exception as e:
-            print(f"删除记忆块失败: {e}")
+            logger.error("Failed to delete memory chunk: %s", e)
             return False
     
     async def search_by_tags(self, tags: List[str], top_k: int = 10) -> List[MemoryChunk]:
@@ -333,7 +336,7 @@ class DatabaseBackend(BaseMemoryBackend):
             
             chunks = []
             for row in rows:
-                embedding = pickle.loads(row['embedding']) if row['embedding'] else None
+                embedding = json.loads(row['embedding']) if row['embedding'] else None
                 metadata = json.loads(row['metadata']) if row['metadata'] else {}
                 tags = json.loads(row['tags']) if row['tags'] else []
                 
@@ -351,7 +354,7 @@ class DatabaseBackend(BaseMemoryBackend):
             
             return chunks
         except Exception as e:
-            print(f"按标签搜索失败: {e}")
+            logger.error("Failed to search by tags: %s", e)
             return []
 
 

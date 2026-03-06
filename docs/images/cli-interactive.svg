@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="520">
+  <defs>
+    <style>
+      .bg { fill: #1e1e2e; }
+      .titlebar { fill: #313244; }
+      .red { fill: #f38ba8; }
+      .yellow { fill: #f9e2af; }
+      .green { fill: #a6e3a1; }
+      .text { fill: #cdd6f4; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .dim { fill: #6c7086; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .cyan { fill: #89dceb; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .green-text { fill: #a6e3a1; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .yellow-text { fill: #f9e2af; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .blue-text { fill: #89b4fa; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .pink-text { fill: #f5c2e7; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; }
+      .bold { font-weight: bold; }
+    </style>
+  </defs>
+  <rect class="bg" width="820" height="520" rx="10"/>
+  <rect class="titlebar" width="820" height="36" rx="10 10 0 0"/>
+  <circle class="red" cx="20" cy="18" r="6"/>
+  <circle class="yellow" cx="40" cy="18" r="6"/>
+  <circle class="green" cx="60" cy="18" r="6"/>
+  <text class="dim" x="370" y="22" text-anchor="middle">xiaotie — zsh — 120×40</text>
+
+  <text class="cyan bold" x="20" y="65">  ▄███▄     小铁 XiaoTie v2.0.0</text>
+  <text class="green-text" x="20" y="82">  █ ⚙ █    状态机 Agent · tree-sitter RepoMap · OS 沙箱</text>
+  <text class="cyan bold" x="20" y="99">  ▀███▀     ~/Desktop/xiaotie</text>
+
+  <text class="dim" x="20" y="125">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
+  <text class="text" x="20" y="145">  Provider: GLM (zhipu)  Model: GLM-4.7</text>
+  <text class="text" x="20" y="162">  Tools: 23 loaded  MCP: 2 servers</text>
+  <text class="text" x="20" y="179">  Sandbox: Seatbelt (macOS)  Thinking: ON</text>
+  <text class="dim" x="20" y="196">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
+  <text class="green-text bold" x="20" y="216">  ✓ 就绪 · 输入 /help 查看帮助 · /quit 退出</text>
+
+  <text class="blue-text bold" x="20" y="248">小铁 ❯</text>
+  <text class="text" x="100" y="248">帮我分析 xiaotie/agent/runtime.py 的架构</text>
+
+  <text class="dim" x="20" y="275">🤔 思考中...</text>
+  <text class="yellow-text" x="20" y="295">  [思考] 分析 AgentRuntime 状态机架构，包含 5 个状态...</text>
+
+  <text class="text" x="20" y="325">  📖 runtime.py 实现了状态机驱动的 Agent 运行时：</text>
+  <text class="text" x="20" y="345">  </text>
+  <text class="cyan" x="20" y="365">  ┌─ IDLE ──→ THINKING ──→ ACTING ──→ OBSERVING ──→ REFLECTING ─┐</text>
+  <text class="cyan" x="20" y="382">  │     ↑        │                                    │         │</text>
+  <text class="cyan" x="20" y="399">  │     │        └── 完成 ──→ IDLE                     └── 继续 ──┘</text>
+  <text class="cyan" x="20" y="416">  └─────────────────────────────────────────────────────────────┘</text>
+
+  <text class="text" x="20" y="446">  核心组件: ToolExecutor + ResponseHandler + ContextEngine</text>
+  <text class="text" x="20" y="466">  工具执行: 并行模式, 权限检查, 审计日志</text>
+
+  <text class="dim" x="20" y="496">  ⏱ 3.2s · 1,247 tokens (input: 892 / output: 355) · Step 1/50</text>
+</svg>

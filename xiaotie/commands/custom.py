@@ -164,6 +164,52 @@ class CustomCommandsMixin(CommandsBase):
         return [c.id for c in commands]
 
     def cmd_safe(self, args: str) -> tuple[bool, str]:
-        """切换安全模式（需要确认所有操作）"""
-        # 这里需要集成 PermissionManager
-        return True, "⚠️ 安全模式功能开发中"
+        """安全模式管理 (用法: /safe [strict|relaxed|status])"""
+        pm = getattr(self.agent, "permission_manager", None)
+        if pm is None:
+            return True, "⚠️ 权限管理器未初始化"
+
+        sub = args.strip().lower() if args else "status"
+
+        if sub == "strict":
+            pm.auto_approve_low_risk = True
+            pm.auto_approve_medium_risk = False
+            pm.require_double_confirm_high_risk = True
+            return True, (
+                "🔒 已切换到严格模式\n"
+                "  • 低风险: 自动批准\n"
+                "  • 中风险: 需要确认\n"
+                "  • 高风险: 需要二次确认"
+            )
+        elif sub == "relaxed":
+            pm.auto_approve_low_risk = True
+            pm.auto_approve_medium_risk = True
+            pm.require_double_confirm_high_risk = False
+            return True, (
+                "🔓 已切换到宽松模式\n"
+                "  • 低/中风险: 自动批准\n"
+                "  • 高风险: 单次确认"
+            )
+        else:
+            # status
+            stats = pm.get_stats()
+            history = pm.get_decision_history()
+            recent = history[-5:] if history else []
+
+            lines = [
+                "\n🛡️ 安全模式状态",
+                f"  自动批准低风险: {'✅' if stats['auto_approve_low_risk'] else '❌'}",
+                f"  自动批准中风险: {'✅' if stats['auto_approve_medium_risk'] else '❌'}",
+                f"  高风险二次确认: {'✅' if pm.require_double_confirm_high_risk else '❌'}",
+                f"  会话白名单: {stats['session_whitelist']} 条",
+                f"  永久白名单: {stats['permanent_whitelist']} 条",
+                f"  决策总数: {stats['total_decisions']}",
+            ]
+            if recent:
+                lines.append("\n  📋 最近决策:")
+                for d in recent:
+                    icon = "✅" if d["approved"] else "❌"
+                    lines.append(f"    {icon} [{d['risk_level']}] {d['tool_name']}: {d['reason']}")
+
+            lines.append("\n  用法: /safe strict | /safe relaxed")
+            return True, "\n".join(lines)

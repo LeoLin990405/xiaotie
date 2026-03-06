@@ -76,11 +76,26 @@ class ReadTool(Tool):
             "required": ["path"],
         }
 
+    def _check_path_safety(self, file_path: Path) -> str | None:
+        """Check that resolved path is within workspace. Returns error string or None."""
+        try:
+            resolved = file_path.resolve()
+            workspace_resolved = self.workspace_dir.resolve()
+            if not (resolved == workspace_resolved or str(resolved).startswith(str(workspace_resolved) + "/")):
+                return f"Access denied: path {resolved} is outside workspace {workspace_resolved}"
+        except (OSError, ValueError) as e:
+            return f"Invalid path: {e}"
+        return None
+
     async def execute(self, path: str, max_tokens: int = 8000) -> ToolResult:
         try:
             file_path = Path(path)
             if not file_path.is_absolute():
                 file_path = self.workspace_dir / file_path
+
+            path_error = self._check_path_safety(file_path)
+            if path_error:
+                return ToolResult(success=False, error=path_error)
 
             if not file_path.exists():
                 return ToolResult(success=False, error=f"文件不存在: {file_path}")
@@ -129,11 +144,26 @@ class WriteTool(Tool):
             "required": ["path", "content"],
         }
 
+    def _check_path_safety(self, file_path: Path) -> str | None:
+        """Check that resolved path is within workspace. Returns error string or None."""
+        try:
+            resolved = file_path.resolve()
+            workspace_resolved = self.workspace_dir.resolve()
+            if not (resolved == workspace_resolved or str(resolved).startswith(str(workspace_resolved) + "/")):
+                return f"Access denied: path {resolved} is outside workspace {workspace_resolved}"
+        except (OSError, ValueError) as e:
+            return f"Invalid path: {e}"
+        return None
+
     async def execute(self, path: str, content: str) -> ToolResult:
         try:
             file_path = Path(path)
             if not file_path.is_absolute():
                 file_path = self.workspace_dir / file_path
+
+            path_error = self._check_path_safety(file_path)
+            if path_error:
+                return ToolResult(success=False, error=path_error)
 
             # 创建父目录
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,11 +212,26 @@ class EditTool(Tool):
             "required": ["path", "old_string", "new_string"],
         }
 
+    def _check_path_safety(self, file_path: Path) -> str | None:
+        """Check that resolved path is within workspace. Returns error string or None."""
+        try:
+            resolved = file_path.resolve()
+            workspace_resolved = self.workspace_dir.resolve()
+            if not (resolved == workspace_resolved or str(resolved).startswith(str(workspace_resolved) + "/")):
+                return f"Access denied: path {resolved} is outside workspace {workspace_resolved}"
+        except (OSError, ValueError) as e:
+            return f"Invalid path: {e}"
+        return None
+
     async def execute(self, path: str, old_string: str, new_string: str) -> ToolResult:
         try:
             file_path = Path(path)
             if not file_path.is_absolute():
                 file_path = self.workspace_dir / file_path
+
+            path_error = self._check_path_safety(file_path)
+            if path_error:
+                return ToolResult(success=False, error=path_error)
 
             if not file_path.exists():
                 return ToolResult(success=False, error=f"文件不存在: {file_path}")

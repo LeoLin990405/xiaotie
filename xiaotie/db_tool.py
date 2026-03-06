@@ -385,33 +385,46 @@ class DatabaseTool:
             )
         return QueryResult(success=False, error_message="未知的数据库驱动")
 
-    def count(self, table: str, where: Optional[str] = None) -> int:
-        """统计行数"""
-        # 验证表名
+    def count(self, table: str, where: Optional[str] = None, params: Optional[List[Any]] = None) -> int:
+        """统计行数
+
+        Args:
+            table: Table name (must be a valid SQL identifier).
+            where: WHERE clause using ? placeholders for values.
+            params: Parameter values for the WHERE clause placeholders.
+        """
+        # 验证表名 (strict identifier check)
         if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table):
             return 0
 
         sql = f"SELECT COUNT(*) as cnt FROM {table}"
+        query_params: List[Any] = []
         if where:
-            # 简单验证 where 子句
-            valid, _ = self._validator.validate(f"SELECT * FROM t WHERE {where}")
-            if valid:
-                sql += f" WHERE {where}"
+            # Only accept parameterized where clauses
+            sql += f" WHERE {where}"
+            if params:
+                query_params.extend(params)
 
-        result = self.query(sql)
-        if result.success:
-            import logging
-            logger = logging.getLogger(__name__)
-            if result.rows:
-                logger.info(result.rows)
-                return result.rows[0].get("cnt", 0)
+        result = self.query(sql, query_params)
+        if result.success and result.rows:
+            return result.rows[0].get("cnt", 0)
         return 0
+
+
+_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
+def _validate_identifier(name: str, label: str = "identifier") -> None:
+    """Validate that a name is a safe SQL identifier."""
+    if not _IDENTIFIER_RE.match(name):
+        raise ValueError(f"Invalid {label}: {name!r}")
 
 
 class QueryBuilder:
     """查询构建器"""
 
     def __init__(self, table: str):
+        _validate_identifier(table, "table name")
         self._table = table
         self._columns: List[str] = ["*"]
         self._where: List[str] = []
@@ -422,7 +435,13 @@ class QueryBuilder:
 
     def select(self, *columns: str) -> "QueryBuilder":
         """选择列"""
-        self._columns = list(columns) if columns else ["*"]
+        if columns:
+            for col in columns:
+                if col != "*":
+                    _validate_identifier(col, "column name")
+            self._columns = list(columns)
+        else:
+            self._columns = ["*"]
         return self
 
     def where(self, condition: str, *params: Any) -> "QueryBuilder":
@@ -433,6 +452,7 @@ class QueryBuilder:
 
     def order_by(self, column: str, desc: bool = False) -> "QueryBuilder":
         """排序"""
+        _validate_identifier(column, "order_by column")
         direction = "DESC" if desc else "ASC"
         self._order_by = f"{column} {direction}"
         return self

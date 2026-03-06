@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -136,9 +136,7 @@ class TestPythonTool:
             stdout="hello world\n",
             stderr="",
         )
-        # NOTE: PythonTool.execute 调用 self._sandbox.execute(code) 时没有 await，
-        # 所以这里用普通函数 mock（MagicMock）而非 AsyncMock。
-        python_tool._sandbox.execute = MagicMock(return_value=mock_result)
+        python_tool._sandbox.execute = AsyncMock(return_value=mock_result)
         result = await python_tool.execute(code="print('hello world')")
         assert result.success is True
         assert "hello world" in result.content
@@ -150,7 +148,7 @@ class TestPythonTool:
             stdout="",
             stderr="",
         )
-        python_tool._sandbox.execute = MagicMock(return_value=mock_result)
+        python_tool._sandbox.execute = AsyncMock(return_value=mock_result)
         result = await python_tool.execute(code="x = 1")
         assert result.success is True
         assert "无输出" in result.content
@@ -162,7 +160,7 @@ class TestPythonTool:
             stdout="ok\n",
             stderr="DeprecationWarning: ...\n",
         )
-        python_tool._sandbox.execute = MagicMock(return_value=mock_result)
+        python_tool._sandbox.execute = AsyncMock(return_value=mock_result)
         result = await python_tool.execute(code="import warnings")
         assert result.success is True
         assert "[stderr]" in result.content
@@ -173,7 +171,7 @@ class TestPythonTool:
             status=ExecutionStatus.TIMEOUT,
             error_message="Execution timed out after 5s",
         )
-        python_tool._sandbox.execute = MagicMock(return_value=mock_result)
+        python_tool._sandbox.execute = AsyncMock(return_value=mock_result)
         result = await python_tool.execute(code="while True: pass")
         assert result.success is False
         assert "超时" in result.error
@@ -185,14 +183,14 @@ class TestPythonTool:
             stderr="NameError: name 'x' is not defined",
             error_message="NameError: name 'x' is not defined",
         )
-        python_tool._sandbox.execute = MagicMock(return_value=mock_result)
+        python_tool._sandbox.execute = AsyncMock(return_value=mock_result)
         result = await python_tool.execute(code="print(x)")
         assert result.success is False
         assert "执行错误" in result.error
 
     @pytest.mark.asyncio
     async def test_sandbox_exception(self, python_tool):
-        python_tool._sandbox.execute = MagicMock(side_effect=RuntimeError("sandbox crash"))
+        python_tool._sandbox.execute = AsyncMock(side_effect=RuntimeError("sandbox crash"))
         result = await python_tool.execute(code="1+1")
         assert result.success is False
         assert "执行错误" in result.error

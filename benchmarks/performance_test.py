@@ -7,7 +7,8 @@
 import asyncio
 import time
 
-from xiaotie import Agent, AsyncLRUCache
+from xiaotie.agent import Agent
+from xiaotie.cache import AsyncLRUCache
 from xiaotie.events import EventBroker, EventType, MessageDeltaEvent
 from xiaotie.tools import PythonTool
 

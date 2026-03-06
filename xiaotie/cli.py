@@ -58,7 +58,7 @@ def start_metrics_server(display: Display):
     enabled = os.getenv("XIAOTIE_METRICS_ENABLED", "1").lower() not in {"0", "false", "off"}
     if not enabled:
         return
-    host = os.getenv("XIAOTIE_METRICS_HOST", "0.0.0.0")
+    host = os.getenv("XIAOTIE_METRICS_HOST", "127.0.0.1")
     port = int(os.getenv("XIAOTIE_METRICS_PORT", "9464"))
     try:
         from prometheus_client import start_http_server
@@ -224,6 +224,68 @@ def load_system_prompt(config: Config) -> str:
 请用中文回复用户，保持简洁专业。"""
 
 
+async def _setup_agent(
+    config: Config,
+    stream: bool = True,
+    thinking: bool = True,
+    quiet: bool = False,
+) -> tuple[Agent, PluginManager, list]:
+    """Shared setup: workspace, tools, plugins, MCP, LLM client, Agent.
+
+    Returns (agent, plugin_manager, mcp_tools).
+    """
+    workspace = Path(config.agent.workspace_dir).absolute()
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    # Tools
+    tools = create_tools(config, workspace)
+
+    # Plugins
+    plugin_mgr = PluginManager()
+    plugin_tools = plugin_mgr.load_all_plugins()
+    if plugin_tools:
+        tools.extend(plugin_tools)
+
+    # MCP
+    mcp_tools = await load_mcp_tools(config)
+    if mcp_tools:
+        tools.extend(mcp_tools)
+
+    # System prompt
+    system_prompt = load_system_prompt(config)
+
+    # LLM client
+    retry_config = RetryConfig(
+        enabled=config.llm.retry.enabled,
+        max_retries=config.llm.retry.max_retries,
+        initial_delay=config.llm.retry.initial_delay,
+        max_delay=config.llm.retry.max_delay,
+        exponential_base=config.llm.retry.exponential_base,
+    )
+
+    llm_client = LLMClient(
+        api_key=config.llm.api_key,
+        api_base=config.llm.api_base,
+        model=config.llm.model,
+        provider=config.llm.provider,
+        retry_config=retry_config,
+    )
+
+    # Agent
+    agent = Agent(
+        llm_client=llm_client,
+        system_prompt=system_prompt,
+        tools=tools,
+        max_steps=config.agent.max_steps,
+        workspace_dir=str(workspace),
+        stream=stream,
+        enable_thinking=thinking,
+        quiet=quiet,
+    )
+
+    return agent, plugin_mgr, mcp_tools
+
+
 async def interactive_loop(
     agent: Agent,
     session_mgr: SessionManager,
@@ -331,56 +393,12 @@ provider: anthropic
     print_status(f"Provider: {config.llm.provider}", "info")
     print_status(f"工作目录: {workspace}", "info")
 
-    # 创建工具
-    tools = create_tools(config, workspace)
-    print_status(f"已加载 {len(tools)} 个内置工具", "ok")
-
-    # 加载插件
-    plugin_mgr = PluginManager()
-    plugin_tools = plugin_mgr.load_all_plugins()
-    if plugin_tools:
-        tools.extend(plugin_tools)
-        print_status(f"已加载 {len(plugin_tools)} 个插件工具", "ok")
-
-    # 加载 MCP 工具
-    mcp_tools = await load_mcp_tools(config)
-    if mcp_tools:
-        tools.extend(mcp_tools)
-        print_status(f"已加载 {len(mcp_tools)} 个 MCP 工具", "ok")
-
-    # 加载系统提示词
-    system_prompt = load_system_prompt(config)
-
-    # 创建 LLM 客户端
-    retry_config = RetryConfig(
-        enabled=config.llm.retry.enabled,
-        max_retries=config.llm.retry.max_retries,
-        initial_delay=config.llm.retry.initial_delay,
-        max_delay=config.llm.retry.max_delay,
-        exponential_base=config.llm.retry.exponential_base,
-    )
-
-    llm_client = LLMClient(
-        api_key=config.llm.api_key,
-        api_base=config.llm.api_base,
-        model=config.llm.model,
-        provider=config.llm.provider,
-        retry_config=retry_config,
-    )
+    # Setup agent (shared logic)
+    agent, plugin_mgr, mcp_tools = await _setup_agent(config, stream=stream, thinking=thinking)
+    print_status(f"已加载 {len(agent.tools)} 个工具", "ok")
 
     # 创建会话管理器
     session_mgr = SessionManager()
-
-    # 创建 Agent
-    agent = Agent(
-        llm_client=llm_client,
-        system_prompt=system_prompt,
-        tools=tools,
-        max_steps=config.agent.max_steps,
-        workspace_dir=str(workspace),
-        stream=stream,
-        enable_thinking=thinking,
-    )
 
     print_ready()
 
@@ -503,58 +521,10 @@ async def run_non_interactive(
             print(f"❌ 配置错误: {e}")
         sys.exit(1)
 
-    # 创建工作目录
-    workspace = Path(config.agent.workspace_dir).absolute()
-    workspace.mkdir(parents=True, exist_ok=True)
-
-    # 创建工具
-    tools = create_tools(config, workspace)
-
-    # 加载插件
-    plugin_mgr = PluginManager()
-    plugin_tools = plugin_mgr.load_all_plugins()
-    if plugin_tools:
-        tools.extend(plugin_tools)
-
-    # 加载 MCP 工具 (非交互模式)
-    mcp_tools = await load_mcp_tools(config)
-    if mcp_tools:
-        tools.extend(mcp_tools)
-
-    # 加载系统提示词
-    system_prompt = load_system_prompt(config)
-
-    # 创建 LLM 客户端
-    retry_config = RetryConfig(
-        enabled=config.llm.retry.enabled,
-        max_retries=config.llm.retry.max_retries,
-        initial_delay=config.llm.retry.initial_delay,
-        max_delay=config.llm.retry.max_delay,
-        exponential_base=config.llm.retry.exponential_base,
-    )
-
-    llm_client = LLMClient(
-        api_key=config.llm.api_key,
-        api_base=config.llm.api_base,
-        model=config.llm.model,
-        provider=config.llm.provider,
-        retry_config=retry_config,
-    )
-
-    # 创建 Agent
-    # JSON 输出模式下禁用流式输出和工具打印
+    # Setup agent (shared logic)
     use_stream = stream and not quiet and output_format != "json"
     use_quiet = quiet or output_format == "json"
-    agent = Agent(
-        llm_client=llm_client,
-        system_prompt=system_prompt,
-        tools=tools,
-        max_steps=config.agent.max_steps,
-        workspace_dir=str(workspace),
-        stream=use_stream,
-        enable_thinking=thinking,
-        quiet=use_quiet,
-    )
+    agent, _, _ = await _setup_agent(config, stream=use_stream, thinking=thinking, quiet=use_quiet)
 
     # 运行
     try:

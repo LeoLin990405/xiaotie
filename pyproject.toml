@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xiaotie"
-version = "1.1.0"
+version = "2.0.0"
 description = "小铁 - 轻量级 AI Agent 框架"
 readme = "README.md"
 license = "MIT"
@@ -52,6 +52,14 @@ scraper = [
     "aiohttp>=3.9.0",
     "tqdm>=4.65.0",
 ]
+repomap = [
+    "tree-sitter>=0.21.0",
+    "tree-sitter-languages>=1.10.0",
+    "networkx>=3.0",
+]
+secrets = [
+    "keyring>=25.0",
+]
 automation = [
     "pyobjc-framework-Quartz>=10.0",
     "Appium-Python-Client>=4.0.0",
@@ -74,6 +82,7 @@ all = [
     "xiaotie[search]",
     "xiaotie[proxy]",
     "xiaotie[scraper]",
+    "xiaotie[repomap]",
     "xiaotie[automation]",
     "xiaotie[docs]",
 ]
@@ -101,6 +110,14 @@ target-version = "py39"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.bandit]
+exclude_dirs = ["tests", "benchmarks", "scripts"]
+skips = ["B101"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

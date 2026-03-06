@@ -140,7 +140,7 @@ def run_tui():
         tools=tools,
         max_steps=config.agent.max_steps,
         workspace_dir=str(workspace),
-        stream=False,  # TUI 模式下不使用流式
+        stream=True,  # 开启 TUI 模式下的流式输出
         enable_thinking=True,
     )
 

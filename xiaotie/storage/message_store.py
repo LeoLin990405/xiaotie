@@ -17,7 +17,7 @@ class MessageStore:
     def __init__(self, db: Optional[Database] = None):
         self.db = db or get_database()
 
-    async def create(self, message: MessageRecord) -> MessageRecord:
+    async def create(self, message: MessageRecord, commit: bool = True) -> MessageRecord:
         """创建消息"""
         await self.db.execute(
             """
@@ -37,7 +37,8 @@ class MessageStore:
                 message.finished_at,
             ),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return message
 
     async def get(self, message_id: str) -> Optional[MessageRecord]:
@@ -77,7 +78,7 @@ class MessageStore:
         )
         return [MessageRecord.from_row(row) for row in rows]
 
-    async def update(self, message: MessageRecord) -> MessageRecord:
+    async def update(self, message: MessageRecord, commit: bool = True) -> MessageRecord:
         """更新消息"""
         message.updated_at = current_timestamp_ms()
         await self.db.execute(
@@ -99,25 +100,28 @@ class MessageStore:
                 message.id,
             ),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return message
 
-    async def delete(self, message_id: str) -> bool:
+    async def delete(self, message_id: str, commit: bool = True) -> bool:
         """删除消息"""
         cursor = await self.db.execute(
             "DELETE FROM messages WHERE id = ?",
             (message_id,),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return cursor.rowcount > 0
 
-    async def delete_by_session(self, session_id: str) -> int:
+    async def delete_by_session(self, session_id: str, commit: bool = True) -> int:
         """删除会话的所有消息"""
         cursor = await self.db.execute(
             "DELETE FROM messages WHERE session_id = ?",
             (session_id,),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return cursor.rowcount
 
     async def count_by_session(self, session_id: str) -> int:
@@ -144,7 +148,7 @@ class MessageStore:
         # 反转顺序，使最早的在前
         return [MessageRecord.from_row(row) for row in reversed(rows)]
 
-    async def mark_finished(self, message_id: str) -> None:
+    async def mark_finished(self, message_id: str, commit: bool = True) -> None:
         """标记消息完成"""
         now = current_timestamp_ms()
         await self.db.execute(
@@ -156,7 +160,8 @@ class MessageStore:
             """,
             (now, now, message_id),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
 
     async def search(self, session_id: str, query: str, limit: int = 20) -> list[MessageRecord]:
         """搜索消息"""
@@ -173,7 +178,7 @@ class MessageStore:
         )
         return [MessageRecord.from_row(row) for row in rows]
 
-    async def bulk_create(self, messages: list[MessageRecord]) -> None:
+    async def bulk_create(self, messages: list[MessageRecord], commit: bool = True) -> None:
         """批量创建消息"""
         await self.db.executemany(
             """
@@ -196,4 +201,5 @@ class MessageStore:
                 for m in messages
             ],
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()

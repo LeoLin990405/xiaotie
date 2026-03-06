@@ -1114,29 +1114,59 @@ class XiaoTieApp(App):
         self.is_processing = True
 
         try:
-            # 设置回调（TUI 模式下不使用流式回调）
-            self.agent.on_thinking = lambda x: None
-            self.agent.on_content = lambda x: None
+            from .streaming import StreamingMessage, StreamingRenderer
+            
+            messages = self.query_one("#messages-pane", MessageList)
+            
+            # 移除欢迎消息
+            if not messages._has_messages:
+                welcome = messages.query("#welcome-msg")
+                for w in welcome:
+                    w.remove()
+                messages._has_messages = True
+
+            # 创建流式消息和渲染器
+            streaming_msg = StreamingMessage()
+            messages.mount(streaming_msg)
+            messages.scroll_end(animate=False)
+            
+            renderer = StreamingRenderer(
+                message_widget=streaming_msg,
+                scroll_callback=lambda: messages.scroll_end(animate=False)
+            )
+            await renderer.start()
+
+            # 设置回调
+            self.agent.on_thinking = renderer.on_thinking
+            self.agent.on_content = renderer.on_content
 
             # 运行
             result = await self.agent.run(user_input)
+            
+            await renderer.stop()
 
             # 更新 token 统计
             self.total_tokens = self.agent.api_total_tokens
 
-            # 获取最后的思考内容
-            thinking = None
-            if self.agent.messages:
-                last_msg = self.agent.messages[-1]
-                if hasattr(last_msg, "thinking"):
-                    thinking = last_msg.thinking
-
-            # 添加回复
-            self.add_message("assistant", result, thinking=thinking)
-
         except Exception as e:
+            error_str = str(e).lower()
+            if "rate" in error_str or "429" in error_str or "quota" in error_str:
+                guidance = "请稍后重试，或使用 Ctrl+M 切换到其他模型"
+                variant = "warning"
+            elif "auth" in error_str or "401" in error_str or "api_key" in error_str or "invalid" in error_str:
+                guidance = "请检查 API Key 配置，使用 /config 查看当前设置"
+                variant = "error"
+            elif "timeout" in error_str or "timed out" in error_str:
+                guidance = "请求超时，请检查网络或缩短提示词后重试"
+                variant = "warning"
+            elif "connect" in error_str or "network" in error_str or "resolve" in error_str:
+                guidance = "网络连接失败，请检查网络环境或代理设置"
+                variant = "error"
+            else:
+                guidance = f"{e} · 可用 /help 查看命令"
+                variant = "error"
             self.add_message("system", f"错误: {e}", is_error=True)
-            self.show_toast("错误", f"{e} · 可用 /help 查看命令", variant="error")
+            self.show_toast("错误", guidance, variant=variant)
 
         finally:
             self.is_processing = False
@@ -1234,11 +1264,13 @@ class XiaoTieApp(App):
     def _classify_risky_intent(self, cmd_line: str) -> Tuple[bool, str]:
         command = cmd_line.strip().lower()
         patterns: Dict[str, str] = {
-            r"^(quit|exit)$": "退出会话",
-            r"^(reset|clear)$": "清空上下文",
-            r"^(delete|remove|rm)\b": "删除数据",
-            r"^(danger|unsafe|safe off)\b": "降级安全策略",
-            r"^(process-manager|kill)\b": "进程终止",
+            r"^(quit|exit)$": "退出会话（未保存的对话将丢失）",
+            r"^(reset|clear)$": "清空上下文（当前对话历史将被清除）",
+            r"^(delete|remove|rm)\b": "删除数据（该操作不可撤销）",
+            r"^(danger|unsafe|safe off)\b": "降级安全策略（将允许高风险操作自动执行）",
+            r"^(process-manager|kill)\b": "进程终止（可能影响正在运行的服务）",
+            r"^compact\b": "压缩对话历史（早期消息细节将被摘要替代）",
+            r"^undo\b": "撤销最后对话（将移除最后一组问答）",
         }
         for pattern, intent in patterns.items():
             if re.search(pattern, command):

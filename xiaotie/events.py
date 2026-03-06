@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import weakref
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -325,17 +326,21 @@ class EventBroker(Generic[T]):
 
 # 全局事件代理
 _global_broker: Optional[EventBroker] = None
+_global_broker_lock = threading.Lock()
 
 
 def get_event_broker() -> EventBroker:
-    """获取全局事件代理"""
+    """获取全局事件代理（线程安全）"""
     global _global_broker
     if _global_broker is None:
-        _global_broker = EventBroker()
+        with _global_broker_lock:
+            if _global_broker is None:
+                _global_broker = EventBroker()
     return _global_broker
 
 
 def set_event_broker(broker: EventBroker):
     """设置全局事件代理"""
     global _global_broker
-    _global_broker = broker
+    with _global_broker_lock:
+        _global_broker = broker

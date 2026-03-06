@@ -17,7 +17,7 @@ class SessionStore:
     def __init__(self, db: Optional[Database] = None):
         self.db = db or get_database()
 
-    async def create(self, session: SessionRecord) -> SessionRecord:
+    async def create(self, session: SessionRecord, commit: bool = True) -> SessionRecord:
         """创建会话"""
         await self.db.execute(
             """
@@ -39,7 +39,8 @@ class SessionStore:
                 session.created_at,
             ),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return session
 
     async def get(self, session_id: str) -> Optional[SessionRecord]:
@@ -79,7 +80,7 @@ class SessionStore:
         )
         return [SessionRecord.from_row(row) for row in rows]
 
-    async def update(self, session: SessionRecord) -> SessionRecord:
+    async def update(self, session: SessionRecord, commit: bool = True) -> SessionRecord:
         """更新会话"""
         session.updated_at = current_timestamp_ms()
         await self.db.execute(
@@ -105,16 +106,18 @@ class SessionStore:
                 session.id,
             ),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return session
 
-    async def delete(self, session_id: str) -> bool:
+    async def delete(self, session_id: str, commit: bool = True) -> bool:
         """删除会话"""
         cursor = await self.db.execute(
             "DELETE FROM sessions WHERE id = ?",
             (session_id,),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return cursor.rowcount > 0
 
     async def update_tokens(
@@ -123,6 +126,7 @@ class SessionStore:
         prompt_tokens: int,
         completion_tokens: int,
         cost: float = 0.0,
+        commit: bool = True,
     ) -> None:
         """更新 token 统计"""
         await self.db.execute(
@@ -142,9 +146,10 @@ class SessionStore:
                 session_id,
             ),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
 
-    async def increment_message_count(self, session_id: str) -> None:
+    async def increment_message_count(self, session_id: str, commit: bool = True) -> None:
         """增加消息计数"""
         await self.db.execute(
             """
@@ -155,7 +160,8 @@ class SessionStore:
             """,
             (current_timestamp_ms(), session_id),
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
 
     async def count(self) -> int:
         """获取会话总数"""

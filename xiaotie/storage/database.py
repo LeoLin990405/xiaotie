@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -252,6 +253,7 @@ class BatchCommitDatabase(Database):
 
 # 全局数据库实例
 _database: Optional[Database] = None
+_database_lock = threading.Lock()
 
 
 def get_default_db_path() -> str:
@@ -267,20 +269,22 @@ def get_default_db_path() -> str:
 
 
 def get_database() -> Database:
-    """获取全局数据库实例"""
+    """获取全局数据库实例（线程安全）"""
     global _database
     if _database is None:
-        _database = Database(get_default_db_path())
+        with _database_lock:
+            if _database is None:
+                _database = BatchCommitDatabase(get_default_db_path(), flush_interval=0.5, max_pending=50)
     return _database
-
 
 async def init_database(db_path: Optional[str] = None) -> Database:
     """初始化数据库"""
     global _database
-    if db_path:
-        _database = Database(db_path)
-    else:
-        _database = Database(get_default_db_path())
+    with _database_lock:
+        if db_path:
+            _database = BatchCommitDatabase(db_path, flush_interval=0.5, max_pending=50)
+        else:
+            _database = BatchCommitDatabase(get_default_db_path(), flush_interval=0.5, max_pending=50)
 
     await _database.connect()
     await _database.migrate()

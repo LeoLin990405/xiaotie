@@ -43,7 +43,7 @@ class PythonTool(Tool):
     async def execute(self, code: str) -> ToolResult:
         """通过 Sandbox 执行 Python 代码"""
         try:
-            result = self._sandbox.execute(code)
+            result = await self._sandbox.execute(code)
 
             if result.status == ExecutionStatus.SUCCESS:
                 output = result.stdout

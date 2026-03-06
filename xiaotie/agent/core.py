@@ -12,11 +12,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 import time
 import uuid
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 try:
     import tiktoken
@@ -217,7 +220,7 @@ class Agent:
 
         estimated = self._estimate_tokens()
         if not self.quiet:
-            print(f"⚠️ Token 接近限制 ({estimated}/{self.config.token_limit})，正在摘要...")
+            logger.info("Token approaching limit (%d/%d), summarizing...", estimated, self.config.token_limit)
 
         # 保留 system 消息
         system_msg = self.messages[0] if self.messages[0].role == "system" else None
@@ -263,7 +266,7 @@ class Agent:
                 new_messages.append(Message(role="assistant", content=f"[历史摘要]\n{summary}"))
             except Exception as e:
                 if not self.quiet:
-                    print(f"⚠️ 摘要生成失败: {e}")
+                    logger.warning("Summary generation failed: %s", e)
 
         # 添加保留的用户消息
         new_messages.extend(recent_user_msgs)
@@ -273,7 +276,7 @@ class Agent:
 
         self.messages = new_messages
         if not self.quiet:
-            print(f"✅ 摘要完成，消息数: {len(self.messages)}")
+            logger.info("Summary complete, message count: %d", len(self.messages))
 
     async def _publish_event(self, event: Event):
         """发布事件"""
@@ -444,15 +447,15 @@ class Agent:
             return []
 
         if not self.quiet:
-            print(f"\n⚡ 并行执行 {len(tool_calls)} 个工具...")
+            logger.info("Parallel execution of %d tools...", len(tool_calls))
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         tasks = [self._execute_single_tool(tc) for tc in tool_calls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
 
         if not self.quiet:
-            print(f"   ⏱️ 完成，总耗时 {elapsed:.2f}s")
+            logger.info("Parallel execution complete, elapsed %.2fs", elapsed)
 
         # 处理结果
         final_results = []
@@ -465,83 +468,120 @@ class Agent:
 
         return final_results
 
-    async def _execute_single_tool(self, tool_call) -> tuple[str, str, str]:
-        """执行单个工具"""
-        tool_call_id = tool_call.id
-        function_name = tool_call.function.name
-        arguments = tool_call.function.arguments
+    def _get_llm_info(self) -> tuple[str, str]:
+        """Return (provider_name, model_name) for audit logging."""
         provider = getattr(self.llm, "provider", "unknown")
         provider_name = getattr(provider, "value", str(provider))
         model_name = getattr(getattr(self.llm, "_client", None), "model", None) or getattr(
             self.llm, "model", "unknown"
         )
+        return provider_name, model_name
+
+    def _make_audit_data(self, provider_name: str, model_name: str,
+                         tool_origin: str, risk_level: str, **extra) -> dict:
+        """Build audit data dict for tool events."""
+        audit = {
+            "caller": "agent",
+            "provider": provider_name,
+            "model": model_name,
+            "tool_origin": tool_origin,
+            "risk_level": risk_level,
+        }
+        audit.update(extra)
+        return {"audit": audit}
+
+    async def _publish_tool_complete(self, function_name: str, tool_call_id: str,
+                                     success: bool, elapsed: float,
+                                     audit_data: dict, *,
+                                     result: str = "", error: str = ""):
+        """Publish ToolCompleteEvent and record telemetry."""
+        await self._publish_event(
+            ToolCompleteEvent(
+                tool_name=function_name,
+                tool_id=tool_call_id,
+                success=success,
+                result=result[:500] if result else "",
+                error=error or None,
+                duration=elapsed,
+                data=audit_data,
+            )
+        )
+        self.telemetry.record_tool_call(
+            tool_name=function_name, latency_sec=elapsed, success=success
+        )
+
+    async def _execute_single_tool(self, tool_call) -> tuple[str, str, str]:
+        """执行单个工具"""
+        tool_call_id = tool_call.id
+        function_name = tool_call.function.name
+        arguments = tool_call.function.arguments
+        provider_name, model_name = self._get_llm_info()
         risk_level = self.permission_manager.get_risk_level(function_name, arguments).value
         tool_origin = self._resolve_tool_origin(function_name)
+        audit_data = self._make_audit_data(
+            provider_name, model_name, tool_origin, risk_level,
+            arguments_summary=self._summarize_arguments(arguments),
+        )
 
-        # 发布工具开始事件
         await self._publish_event(
             ToolStartEvent(
                 tool_name=function_name,
                 tool_id=tool_call_id,
                 arguments=arguments,
-                data={
-                    "audit": {
-                        "caller": "agent",
-                        "provider": provider_name,
-                        "model": model_name,
-                        "tool_origin": tool_origin,
-                        "risk_level": risk_level,
-                        "arguments_summary": self._summarize_arguments(arguments),
-                    }
-                },
+                data=audit_data,
             )
         )
 
-        # 格式化参数显示
         if not self.quiet:
             args_display = ", ".join(f"{k}={repr(v)[:50]}" for k, v in arguments.items())
-            print(f"\n🔧 {function_name}({args_display})")
+            logger.info("Tool call: %s(%s)", function_name, args_display)
 
+        # Resolve tool
         tool = self.tools.get(function_name)
         if not tool:
-            result_content = f"错误: 未知工具 '{function_name}'"
-            if not self.quiet:
-                print(f"   ❌ {result_content}")
-            await self._publish_event(
-                ToolCompleteEvent(
-                    tool_name=function_name,
-                    tool_id=tool_call_id,
-                    success=False,
-                    error=result_content,
-                )
+            available = ", ".join(sorted(self.tools.keys())[:5])
+            result_content = (
+                f"\u9519\u8bef: \u672a\u77e5\u5de5\u5177 '{function_name}'\n"
+                f"  \u2192 \u53ef\u7528\u5de5\u5177: {available}...\n"
+                f"  \u2192 \u4f7f\u7528 /tools \u67e5\u770b\u5b8c\u6574\u5217\u8868"
             )
-            self.telemetry.record_tool_call(tool_name=function_name, latency_sec=0.0, success=False)
+            if not self.quiet:
+                logger.warning("Unknown tool: %s", function_name)
+            await self._publish_tool_complete(
+                function_name, tool_call_id, False, 0.0, {}, error=result_content
+            )
             return (tool_call_id, function_name, result_content)
 
+        # Check permission
         allowed, reason = await self.permission_manager.check_permission(function_name, arguments)
         if not allowed:
-            result_content = f"权限拒绝: {reason}"
-            await self._publish_event(
-                ToolCompleteEvent(
-                    tool_name=function_name,
-                    tool_id=tool_call_id,
-                    success=False,
-                    error=result_content,
-                    data={
-                        "audit": {
-                            "caller": "agent",
-                            "provider": provider_name,
-                            "model": model_name,
-                            "tool_origin": tool_origin,
-                            "risk_level": risk_level,
-                            "decision": "denied",
-                            "reason": reason,
-                        }
-                    },
-                )
+            recovery_hint = (
+                f"  \u2192 \u5f53\u524d\u98ce\u9669\u7b49\u7ea7: {risk_level.upper()}\n"
+                f"  \u2192 \u4f7f\u7528 /safe \u8c03\u6574\u5b89\u5168\u7b56\u7565\uff0c\u6216\u91cd\u65b0\u8fd0\u884c\u4ee5\u4ea4\u4e92\u5f0f\u786e\u8ba4"
             )
-            self.telemetry.record_tool_call(tool_name=function_name, latency_sec=0.0, success=False)
+            result_content = f"\u6743\u9650\u62d2\u7edd: {reason}\n{recovery_hint}"
+            denied_audit = self._make_audit_data(
+                provider_name, model_name, tool_origin, risk_level,
+                decision="denied", reason=reason,
+            )
+            await self._publish_tool_complete(
+                function_name, tool_call_id, False, 0.0, denied_audit, error=result_content
+            )
             return (tool_call_id, function_name, result_content)
+
+        # Execute
+        return await self._run_tool(
+            tool, tool_call_id, function_name, arguments,
+            provider_name, model_name, tool_origin, risk_level,
+        )
+
+    async def _run_tool(self, tool, tool_call_id: str, function_name: str,
+                        arguments: dict, provider_name: str, model_name: str,
+                        tool_origin: str, risk_level: str) -> tuple[str, str, str]:
+        """Execute tool and handle result/error/exception."""
+        allowed_audit = self._make_audit_data(
+            provider_name, model_name, tool_origin, risk_level, decision="allowed"
+        )
 
         start_time = time.perf_counter()
         try:
@@ -552,91 +592,40 @@ class Agent:
                 result_content = result.content
                 result_content, blocked, block_reason = self._filter_sensitive_output(result_content)
                 if blocked:
-                    result_content = f"⚠️ 输出已拦截: {block_reason}"
-                # 显示结果预览
+                    result_content = f"⚠️ 敏感内容已脱敏 ({block_reason}):\n{result_content}"
                 if not self.quiet:
                     preview = result_content[:100].replace("\n", " ")
                     if len(result_content) > 100:
                         preview += "..."
-                    print(f"   ✅ ({elapsed:.1f}s) {preview}")
+                    logger.info("Tool %s OK (%.1fs): %s", function_name, elapsed, preview)
 
-                await self._publish_event(
-                    ToolCompleteEvent(
-                        tool_name=function_name,
-                        tool_id=tool_call_id,
-                        success=not blocked,
-                        result=result_content[:500],
-                        error=block_reason if blocked else None,
-                        duration=elapsed,
-                        data={
-                            "audit": {
-                                "caller": "agent",
-                                "provider": provider_name,
-                                "model": model_name,
-                                "tool_origin": tool_origin,
-                                "risk_level": risk_level,
-                                "decision": "allowed",
-                                "sensitive_blocked": blocked,
-                            }
-                        },
-                    )
+                success_audit = self._make_audit_data(
+                    provider_name, model_name, tool_origin, risk_level,
+                    decision="allowed", sensitive_blocked=blocked,
                 )
-                self.telemetry.record_tool_call(
-                    tool_name=function_name, latency_sec=elapsed, success=not blocked
+                await self._publish_tool_complete(
+                    function_name, tool_call_id, not blocked, elapsed,
+                    success_audit, result=result_content,
+                    error=block_reason if blocked else "",
                 )
             else:
                 result_content = f"错误: {result.error}"
                 if not self.quiet:
-                    print(f"   ❌ ({elapsed:.1f}s) {result.error}")
-
-                await self._publish_event(
-                    ToolCompleteEvent(
-                        tool_name=function_name,
-                        tool_id=tool_call_id,
-                        success=False,
-                        error=result.error,
-                        duration=elapsed,
-                        data={
-                            "audit": {
-                                "caller": "agent",
-                                "provider": provider_name,
-                                "model": model_name,
-                                "tool_origin": tool_origin,
-                                "risk_level": risk_level,
-                                "decision": "allowed",
-                            }
-                        },
-                    )
-                )
-                self.telemetry.record_tool_call(
-                    tool_name=function_name, latency_sec=elapsed, success=False
+                    logger.warning("Tool %s failed (%.1fs): %s", function_name, elapsed, result.error)
+                await self._publish_tool_complete(
+                    function_name, tool_call_id, False, elapsed,
+                    allowed_audit, error=result.error or "",
                 )
 
         except Exception as e:
             elapsed = time.perf_counter() - start_time
             result_content = f"执行异常: {e}"
             if not self.quiet:
-                print(f"   ❌ {result_content}")
-
-            await self._publish_event(
-                ToolCompleteEvent(
-                    tool_name=function_name,
-                    tool_id=tool_call_id,
-                    success=False,
-                    error=str(e),
-                    data={
-                        "audit": {
-                            "caller": "agent",
-                            "provider": provider_name,
-                            "model": model_name,
-                            "tool_origin": tool_origin,
-                            "risk_level": risk_level,
-                            "decision": "allowed",
-                        }
-                    },
-                )
+                logger.error("Tool %s exception: %s", function_name, e)
+            await self._publish_tool_complete(
+                function_name, tool_call_id, False, elapsed,
+                allowed_audit, error=str(e),
             )
-            self.telemetry.record_tool_call(tool_name=function_name, latency_sec=elapsed, success=False)
 
         return (tool_call_id, function_name, result_content)
 
@@ -682,8 +671,7 @@ class Agent:
                 return
             if not thinking_started:
                 if not self.on_thinking:
-                    # 只有在没有外部回调时才打印标题
-                    print("\n💭 思考中...", flush=True)
+                    logger.debug("Thinking started")
                 thinking_started = True
                 await self._publish_event(Event(type=EventType.THINKING_START))
 
@@ -697,13 +685,12 @@ class Agent:
                 return
             if not content_started:
                 if not self.on_content:
-                    # 只有在没有外部回调时才打印标题
-                    print("\n🤖 小铁:", flush=True)
+                    logger.debug("Content streaming started")
                 content_started = True
                 await self._publish_event(Event(type=EventType.MESSAGE_START))
 
             if not self.on_content:
-                print(text, end="", flush=True)
+                logger.debug("Content chunk: %d chars", len(text))
             _buffer_event(MessageDeltaEvent(content=text))
             if self.on_content:
                 self.on_content(text)
@@ -727,7 +714,7 @@ class Agent:
         await _flush_events()
 
         if content_started and not self.quiet:
-            print()  # 换行
+            logger.debug("Content streaming complete")
 
         if thinking_started:
             await self._publish_event(Event(type=EventType.THINKING_COMPLETE))
@@ -765,20 +752,38 @@ class Agent:
             "permission": self.permission_manager.get_stats(),
         }
 
+    # Patterns that strongly indicate real secrets (high-specificity).
+    # Each pattern is matched and the matching substring is redacted rather
+    # than blocking the entire output, reducing false-positive impact.
+    _SENSITIVE_PATTERNS = [
+        # AWS Access Key ID: exactly AKIA + 16 uppercase alnum
+        (re.compile(r"AKIA[0-9A-Z]{16}"), "检测到疑似 AWS Access Key"),
+        # Private keys (PEM format)
+        (re.compile(r"-----BEGIN (RSA|EC|DSA|OPENSSH|PGP) PRIVATE KEY-----"), "检测到私钥内容"),
+        # GitHub / GitLab tokens (specific prefixes)
+        (re.compile(r"gh[pousr]_[A-Za-z0-9_]{36,}"), "检测到疑似 GitHub Token"),
+        (re.compile(r"glpat-[A-Za-z0-9\-_]{20,}"), "检测到疑似 GitLab Token"),
+        # High-entropy strings assigned to secret-like variable names.
+        # Requires: variable name containing secret/password/api_key AND
+        # a value of 16+ non-whitespace chars (avoids matching short/placeholder values).
+        (re.compile(
+            r'(?i)(?:api[_-]?key|secret[_-]?key|api[_-]?secret|password|passwd|private[_-]?key)'
+            r'\s*[:=]\s*["\']?([A-Za-z0-9+/=_\-]{16,})["\']?'
+        ), "检测到疑似凭据赋值"),
+    ]
+
     def _filter_sensitive_output(self, output: str) -> tuple[str, bool, str]:
         if not isinstance(output, str) or not output:
             return output, False, ""
-        patterns = [
-            (r"AKIA[0-9A-Z]{16}", "检测到疑似 AWS Access Key"),
-            (r"(?i)api[_-]?key\s*[:=]\s*[^\s]+", "检测到疑似 API Key"),
-            (r"(?i)secret[_-]?key\s*[:=]\s*[^\s]+", "检测到疑似 Secret Key"),
-            (r"(?i)password\s*[:=]\s*[^\s]+", "检测到疑似密码字段"),
-            (r"(?i)token\s*[:=]\s*[^\s]+", "检测到疑似 Token 字段"),
-            (r"-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----", "检测到私钥内容"),
-        ]
-        for pattern, reason in patterns:
-            if re.search(pattern, output):
-                return "", True, reason
+        reasons = []
+        filtered = output
+        for pattern, reason in self._SENSITIVE_PATTERNS:
+            if pattern.search(filtered):
+                filtered = pattern.sub("[REDACTED]", filtered)
+                if reason not in reasons:
+                    reasons.append(reason)
+        if reasons:
+            return filtered, True, "; ".join(reasons)
         return output, False, ""
 
     def _summarize_arguments(self, arguments: Dict) -> Dict:

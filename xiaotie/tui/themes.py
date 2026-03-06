@@ -5,10 +5,40 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Tuple
+
+
+def _hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+    """Convert hex color string to RGB tuple."""
+    h = hex_color.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def _relative_luminance(hex_color: str) -> float:
+    """Calculate relative luminance per WCAG 2.1 definition."""
+    r, g, b = _hex_to_rgb(hex_color)
+    channels = []
+    for c in (r, g, b):
+        s = c / 255.0
+        channels.append(s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def contrast_ratio(fg: str, bg: str) -> float:
+    """Calculate WCAG contrast ratio between two hex colors.
+
+    Returns a value >= 1.0. WCAG 2.1 AA requires >= 4.5 for normal text.
+    """
+    l1 = _relative_luminance(fg)
+    l2 = _relative_luminance(bg)
+    lighter = max(l1, l2)
+    darker = min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
 
 
 @dataclass
@@ -128,6 +158,25 @@ class Theme:
         $border-subtle: {self.border_subtle};
         """
 
+    def validate_accessibility(self, min_ratio: float = 4.5) -> List[Tuple[str, str, float]]:
+        """Validate WCAG 2.1 AA contrast ratios.
+
+        Returns a list of failing (label, pair_description, ratio) tuples.
+        """
+        failures: List[Tuple[str, str, float]] = []
+        pairs = [
+            ("text", self.text, self.background),
+            ("text_muted", self.text_muted, self.background),
+            ("text_on_surface", self.text, self.surface),
+            ("text_muted_on_surface", self.text_muted, self.surface),
+            ("primary_on_bg", self.primary, self.background),
+        ]
+        for label, fg, bg in pairs:
+            ratio = contrast_ratio(fg, bg)
+            if ratio < min_ratio:
+                failures.append((label, f"{fg} on {bg}", round(ratio, 2)))
+        return failures
+
 
 # 预定义主题 - OpenCode 风格
 THEMES: Dict[str, Theme] = {
@@ -164,7 +213,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#434c5e",
         surface="#3b4252",
         text="#eceff4",
-        text_muted="#4c566a",
+        text_muted="#d8dee9",
         border="#434c5e",
         border_active="#88c0d0",
         border_subtle="#3b4252",
@@ -193,7 +242,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#6272a4",
         surface="#44475a",
         text="#f8f8f2",
-        text_muted="#6272a4",
+        text_muted="#a0a4b8",
         border="#44475a",
         border_active="#bd93f9",
         border_subtle="#282a36",
@@ -222,7 +271,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#49483e",
         surface="#3e3d32",
         text="#f8f8f2",
-        text_muted="#75715e",
+        text_muted="#a5a09a",
         border="#49483e",
         border_active="#66d9ef",
         border_subtle="#3e3d32",
@@ -250,8 +299,8 @@ THEMES: Dict[str, Theme] = {
         background_panel="#073642",
         background_element="#586e75",
         surface="#073642",
-        text="#839496",
-        text_muted="#586e75",
+        text="#93a1a1",
+        text_muted="#839496",
         border="#073642",
         border_active="#268bd2",
         border_subtle="#002b36",
@@ -270,7 +319,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#504945",
         surface="#3c3836",
         text="#ebdbb2",
-        text_muted="#928374",
+        text_muted="#a89984",
         border="#504945",
         border_active="#83a598",
         border_subtle="#3c3836",
@@ -299,7 +348,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#45475a",
         surface="#313244",
         text="#cdd6f4",
-        text_muted="#6c7086",
+        text_muted="#9399b2",
         border="#45475a",
         border_active="#89b4fa",
         border_subtle="#313244",
@@ -328,7 +377,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#414868",
         surface="#24283b",
         text="#c0caf5",
-        text_muted="#565f89",
+        text_muted="#8b95b5",
         border="#414868",
         border_active="#7aa2f7",
         border_subtle="#24283b",
@@ -357,7 +406,7 @@ THEMES: Dict[str, Theme] = {
         background_element="#3e4451",
         surface="#21252b",
         text="#abb2bf",
-        text_muted="#5c6370",
+        text_muted="#9da5b4",
         border="#3e4451",
         border_active="#61afef",
         border_subtle="#21252b",
@@ -458,6 +507,35 @@ THEMES: Dict[str, Theme] = {
         syntax_string="#fbbf24",
         syntax_number="#34d399",
         syntax_comment="#94a3b8",
+    ),
+    "high-contrast": Theme(
+        name="高对比度",
+        primary="#00e5ff",
+        secondary="#e040fb",
+        accent="#76ff03",
+        success="#00e676",
+        warning="#ffea00",
+        error="#ff1744",
+        info="#00e5ff",
+        background="#000000",
+        background_panel="#121212",
+        background_element="#1e1e1e",
+        surface="#121212",
+        text="#ffffff",
+        text_muted="#b0bec5",
+        border="#ffffff",
+        border_active="#00e5ff",
+        border_subtle="#424242",
+        diff_added="#00e676",
+        diff_removed="#ff1744",
+        markdown_heading="#00e5ff",
+        markdown_link="#e040fb",
+        markdown_code="#00e676",
+        syntax_keyword="#e040fb",
+        syntax_function="#00e5ff",
+        syntax_string="#76ff03",
+        syntax_number="#ffea00",
+        syntax_comment="#b0bec5",
     ),
 }
 

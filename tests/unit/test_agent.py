@@ -209,7 +209,9 @@ class TestAgentSecurity:
             "type": "function",
             "function": {"name": "dummy", "description": "dummy", "parameters": {}},
         }
-        tool.execute = AsyncMock(return_value=ToolResult(success=True, content="api_key=secret123"))
+        tool.execute = AsyncMock(return_value=ToolResult(
+            success=True, content="api_key=sk-abc123def456ghi789jkl012mno345"
+        ))
 
         agent = Agent(
             llm_client=mock_llm,
@@ -221,7 +223,57 @@ class TestAgentSecurity:
         )
         tc = ToolCall(id="tc1", function=FunctionCall(name="dummy", arguments={}))
         _, _, result = await agent._execute_single_tool(tc)
-        assert "输出已拦截" in result
+        assert "REDACTED" in result
+        assert "敏感内容已脱敏" in result
+
+    async def test_sensitive_filter_aws_key(self, mock_llm):
+        """AWS Access Key ID should be redacted"""
+        agent = Agent(llm_client=mock_llm, system_prompt="t", tools=[], quiet=True, stream=False)
+        output, blocked, reason = agent._filter_sensitive_output("key is AKIAIOSFODNN7EXAMPLE")
+        assert blocked is True
+        assert "REDACTED" in output
+        assert "AWS" in reason
+
+    async def test_sensitive_filter_private_key(self, mock_llm):
+        """PEM private keys should be redacted"""
+        agent = Agent(llm_client=mock_llm, system_prompt="t", tools=[], quiet=True, stream=False)
+        pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIE..."
+        output, blocked, reason = agent._filter_sensitive_output(pem)
+        assert blocked is True
+        assert "REDACTED" in output
+
+    async def test_sensitive_filter_github_token(self, mock_llm):
+        """GitHub tokens (ghp_) should be redacted"""
+        agent = Agent(llm_client=mock_llm, system_prompt="t", tools=[], quiet=True, stream=False)
+        output, blocked, reason = agent._filter_sensitive_output(
+            "token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh1234"
+        )
+        assert blocked is True
+        assert "REDACTED" in output
+        assert "GitHub" in reason
+
+    async def test_sensitive_filter_no_false_positive_on_word_token(self, mock_llm):
+        """The word 'token' in normal code should NOT trigger a block"""
+        agent = Agent(llm_client=mock_llm, system_prompt="t", tools=[], quiet=True, stream=False)
+        output, blocked, _ = agent._filter_sensitive_output(
+            "def get_token(self):\n    return self.token"
+        )
+        assert blocked is False
+        assert output == "def get_token(self):\n    return self.token"
+
+    async def test_sensitive_filter_no_false_positive_on_short_value(self, mock_llm):
+        """Short values like password=test should NOT trigger"""
+        agent = Agent(llm_client=mock_llm, system_prompt="t", tools=[], quiet=True, stream=False)
+        output, blocked, _ = agent._filter_sensitive_output("password = test")
+        assert blocked is False
+
+    async def test_sensitive_filter_empty_and_none(self, mock_llm):
+        """Empty/None inputs should pass through"""
+        agent = Agent(llm_client=mock_llm, system_prompt="t", tools=[], quiet=True, stream=False)
+        output, blocked, _ = agent._filter_sensitive_output("")
+        assert blocked is False
+        output2, blocked2, _ = agent._filter_sensitive_output(None)
+        assert blocked2 is False
 
     async def test_high_risk_tool_denied_in_non_interactive(self, mock_llm):
         tool = MagicMock()

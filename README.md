@@ -1,695 +1,482 @@
-# ⚙️ 小铁 (XiaoTie)
-
-轻量级 AI Agent 框架，基于 [Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，参考 [OpenCode](https://github.com/opencode-ai/opencode) 设计。
+<div align="center">
 
 ```
- ▄███▄     小铁 XiaoTie v1.1.0
- █ ⚙ █    GLM-4.7 · OpenAI · Claude
- ▀███▀     ~/workspace
+ ▄███▄     小铁 XiaoTie v2.0
+ █ ⚙ █    状态机 Agent · tree-sitter RepoMap · OS 沙箱
+ ▀███▀
 ```
+
+# 小铁 (XiaoTie)
+
+**状态机驱动的 AI Coding Agent 框架，内置 OS 级沙箱、tree-sitter 代码导航和分层密钥管理。**
+
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Tests](https://img.shields.io/badge/Tests-1686%20passed-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-59%25-yellow)
+![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+
+[English](./README_EN.md) · [变更日志](./CHANGELOG.md) · [API 参考](./docs/api-reference.md)
+
+</div>
+
+---
+
+## 功能截图
+
+### 交互式 CLI
+
+<div align="center">
+<img src="docs/images/cli-interactive.svg" alt="交互式 CLI 界面" width="750"/>
+</div>
+
+> 支持深度思考、流式输出、多工具并行执行、状态机实时展示。
+
+### 架构总览
+
+<div align="center">
+<img src="docs/images/architecture.svg" alt="v2.0 架构" width="750"/>
+</div>
+
+> 5 层架构: 交互层 → 编排层 (状态机) → 认知层 → 工具层 → 基础层
+
+### 密钥管理
+
+<div align="center">
+<img src="docs/images/secret-management.svg" alt="密钥管理" width="750"/>
+</div>
+
+> 分层密钥解析: System Keyring → 环境变量 → 配置 Fallback
+
+### CI/CD 流水线
+
+<div align="center">
+<img src="docs/images/ci-pipeline.svg" alt="CI/CD 流水线" width="750"/>
+</div>
+
+> Lint → Test (4 Python 版本) → Security Scan → Performance Gate
+
+---
 
 ## 特性
 
-### 核心功能
-- 🔄 **Agent 执行循环** - 自动工具调用与任务完成
-- 🌊 **流式输出** - 实时显示思考过程和回复
-- 💭 **深度思考** - 支持 GLM-4.7 thinking 模式
-- 💾 **会话管理** - 保存/加载对话历史
-- 📝 **Token 管理** - 自动摘要历史消息
-- ⚡ **优雅取消** - 支持 Ctrl+C 中断
-- 🚀 **并行工具执行** - 多工具调用并行执行，提升效率
-- 🖥️ **TUI 模式** - 基于 Textual 的现代化终端界面
-- 📤 **非交互模式** - 支持单次查询和 JSON 输出
-- 🔌 **MCP 协议支持** - 连接 MCP 服务器，扩展工具能力
-- 🔬 **LSP 集成** - 语言服务器协议，实时诊断
-- 🤖 **多 Agent 协作** - 子任务分解与并行执行
-- 💾 **SQLite 持久化** - 高性能会话与消息存储
-- 🔍 **语义搜索** - 基于向量的代码语义搜索
+### v2.0 亮点
+
+| 模块 | 说明 |
+|------|------|
+| **AgentRuntime** | 状态机驱动 (IDLE→THINKING→ACTING→OBSERVING→REFLECTING)，替代单体循环 |
+| **ToolExecutor** | 并行工具执行、权限检查、审计日志、敏感输出脱敏 |
+| **ResponseHandler** | 流式/非流式统一处理、Token 预算管理、自动摘要 |
+| **ContextEngine** | 基于优先级的 Token 预算上下文组装 (system/repo_map/memory/conversation) |
+| **RepoMapEngine** | tree-sitter AST 解析 + NetworkX PageRank 代码导航 (支持 8 种语言) |
+| **SandboxManager** | OS 级沙箱 (macOS Seatbelt / Linux Bubblewrap / Fallback rlimits) |
+| **SecretManager** | 分层密钥管理 (keyring → 环境变量 → 配置 fallback)，`${secret:...}` 语法 |
+
+### 核心能力
+
+- Agent 执行循环 (状态机 + 传统模式兼容)
+- 流式输出、深度思考 (thinking mode)
+- 会话管理、Token 自动摘要
+- 并行工具执行、优雅取消 (Ctrl+C)
+- TUI 模式 (Textual)、非交互模式 (JSON 输出)
+- MCP 协议支持 (连接外部 MCP 服务器)
+- 插件系统、自定义命令
+- 多 LLM 支持 (Anthropic / OpenAI / GLM / Gemini / DeepSeek / Qwen / MiniMax)
 
 ### 工具系统
-- 📁 **文件操作** - 读取、写入、编辑文件
-- 🖥️ **Bash 命令** - 执行 shell 命令
-- 🐍 **Python 执行** - 运行 Python 代码
-- 🔢 **计算器** - 数学计算
-- 🌿 **Git 操作** - 版本控制（status/diff/log/commit）
-- 🔍 **Web 搜索** - DuckDuckGo 搜索
-- 🌐 **网页获取** - 获取网页内容
-- 📊 **代码分析** - 提取类、函数、依赖关系
-- 🔎 **语义搜索** - 基于向量的代码语义搜索
-- 💻 **系统信息** - 获取系统硬件和软件信息
-- 🔧 **进程管理** - 管理和监控系统进程
-- 🌐 **网络工具** - 执行网络诊断和扫描操作
-- 🔌 **内置代理** - HTTP/HTTPS 代理抓包，无需外部工具，支持小程序请求分析
-- 📡 **Charles 集成** - 封装 Charles Proxy 自动化抓包
-- 🕷️ **爬虫工具** - 结构化 Web 数据抓取，多线程并发、6 种认证、稳定性验证
-- 🤖 **macOS 自动化** - 微信/小程序自动化，AppleScript + Accessibility API，支持截图、消息发送、代理抓包集成
 
-### 代码库感知 (RepoMap)
-- 📂 **目录树** - 可视化项目结构
-- 🗺️ **代码映射** - 提取类、函数定义
-- 🔎 **智能搜索** - 按关键词查找相关文件
+文件操作、Bash 命令、Python 执行、Git 操作、Web 搜索/获取、代码分析、语义搜索、系统信息、进程管理、网络工具、内置代理、爬虫、macOS 自动化等 20+ 工具。
 
-### 多 LLM 支持
-- 🤖 **Anthropic Claude** - Claude 3.5/4 系列
-- 🧠 **OpenAI GPT** - GPT-4o 等
-- 🔮 **智谱 GLM-4.7** - 深度思考 + 工具流式
-- 🌈 **MiniMax** - abab 系列
-- 🌟 **Google Gemini** - Gemini Pro/Flash (v0.9.0 新增)
-- 🔷 **DeepSeek** - DeepSeek Chat/Coder (v0.9.0 新增)
-- 🟣 **Qwen** - 通义千问系列 (v0.9.0 新增)
+---
 
-## 安装
+## 快速开始
+
+### 安装
 
 ```bash
-# 克隆项目
 git clone https://github.com/LeoLin990405/xiaotie.git
 cd xiaotie
 
 # 基础安装
 pip install -e .
 
-# 安装 TUI 支持
-pip install -e ".[tui]"
-
-# 安装语义搜索支持
-pip install -e ".[search]"
-
 # 安装所有功能
 pip install -e ".[all]"
 
-# 或分别安装特定功能
-pip install -e ".[proxy]"      # 内置代理服务器
-pip install -e ".[scraper]"    # 爬虫模块
-pip install -e ".[automation]" # macOS自动化
+# 或按需安装
+pip install -e ".[tui]"        # TUI 界面
+pip install -e ".[repomap]"    # tree-sitter 代码导航
+pip install -e ".[secrets]"    # keyring 密钥管理
+pip install -e ".[search]"     # 语义搜索
 ```
+
+### 配置 API Key
+
+**推荐方式: 使用 keyring (安全)**
+
+```bash
+# 存储密钥到系统 keyring
+xiaotie secret set api_key
+# 输入你的 API Key
+
+# 在 config.yaml 中引用
+# api_key: ${secret:api_key}
+```
+
+**快速方式: 环境变量**
+
+```bash
+export XIAOTIE_API_KEY="your-key"
+# 或
+export ZHIPU_API_KEY="your-key"
+```
+
+### 运行
+
+```bash
+# 交互式
+xiaotie
+
+# TUI 模式
+xiaotie --tui
+
+# 非交互模式
+xiaotie -p "帮我分析这段代码" -f json
+
+# 安静模式
+xiaotie -p "帮我重构这个函数" -q
+```
+
+---
+
+## 架构
+
+### 5 层架构
+
+```mermaid
+graph TB
+    subgraph "L5 交互层"
+        CLI["CLI (Rich)"]
+        TUI["TUI (Textual)"]
+        SDK["Python SDK"]
+    end
+
+    subgraph "L4 编排层"
+        RT["AgentRuntime (状态机)"]
+        TE["ToolExecutor"]
+        RH["ResponseHandler"]
+    end
+
+    subgraph "L3 认知层"
+        CTX["ContextEngine (Token 预算)"]
+        RM["RepoMapEngine (tree-sitter + PageRank)"]
+    end
+
+    subgraph "L2 工具层"
+        TOOLS["工具注册表 (20+ 工具)"]
+        MCP["MCP Gateway"]
+        PERM["权限管理"]
+    end
+
+    subgraph "L1 基础层"
+        LLM["LLM 客户端 (多 Provider)"]
+        SB["SandboxManager (OS 沙箱)"]
+        SM["SecretManager (密钥管理)"]
+        DB["SQLite 存储"]
+    end
+
+    CLI --> RT
+    TUI --> RT
+    SDK --> RT
+    RT --> TE
+    RT --> RH
+    RT --> CTX
+    RT --> RM
+    TE --> TOOLS
+    TE --> MCP
+    TE --> PERM
+    TOOLS --> SB
+    RH --> LLM
+    LLM --> SM
+```
+
+### AgentRuntime 状态机
+
+```
+IDLE ──→ THINKING ──→ ACTING ──→ OBSERVING ──→ REFLECTING ──→ THINKING
+  ↑         │                                        │            (循环)
+  │         └── 无工具调用 ──→ IDLE (完成)             └── 取消 ──→ IDLE
+  └──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## CLI 命令
+
+### 启动模式
+
+| 命令 | 说明 |
+|------|------|
+| `xiaotie` | 交互式 CLI |
+| `xiaotie --tui` | TUI 模式 |
+| `xiaotie -p "问题"` | 非交互模式 |
+| `xiaotie -p "问题" -f json` | JSON 输出 |
+| `xiaotie -p "问题" -q` | 安静模式 |
+
+### 交互命令
+
+| 命令 | 别名 | 说明 |
+|------|------|------|
+| `/help` | `/h` | 显示帮助 |
+| `/quit` | `/q` | 退出 |
+| `/reset` | `/r` | 重置对话 |
+| `/tools` | `/t` | 显示工具 |
+| `/save` | `/s` | 保存会话 |
+| `/load <id>` | `/l` | 加载会话 |
+| `/tokens` | `/tok` | Token 统计 |
+| `/compact` | | 压缩历史 |
+| `/map [tokens]` | | 代码库概览 |
+| `/find <关键词>` | | 搜索文件 |
+| `/tree [深度]` | | 目录结构 |
+| `/stream` | | 切换流式输出 |
+| `/think` | | 切换深度思考 |
+| `/parallel` | | 切换并行执行 |
+
+### 密钥管理
+
+| 命令 | 说明 |
+|------|------|
+| `xiaotie secret set <key>` | 存储密钥到 keyring |
+| `xiaotie secret get <key>` | 获取密钥 (掩码显示) |
+| `xiaotie secret list` | 列出所有密钥 |
+| `xiaotie secret delete <key>` | 删除密钥 |
+| `xiaotie secret migrate` | 迁移配置文件明文密钥到 keyring |
+
+---
 
 ## 配置
 
-1. 复制配置文件模板：
-
-```bash
-cp config/config.yaml.example config/config.yaml
-```
-
-2. 编辑 `config/config.yaml`，填入你的 API Key：
+### config/config.yaml
 
 ```yaml
-# Anthropic Claude
-api_key: YOUR_API_KEY
-api_base: https://api.anthropic.com
-model: claude-sonnet-4-20250514
-provider: anthropic
-
-# 或者 智谱 GLM-4.7
-api_key: YOUR_API_KEY
+# API 配置 (推荐使用 ${secret:...} 而非明文)
+api_key: ${secret:api_key}
 api_base: https://open.bigmodel.cn/api/coding/paas/v4
 model: GLM-4.7
-provider: openai
-```
+provider: openai  # 使用 OpenAI 兼容协议
 
-### MCP 配置
+# Agent 配置
+max_steps: 50
+workspace_dir: ./workspace
 
-小铁支持 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)，可以连接 MCP 服务器扩展工具能力。
+# 重试
+retry:
+  enabled: true
+  max_retries: 3
+  initial_delay: 1.0
 
-在 `config/config.yaml` 中添加 MCP 配置：
+# 工具
+tools:
+  enable_file_tools: true
+  enable_bash: true
 
-```yaml
 # MCP 配置
 mcp:
-  enabled: true  # 启用 MCP 支持
+  enabled: false
   servers:
-    # 文件系统服务器
     filesystem:
       command: npx
       args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
       enabled: true
-
-    # GitHub 服务器
-    github:
-      command: npx
-      args: ["-y", "@modelcontextprotocol/server-github"]
-      env:
-        GITHUB_PERSONAL_ACCESS_TOKEN: "your-token"
-      enabled: true
 ```
 
-启动后，MCP 服务器提供的工具会自动加载，工具名称格式为 `mcp_<服务器名>_<工具名>`。
+### 密钥解析优先级
 
-## 使用
+| 优先级 | 来源 | 安全性 | 说明 |
+|--------|------|--------|------|
+| 1 | System Keyring | 最高 | macOS Keychain / Linux Secret Service |
+| 2 | 环境变量 | 中 | `XIAOTIE_<KEY>` 或 `<KEY>` |
+| 3 | 配置文件 | 低 | 仅作 fallback，不推荐 |
 
-### 命令行模式
+配置文件占位符语法:
 
-```bash
-# 启动交互式 CLI
-xiaotie
-
-# 启动 TUI 模式 (需要安装 tui 依赖)
-xiaotie --tui
-
-# 非交互模式 - 直接执行查询
-xiaotie -p "帮我分析这段代码"
-
-# JSON 输出格式
-xiaotie -p "你好" -f json
-
-# 安静模式 - 只输出结果
-xiaotie -p "1+1等于多少" -q
-
-# 禁用流式输出
-xiaotie --no-stream
-
-# 禁用深度思考
-xiaotie --no-thinking
+```yaml
+api_key: ${secret:api_key}         # 从 keyring/环境变量解析
+github_token: ${env:GITHUB_TOKEN}  # 仅从环境变量解析
 ```
 
-### TUI 模式快捷键
+---
 
-| 快捷键 | 说明 |
-|--------|------|
-| `Ctrl+K` | 打开命令面板 |
-| `Ctrl+B` | 切换侧边栏 |
-| `Ctrl+N` | 新建会话 |
-| `Ctrl+S` | 保存会话 |
-| `Ctrl+L` | 清屏 |
-| `Ctrl+Q` | 退出 |
-| `F1` | 帮助 |
+## 安全模型
 
-### CLI 命令
+### OS 级沙箱
 
-| 命令 | 别名 | 说明 |
-|------|------|------|
-| `/help` | `/h`, `/?` | 显示帮助 |
-| `/quit` | `/q`, `/exit` | 退出程序 |
-| `/reset` | `/r` | 重置对话 |
-| `/tools` | `/t` | 显示可用工具 |
-| `/save` | `/s` | 保存当前会话 |
-| `/load <id>` | `/l` | 加载会话 |
-| `/sessions` | | 列出所有会话 |
-| `/new [标题]` | | 创建新会话 |
-| `/stream` | | 切换流式输出 |
-| `/think` | | 切换深度思考 |
-| `/parallel` | | 切换工具并行执行 |
-| `/tokens` | `/tok` | 显示 Token 使用 |
-| `/config` | `/cfg` | 显示当前配置 |
-| `/status` | | 显示系统状态 |
-| `/compact` | | 压缩对话历史 |
-| `/copy` | | 复制最后回复到剪贴板 |
-| `/undo` | | 撤销最后一轮对话 |
-| `/retry` | | 重试最后一次请求 |
-| `/tree [深度]` | | 显示目录结构 |
-| `/map [tokens]` | | 显示代码库概览 |
-| `/find <关键词>` | | 搜索相关文件 |
-| `/history` | `/hist` | 显示对话历史 |
-| `/plugins` | | 显示已加载插件 |
-| `/plugin-new <名称>` | | 创建插件模板 |
-| `/plugin-reload <名称>` | | 重新加载插件 |
-| `/clear` | `/c` | 清屏 |
+| 平台 | 后端 | 隔离级别 |
+|------|------|---------|
+| macOS | Seatbelt (sandbox-exec) | 内核级 (deny network/write) |
+| Linux | Bubblewrap (bwrap) | 命名空间 + 文件系统隔离 |
+| 通用 | Fallback (rlimits) | 资源限制 (内存 512MB, CPU 300s) |
 
-### 代码调用
+### Capability 模型
+
+| Capability | 说明 | 示例工具 |
+|-----------|------|---------|
+| `READ_FS` | 读取工作区文件 | read_file, code_analysis |
+| `WRITE_FS` | 写入工作区文件 | write_file, edit_file |
+| `NETWORK` | 网络访问 | web_search, web_fetch |
+| `SUBPROCESS` | 子进程 | bash, python |
+| `DANGEROUS` | 系统级操作 | 需要明确批准 |
+
+### 权限系统
+
+- 工具调用前进行风险评估 (low/medium/high)
+- 低风险自动批准，高风险需要交互确认
+- 敏感输出自动脱敏 (AWS Key, GitHub Token, 私钥等)
+- 所有工具调用记录审计日志
+
+---
+
+## 支持的 LLM
+
+| Provider | API Base | 推荐模型 |
+|----------|----------|---------|
+| Anthropic | https://api.anthropic.com | Claude Sonnet 4 |
+| OpenAI | https://api.openai.com/v1 | GPT-4o |
+| 智谱 GLM | https://open.bigmodel.cn/api/coding/paas/v4 | GLM-4.7 (深度思考) |
+| Google Gemini | https://generativelanguage.googleapis.com | Gemini 2.5 Pro |
+| DeepSeek | https://api.deepseek.com | DeepSeek Chat/Coder |
+| Qwen | https://dashscope.aliyuncs.com | 通义千问 |
+| MiniMax | https://api.minimax.io | abab 系列 |
+| 自定义 | 任意 URL | 任何 OpenAI 兼容 API |
+
+---
+
+## 代码调用
+
+### AgentRuntime (v2.0 推荐)
 
 ```python
 import asyncio
-from xiaotie import Agent
+from xiaotie.agent import AgentRuntime, AgentConfig
 from xiaotie.llm import LLMClient
-from xiaotie.tools import ReadTool, WriteTool, BashTool, GitTool
+from xiaotie.tools import ReadTool, WriteTool, BashTool
 
 async def main():
-    # 创建 LLM 客户端
     llm = LLMClient(
-        api_key="your-api-key",
+        api_key="your-key",
         api_base="https://api.anthropic.com",
         model="claude-sonnet-4-20250514",
         provider="anthropic",
     )
+    config = AgentConfig(max_steps=30, parallel_tools=True)
+    tools = [ReadTool(workspace_dir="."), WriteTool(workspace_dir="."), BashTool()]
 
-    # 创建工具
-    tools = [
-        ReadTool(workspace_dir="."),
-        WriteTool(workspace_dir="."),
-        BashTool(),
-        GitTool(workspace_dir="."),
-    ]
-
-    # 创建 Agent
-    agent = Agent(
-        llm_client=llm,
-        system_prompt="你是小铁，一个智能助手。",
-        tools=tools,
-        stream=True,
-        enable_thinking=True,
-        parallel_tools=True,  # 并行执行工具
-    )
-
-    # 运行
-    result = await agent.run("帮我创建一个 hello.py 文件")
+    runtime = AgentRuntime(llm, system_prompt="你是小铁", tools=tools, config=config)
+    result = await runtime.run("帮我创建一个 hello.py")
     print(result)
+    print(runtime.get_stats())
 
 asyncio.run(main())
 ```
 
-### Agent SDK v2 (v0.9.0)
+### Agent (v1 兼容)
 
 ```python
-from xiaotie import AgentBuilder
+from xiaotie.agent import Agent
+from xiaotie.llm import LLMClient
 from xiaotie.tools import ReadTool, WriteTool, BashTool
 
-# 使用构建器模式创建 Agent
-agent = (
-    AgentBuilder("my-agent")
-    .with_llm("claude-sonnet-4")
-    .with_tools([ReadTool(), WriteTool(), BashTool()])
-    .with_memory(max_tokens=4000)
-    .with_hooks(
-        on_start=lambda: print("Agent started"),
-        on_tool_call=lambda t: print(f"Calling {t.name}"),
-    )
-    .build()
+agent = Agent(
+    llm_client=LLMClient(...),
+    system_prompt="你是小铁",
+    tools=[ReadTool(), WriteTool(), BashTool()],
+    stream=True,
+    parallel_tools=True,
 )
-
-# 运行
-result = await agent.run("帮我分析这段代码")
+result = await agent.run("你好")
 ```
 
-或使用 YAML 配置：
+---
 
-```yaml
-# agent.yaml
-name: code-reviewer
-llm:
-  provider: anthropic
-  model: claude-sonnet-4
-tools:
-  - read
-  - write
-  - bash
-memory:
-  type: conversation
-  max_tokens: 4000
-hooks:
-  on_tool_call: log_tool_call
-```
+## 开发
 
-```python
-from xiaotie import AgentBuilder
-
-agent = AgentBuilder.from_yaml("agent.yaml").build()
-```
-
-### 事件订阅
-
-```python
-import asyncio
-from xiaotie import Agent, EventBroker, EventType, get_event_broker
-
-async def main():
-    # 获取事件代理
-    broker = get_event_broker()
-
-    # 订阅事件
-    queue = await broker.subscribe([
-        EventType.AGENT_START,
-        EventType.TOOL_START,
-        EventType.TOOL_COMPLETE,
-        EventType.MESSAGE_DELTA,
-    ])
-
-    # 创建 Agent 并运行...
-    agent = Agent(...)
-
-    # 在另一个任务中处理事件
-    async def handle_events():
-        while True:
-            event = await queue.get()
-            if event.type == EventType.TOOL_START:
-                print(f"工具开始: {event.data.get('tool_name')}")
-            elif event.type == EventType.MESSAGE_DELTA:
-                print(event.data.get('content'), end='')
-
-    asyncio.create_task(handle_events())
-    await agent.run("你好")
-```
-
-## 插件系统
-
-小铁支持通过插件扩展功能。插件是放置在 `~/.xiaotie/plugins/` 目录下的 Python 文件。
-
-### 创建插件
+### 环境搭建
 
 ```bash
-# 使用命令创建插件模板
-/plugin-new my_tool
+git clone https://github.com/LeoLin990405/xiaotie.git
+cd xiaotie
+pip install -e ".[dev,all]"
+
+# 安装 pre-commit hooks
+pre-commit install
 ```
 
-或手动创建 `~/.xiaotie/plugins/my_tool.py`:
-
-```python
-from xiaotie.tools import Tool, ToolResult
-
-class MyTool(Tool):
-    @property
-    def name(self) -> str:
-        return "my_tool"
-
-    @property
-    def description(self) -> str:
-        return "我的自定义工具"
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "input": {"type": "string", "description": "输入参数"}
-            },
-            "required": ["input"]
-        }
-
-    async def execute(self, input: str) -> ToolResult:
-        return ToolResult(success=True, content=f"结果: {input}")
-```
-
-### 管理插件
-
-| 命令 | 说明 |
-|------|------|
-| `/plugins` | 查看已加载的插件 |
-| `/plugin-new <名称>` | 创建插件模板 |
-| `/plugin-reload <名称>` | 热重载插件 |
-
-## 自定义命令
-
-小铁支持 OpenCode 风格的自定义命令，可以创建预定义的提示模板。
-
-### 命令位置
-
-- **用户命令** (前缀 `user:`):
-  - `~/.config/xiaotie/commands/`
-  - `~/.xiaotie/commands/`
-- **项目命令** (前缀 `project:`):
-  - `<项目目录>/.xiaotie/commands/`
-
-### 创建命令
+### 常用命令
 
 ```bash
-# 创建用户命令
-/cmd-new review-code
+# 运行测试
+make test
 
-# 创建项目命令
-/cmd-new-project deploy
+# 代码检查
+make lint
+
+# 格式化
+make format
+
+# 安全扫描
+make security-scan
+
+# 性能基准
+make benchmark
+
+# 本地完整 CI
+make ci-local
 ```
 
-或手动创建 Markdown 文件，如 `~/.xiaotie/commands/review-code.md`:
+### CI/CD
 
-```markdown
-# 代码审查
+GitHub Actions 工作流:
 
-请审查以下文件的代码质量：
+| 作业 | 触发条件 | 说明 |
+|------|---------|------|
+| **Lint** | push/PR | ruff lint + format check |
+| **Test** | push/PR | pytest × Python 3.9-3.12, 覆盖率 ≥60% |
+| **Security** | push/PR | bandit SAST + pip-audit |
+| **Performance** | push/PR | 基准测试回归检查 |
+| **Release** | tag v* | 构建 wheel/sdist, 发布 PyPI |
 
-文件: $FILE_PATH
+---
 
-重点关注：
-1. 代码风格
-2. 潜在 bug
-3. 性能问题
-4. 安全漏洞
+## 贡献指南
 
-RUN git diff $FILE_PATH
-```
+欢迎贡献! 请遵循以下步骤:
 
-### 命名参数
+1. Fork 本仓库
+2. 创建特性分支: `git checkout -b feature/amazing-feature`
+3. 安装开发依赖: `pip install -e ".[dev,all]"`
+4. 编写代码并添加测试
+5. 运行本地 CI: `make ci-local`
+6. 提交更改: `git commit -m "feat: add amazing feature"`
+7. 推送分支: `git push origin feature/amazing-feature`
+8. 创建 Pull Request
 
-使用 `$NAME` 格式定义参数（大写字母、数字、下划线，必须以字母开头）：
+### 代码规范
 
-```markdown
-# 分析 Issue
+- 使用 `ruff` 进行代码检查和格式化
+- 新功能必须附带单元测试
+- 保持 API 向后兼容
+- 安全敏感代码必须通过 bandit 扫描
 
-RUN gh issue view $ISSUE_NUMBER --json title,body,comments
-RUN git grep "$SEARCH_PATTERN" .
-```
-
-执行命令时，系统会提示输入参数值。
-
-### 子目录组织
-
-可以使用子目录组织命令：
-
-```
-~/.xiaotie/commands/
-├── git/
-│   ├── commit.md      -> user:git:commit
-│   └── review.md      -> user:git:review
-└── deploy/
-    └── staging.md     -> user:deploy:staging
-```
-
-### 命令管理
-
-| 命令 | 说明 |
-|------|------|
-| `/commands` | 列出所有自定义命令 |
-| `/run <命令ID>` | 执行自定义命令 |
-| `/cmd-new <名称>` | 创建用户命令 |
-| `/cmd-new-project <名称>` | 创建项目命令 |
-| `/cmd-reload` | 重新加载命令 |
-| `/cmd-show <命令ID>` | 显示命令内容 |
-
-## 项目结构
-
-```
-xiaotie/
-├── xiaotie/
-│   ├── __init__.py       # 包入口
-│   ├── agent.py          # Agent 核心循环
-│   ├── cli.py            # CLI 入口
-│   ├── config.py         # 配置管理
-│   ├── schema.py         # 数据模型
-│   ├── retry.py          # 重试机制
-│   ├── banner.py         # 启动动画
-│   ├── session.py        # 会话管理
-│   ├── commands.py       # 命令系统
-│   ├── custom_commands.py # 自定义命令
-│   ├── display.py        # 显示增强
-│   ├── repomap.py        # 代码库映射
-│   ├── plugins.py        # 插件系统
-│   ├── builder.py        # AgentBuilder (v0.9.0)
-│   ├── cache.py          # 异步 LRU 缓存系统
-│   ├── events.py         # 事件系统 (Pub/Sub)
-│   ├── logging.py        # 统一日志管理
-│   ├── enhancements.py   # 性能增强与优化
-│   ├── database.py       # 数据库连接
-│   ├── feedback.py       # 反馈循环
-│   ├── input.py          # 增强输入
-│   ├── permissions.py    # 权限系统
-│   ├── profiles.py       # Profile 配置
-│   ├── orchestrator.py   # 编排器
-│   ├── sandbox.py        # 沙箱执行
-│   ├── api_tool.py       # API 工具
-│   ├── i18n.py           # 国际化
-│   ├── keybindings.py    # 快捷键绑定
-│   ├── config_watcher.py # 配置热更新
-│   ├── knowledge_base.py # 知识库
-│   ├── retry_v2.py       # 重试机制 v2
-│   ├── context/          # 上下文感知
-│   │   ├── core.py       # 上下文管理器
-│   │   └── window.py     # 上下文窗口管理
-│   ├── decision/         # 智能决策
-│   │   └── core.py       # 决策引擎
-│   ├── learning/         # 自适应学习
-│   │   └── core.py       # 自适应学习器
-│   ├── memory/           # 记忆系统
-│   │   └── core.py       # 记忆管理器
-│   ├── planning/         # 规划系统
-│   │   └── core.py       # 规划管理器
-│   ├── reflection/       # 反思机制
-│   │   └── core.py       # 反思管理器
-│   ├── skills/           # 技能学习
-│   │   └── core.py       # 技能学习器
-│   ├── multimodal/       # 多模态支持
-│   │   └── core.py       # 多模态内容管理
-│   ├── rl/               # 强化学习
-│   │   └── core.py       # 强化学习引擎
-│   ├── kg/               # 知识图谱
-│   │   └── core.py       # 知识图谱管理器
-│   ├── mcp/              # MCP 协议支持
-│   │   ├── __init__.py
-│   │   ├── protocol.py   # 协议类型定义
-│   │   ├── transport.py  # Stdio 传输
-│   │   ├── client.py     # MCP 客户端
-│   │   └── tools.py      # 工具包装器
-│   ├── lsp/              # LSP 协议支持
-│   │   ├── __init__.py
-│   │   ├── protocol.py   # LSP 协议类型
-│   │   ├── client.py     # LSP 客户端
-│   │   ├── manager.py    # 服务器管理
-│   │   └── diagnostics.py # 诊断工具
-│   ├── storage/          # SQLite 存储
-│   │   ├── __init__.py
-│   │   ├── database.py   # 数据库连接
-│   │   ├── models.py     # 数据模型
-│   │   ├── session_store.py # 会话存储
-│   │   └── message_store.py # 消息存储
-│   ├── search/           # 语义搜索
-│   │   ├── __init__.py
-│   │   ├── embeddings.py # 嵌入生成
-│   │   ├── vector_store.py # 向量存储
-│   │   └── semantic_search.py # 语义搜索
-│   ├── multi_agent/      # 多 Agent 协作
-│   │   ├── __init__.py
-│   │   ├── roles.py      # 角色定义
-│   │   ├── task_agent.py # 任务 Agent
-│   │   ├── coordinator.py # 协调器
-│   │   └── agent_tool.py # Agent 工具
-│   ├── automation/       # 自动化模块
-│   │   ├── __init__.py
-│   │   ├── appium_driver.py  # Appium 驱动封装
-│   │   ├── miniapp_automation.py # 小程序自动化
-│   │   └── macos/        # macOS 原生自动化
-│   │       ├── wechat_controller.py  # 微信控制器
-│   │       ├── miniapp_controller.py # 小程序控制
-│   │       └── proxy_integration.py  # 代理集成
-│   ├── tui/              # TUI 模块
-│   │   ├── __init__.py
-│   │   ├── app.py        # TUI 主应用
-│   │   ├── widgets.py    # 自定义组件
-│   │   ├── themes.py     # 主题系统
-│   │   ├── command_palette.py # 命令面板
-│   │   ├── onboarding.py # 首次启动向导
-│   │   ├── streaming.py  # 流式渲染
-│   │   └── main.py       # TUI 入口
-│   ├── testing/          # 测试模块
-│   │   └── __init__.py   # Cassette/MockLLMClient
-│   ├── llm/              # LLM 客户端
-│   │   ├── __init__.py
-│   │   ├── base.py       # LLM 客户端基类
-│   │   ├── wrapper.py    # 统一包装器
-│   │   ├── providers.py  # Provider 适配层
-│   │   ├── anthropic_client.py
-│   │   └── openai_client.py
-│   └── tools/            # 工具系统
-│       ├── __init__.py
-│       ├── base.py       # 工具基类
-│       ├── file_tools.py # 文件工具
-│       ├── bash_tool.py  # Bash 工具
-│       ├── enhanced_bash.py # 增强 Bash
-│       ├── python_tool.py # Python/计算器
-│       ├── git_tool.py   # Git 工具
-│       ├── web_tool.py   # Web 工具
-│       ├── code_analysis.py # 代码分析
-│       ├── extended.py   # 扩展工具 (系统信息/进程/网络)
-│       ├── semantic_search_tool.py # 语义搜索工具
-│       ├── charles_tool.py # Charles 代理封装
-│       ├── proxy_tool.py  # 内置代理服务器
-│       ├── scraper_tool.py # 爬虫工具
-│       └── automation_tool.py # macOS 自动化工具
-├── tests/                # 测试目录
-│   ├── conftest.py       # 测试配置
-│   ├── fixtures/         # 测试数据
-│   ├── unit/             # 单元测试
-│   └── integration/      # 集成测试
-├── config/
-│   ├── config.yaml.example
-│   └── system_prompt.md
-├── docs/
-│   ├── v0.3.0-plan.md
-│   ├── v0.9.0-plan.md
-│   ├── v0.10.0-plan.md
-│   ├── v0.11.0-plan.md
-│   ├── tools.md
-│   └── macos-miniapp-automation-guide.md
-├── pyproject.toml
-└── README.md
-```
-
-## 支持的 LLM Provider
-
-| Provider | API Base | 说明 |
-|----------|----------|------|
-| Anthropic | https://api.anthropic.com | Claude 官方 API |
-| OpenAI | https://api.openai.com/v1 | GPT 系列 |
-| 智谱 GLM | https://open.bigmodel.cn/api/coding/paas/v4 | GLM-4.7 深度思考 |
-| MiniMax | https://api.minimax.io | 自动处理 URL 后缀 |
-| Gemini | https://generativelanguage.googleapis.com | Google AI (v0.9.0) |
-| DeepSeek | https://api.deepseek.com | DeepSeek (v0.9.0) |
-| Qwen | https://dashscope.aliyuncs.com | 通义千问 (v0.9.0) |
-| 其他 | 自定义 | OpenAI 兼容 API |
-
-## 版本历史
-
-### v1.1.0 (当前版本)
-- 🔌 **内置HTTP/HTTPS代理服务器** - 基于mitmproxy的完整代理系统
-  - 支持HTTPS解密和小程序流量识别
-  - 自动证书管理、JSON/HAR导出
-  - 134个测试全部通过，覆盖率88-99%
-- 🕷️ **多线程网络爬虫模块** - 结构化Web数据抓取
-  - BaseScraper抽象基类、3次验证机制
-  - 6种认证方式、稳定性分析器
-  - 250个测试全部通过，覆盖率84-100%
-- 🤖 **macOS微信小程序自动化** - 端到端自动化工作流
-  - AppleScript + Accessibility API
-  - 系统代理自动配置、批量抓取
-  - 14个测试全部通过
-- ✅ **完整测试** - 1264个测试，97.4%通过率，55.15%代码覆盖率
-
-完整版本历史请参阅 [CHANGELOG.md](CHANGELOG.md)。
-
-## 快速开始示例
-
-### 内置代理服务器
-
-```python
-from xiaotie.proxy import ProxyServer
-
-async def main():
-    async with ProxyServer(port=8888) as proxy:
-        # 代理服务器已启动，配置手机/模拟器使用代理
-        await asyncio.sleep(60)  # 捕获60秒
-        # 导出数据
-        await proxy.export("requests.json", format="json")
-```
-
-### 多线程爬虫
-
-```python
-from xiaotie.scraper import BaseScraper, ScrapeResult
-
-class MyScraper(BaseScraper):
-    async def scrape(self, url: str, **kwargs) -> ScrapeResult:
-        session = await self.get_session()
-        async with session.get(url) as response:
-            data = await response.json()
-            return ScrapeResult(success=True, data=data)
-
-# 使用
-scraper = MyScraper()
-result = await scraper.scrape("https://api.example.com/data")
-```
-
-### macOS自动化
-
-```bash
-# 抓取单个小程序
-python examples/miniapp_auto_capture.py --name 美团 --engine macos
-
-# 批量抓取多个小程序
-python examples/miniapp_auto_capture.py --name 美团 饿了么 大众点评 --engine macos
-```
-
-更多示例请参阅：
-- [内置代理使用指南](docs/builtin-proxy-guide.md)
-- [爬虫模块使用指南](docs/scraper-guide.md)
-- [macOS自动化使用指南](docs/macos-miniapp-automation-guide.md)
-- [项目完整总结](PROJECT_SUMMARY.md)
+---
 
 ## 致谢
 
-本项目基于 [MiniMax-AI/Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) 架构复现，感谢原作者的开源贡献！
-
-同时学习借鉴了以下优秀项目的设计模式：
-- [Aider](https://github.com/Aider-AI/aider) - 命令系统、RepoMap
-- [Open Interpreter](https://github.com/openinterpreter/open-interpreter) - 流式处理、显示
-- [Devika](https://github.com/stitionai/devika) - 多 Agent 架构
-- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) - MCP 协议实现参考
+- [MiniMax-AI/Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) - 核心架构灵感
+- [Aider](https://github.com/Aider-AI/aider) - RepoMap、命令系统设计
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - 状态机 Agent、OS 沙箱、ContextEngine
+- [Open Interpreter](https://github.com/openinterpreter/open-interpreter) - 流式处理模式
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) - MCP 协议集成
 
 ## License
 
-MIT
+[MIT](LICENSE)
