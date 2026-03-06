@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from xiaotie.database import (
+from xiaotie.db_tool import (
     DatabaseTool,
     DatabaseConfig,
     DatabaseDriver,
@@ -344,7 +344,7 @@ class TestDatabaseTool:
         """测试无效表名"""
         result = db.get_columns("users; DROP TABLE users")
         assert result.success is False
-        assert "Invalid table name" in result.error_message
+        assert "无效的表名" in result.error_message
 
     def test_count(self, db):
         """测试统计行数"""

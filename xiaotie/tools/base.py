@@ -64,11 +64,15 @@ class Tool(ABC):
             
             # 异步记录执行指标（不阻塞主执行流程）
             if hasattr(self, '_record_execution_metrics'):
-                asyncio.create_task(self._record_execution_metrics(
-                    execution_time=execution_time,
-                    tokens_used=tokens_used,
-                    success=True
-                ))
+                try:
+                    asyncio.create_task(self._record_execution_metrics(
+                        execution_time=execution_time,
+                        tokens_used=tokens_used,
+                        success=True
+                    ))
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning("记录执行指标失败", exc_info=e)
             
             return result
         except Exception as e:
@@ -79,12 +83,16 @@ class Tool(ABC):
             
             # 异步记录错误指标
             if hasattr(self, '_record_execution_metrics'):
-                asyncio.create_task(self._record_execution_metrics(
-                    execution_time=execution_time,
-                    tokens_used=None,
-                    success=False,
-                    error=str(e)
-                ))
+                try:
+                    asyncio.create_task(self._record_execution_metrics(
+                        execution_time=execution_time,
+                        tokens_used=None,
+                        success=False,
+                        error=str(e)
+                    ))
+                except Exception as metric_e:
+                    import logging
+                    logging.getLogger(__name__).warning("记录错误指标失败", exc_info=metric_e)
             
             raise
     

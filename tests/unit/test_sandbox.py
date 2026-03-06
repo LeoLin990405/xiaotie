@@ -203,25 +203,28 @@ class TestSandbox:
         sandbox = Sandbox(config)
         assert sandbox.config.timeout == 60.0
 
-    def test_execute_simple_code(self):
+    @pytest.mark.asyncio
+    async def test_execute_simple_code(self):
         """测试执行简单代码"""
         sandbox = Sandbox(SandboxConfig(timeout=10.0))
-        result = sandbox.execute("print('test')")
+        result = await sandbox.execute("print('test')")
         assert result.success is True
         assert "test" in result.stdout
 
-    def test_execute_blocked_import(self):
+    @pytest.mark.asyncio
+    async def test_execute_blocked_import(self):
         """测试执行阻止的导入"""
         config = SandboxConfig(
             timeout=10.0,
             blocked_imports=["subprocess"],
         )
         sandbox = Sandbox(config)
-        result = sandbox.execute("import subprocess")
+        result = await sandbox.execute("import subprocess")
         assert result.success is False
-        assert "Blocked imports" in result.error_message
+        assert "被阻止的导入" in result.error_message
 
-    def test_execute_skip_import_check(self):
+    @pytest.mark.asyncio
+    async def test_execute_skip_import_check(self):
         """测试跳过导入检查"""
         config = SandboxConfig(
             timeout=10.0,
@@ -229,10 +232,11 @@ class TestSandbox:
         )
         sandbox = Sandbox(config)
         # 跳过检查时应该能执行
-        result = sandbox.execute("import json; print('ok')", check_imports=False)
+        result = await sandbox.execute("import json; print('ok')", check_imports=False)
         assert result.success is True
 
-    def test_on_complete_callback(self):
+    @pytest.mark.asyncio
+    async def test_on_complete_callback(self):
         """测试完成回调"""
         sandbox = Sandbox(SandboxConfig(timeout=10.0))
         callback_results = []
@@ -241,28 +245,30 @@ class TestSandbox:
             callback_results.append(result)
 
         sandbox.on_complete(callback)
-        sandbox.execute("print('test')")
+        await sandbox.execute("print('test')")
 
         assert len(callback_results) == 1
         assert callback_results[0].success is True
 
-    def test_execute_file(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_execute_file(self, tmp_path):
         """测试执行文件"""
         # 创建临时文件
         code_file = tmp_path / "test.py"
         code_file.write_text("print('from file')")
 
         sandbox = Sandbox(SandboxConfig(timeout=10.0))
-        result = sandbox.execute_file(str(code_file))
+        result = await sandbox.execute_file(str(code_file))
         assert result.success is True
         assert "from file" in result.stdout
 
-    def test_execute_file_not_found(self):
+    @pytest.mark.asyncio
+    async def test_execute_file_not_found(self):
         """测试执行不存在的文件"""
         sandbox = Sandbox(SandboxConfig(timeout=10.0))
-        result = sandbox.execute_file("/nonexistent/file.py")
+        result = await sandbox.execute_file("/nonexistent/file.py")
         assert result.success is False
-        assert "File not found" in result.error_message
+        assert "文件未找到" in result.error_message
 
 
 class TestSandboxPool:
@@ -294,19 +300,21 @@ class TestSandboxPool:
         pool.release(sandbox1)
         assert pool.available_count == 1
 
-    def test_execute_with_pool(self):
+    @pytest.mark.asyncio
+    async def test_execute_with_pool(self):
         """测试使用池执行"""
         config = SandboxConfig(timeout=10.0)
         pool = SandboxPool(config, pool_size=2)
 
-        result = pool.execute("print('pool test')")
+        result = await pool.execute("print('pool test')")
         assert result.success is True
         assert "pool test" in result.stdout
 
         # 执行后沙箱应该被释放
         assert pool.available_count == 2
 
-    def test_execute_no_available(self):
+    @pytest.mark.asyncio
+    async def test_execute_no_available(self):
         """测试无可用沙箱"""
         pool = SandboxPool(pool_size=1)
 
@@ -315,13 +323,13 @@ class TestSandboxPool:
         assert sandbox is not None
 
         # 尝试执行，应该失败
-        result = pool.execute("print('test')")
+        result = await pool.execute("print('test')")
         assert result.success is False
-        assert "No available sandbox" in result.error_message
+        assert "没有可用" in result.error_message
 
         # 释放后可以执行
         pool.release(sandbox)
-        result = pool.execute("print('test')")
+        result = await pool.execute("print('test')")
         assert result.success is True
 
 
@@ -340,7 +348,7 @@ class TestDockerExecutor:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
             config = SandboxConfig(runtime="docker")
-            with pytest.raises(SandboxError, match="not installed"):
+            with pytest.raises(SandboxError, match="未安装|找不到|不可用"):
                 Sandbox(config)
 
     def test_docker_check_timeout(self):
@@ -349,14 +357,15 @@ class TestDockerExecutor:
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = sp.TimeoutExpired("docker", 5)
             config = SandboxConfig(runtime="docker")
-            with pytest.raises(SandboxError, match="timed out"):
+            with pytest.raises(SandboxError, match="超时"):
                 Sandbox(config)
 
 
 class TestIntegration:
     """集成测试"""
 
-    def test_full_workflow(self):
+    @pytest.mark.asyncio
+    async def test_full_workflow(self):
         """测试完整工作流"""
         config = SandboxConfig(
             timeout=10.0,
@@ -366,7 +375,7 @@ class TestIntegration:
         sandbox = Sandbox(config)
 
         # 执行安全代码
-        result = sandbox.execute("""
+        result = await sandbox.execute("""
 import json
 data = {"key": "value"}
 print(json.dumps(data))
@@ -374,10 +383,11 @@ print(json.dumps(data))
         assert result.success is True
         assert '"key"' in result.stdout
 
-    def test_computation(self):
+    @pytest.mark.asyncio
+    async def test_computation(self):
         """测试计算"""
         sandbox = Sandbox(SandboxConfig(timeout=10.0))
-        result = sandbox.execute("""
+        result = await sandbox.execute("""
 def fibonacci(n):
     if n <= 1:
         return n
@@ -388,11 +398,11 @@ print(fibonacci(10))
         assert result.success is True
         assert "55" in result.stdout
 
-    def test_error_handling(self):
+    @pytest.mark.asyncio
+    async def test_error_handling(self):
         """测试错误处理"""
         sandbox = Sandbox(SandboxConfig(timeout=10.0))
-        result = sandbox.execute("""
-x = 1 / 0
-""")
+        result = await sandbox.execute("""x = 1 / 0""")
         assert result.success is False
         assert "ZeroDivisionError" in result.stderr
+

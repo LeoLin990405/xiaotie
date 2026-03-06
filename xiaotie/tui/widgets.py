@@ -37,6 +37,7 @@ class ChatMessage(Static):
         padding: 1 2;
         margin: 0 0 1 0;
         background: $surface;
+        border: round $primary 30%;
     }
 
     ChatMessage.user {
@@ -177,7 +178,7 @@ class MessageList(ScrollableContainer):
         padding: 3;
         margin: 2;
         background: $surface;
-        border: round $primary 50%;
+        border: round $primary;
         text-align: center;
     }
 
@@ -207,6 +208,7 @@ class MessageList(ScrollableContainer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._has_messages = False
+        self._max_messages = 200
 
     def compose(self) -> ComposeResult:
         # 欢迎消息
@@ -250,6 +252,10 @@ class MessageList(ScrollableContainer):
             is_error=is_error,
         )
         self.mount(msg)
+        history = list(self.query(ChatMessage))
+        if len(history) > self._max_messages:
+            for item in history[: len(history) - self._max_messages]:
+                item.remove()
         self.scroll_end(animate=False)
         return msg
 
@@ -318,7 +324,8 @@ class Editor(Widget):
     }
 
     Editor Input:focus {
-        border: none;
+        border: round $primary;
+        background: $surface;
     }
 
     Editor .editor-status {
@@ -350,7 +357,7 @@ class Editor(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "󰌌 输入消息 · Enter 发送 · / 命令 · Ctrl+K 面板",
+            "󰌌 Enter 发送 · / 命令 · Ctrl+K 快捷命令 · Ctrl+M 模型 · Ctrl+T 主题",
             classes="editor-hint",
         )
         yield Input(
@@ -384,16 +391,22 @@ class Editor(Widget):
 class SessionItem(Static):
     """会话列表项"""
 
+    can_focus = True
+
     DEFAULT_CSS = """
     SessionItem {
         width: 100%;
         height: 3;
         padding: 0 1;
-        border-bottom: solid $border-subtle;
+        border-bottom: solid $primary 30%;
     }
 
     SessionItem:hover {
         background: $primary 20%;
+    }
+
+    SessionItem:focus {
+        border: round $primary;
     }
 
     SessionItem.current {
@@ -440,6 +453,11 @@ class SessionItem(Static):
 
     def on_click(self) -> None:
         self.post_message(self.Selected(self.session_id))
+
+    def on_key(self, event) -> None:
+        if event.key == "enter":
+            self.post_message(self.Selected(self.session_id))
+            event.prevent_default()
 
 
 class SessionList(ScrollableContainer):
@@ -658,8 +676,8 @@ class Toast(Static):
     }
 
     Toast.info {
-        border: solid $info;
-        background: $info 10%;
+        border: solid $primary;
+        background: $primary 10%;
     }
 
     Toast .toast-title {

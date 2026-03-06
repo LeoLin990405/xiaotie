@@ -9,12 +9,19 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import yaml
+from pydantic import BaseModel, Field, model_validator
 
-from .retry import RetryConfig
+
+class RetryConfig(BaseModel):
+    """重试配置"""
+    enabled: bool = True
+    max_retries: int = 3
+    initial_delay: float = 1.0
+    max_delay: float = 60.0
+    exponential_base: float = 2.0
 
 
-@dataclass
-class CacheConfig:
+class CacheConfig(BaseModel):
     """缓存配置"""
     
     enabled: bool = True
@@ -22,21 +29,19 @@ class CacheConfig:
     ttl_seconds: int = 3600  # 1 hour
 
 
-@dataclass
-class LLMConfig:
+class LLMConfig(BaseModel):
     """LLM 配置"""
 
-    api_key: str
+    api_key: str = ""
     api_base: str = "https://api.anthropic.com"
     model: str = "claude-sonnet-4-20250514"
     provider: str = "anthropic"
     temperature: float = 0.7
     max_tokens: int = 4096
-    retry: RetryConfig = field(default_factory=RetryConfig)
+    retry: RetryConfig = Field(default_factory=RetryConfig)
 
 
-@dataclass
-class AgentConfig:
+class AgentConfig(BaseModel):
     """Agent 配置"""
 
     max_steps: int = 50
@@ -45,11 +50,10 @@ class AgentConfig:
     thinking_enabled: bool = True
     streaming_enabled: bool = True
     verbose: bool = False
-    cache_config: CacheConfig = field(default_factory=CacheConfig)
+    cache_config: CacheConfig = Field(default_factory=CacheConfig, alias="cache")
 
 
-@dataclass
-class ProxyConfig:
+class ProxyConfig(BaseModel):
     """内置代理服务器配置"""
 
     enabled: bool = False
@@ -59,8 +63,7 @@ class ProxyConfig:
     storage_path: Optional[str] = None
 
 
-@dataclass
-class ScraperConfig:
+class ScraperConfig(BaseModel):
     """爬虫工具配置"""
 
     enabled: bool = False
@@ -71,8 +74,7 @@ class ScraperConfig:
     stability_threshold: float = 0.9
 
 
-@dataclass
-class AutomationConfig:
+class AutomationConfig(BaseModel):
     """macOS 自动化工具配置"""
 
     enabled: bool = False
@@ -81,8 +83,20 @@ class AutomationConfig:
     applescript_timeout: int = 30
 
 
-@dataclass
-class ToolsConfig:
+class TelegramConfig(BaseModel):
+    """Telegram 工具配置"""
+
+    enabled: bool = False
+    bot_token: Optional[str] = None
+    webhook_host: str = "0.0.0.0"
+    webhook_port: int = 9000
+    webhook_path: str = "/telegram/webhook"
+    webhook_secret_token: Optional[str] = None
+    allowed_chat_ids: List[int] = Field(default_factory=list)
+    allowed_cidrs: List[str] = Field(default_factory=list)
+
+
+class ToolsConfig(BaseModel):
     """工具配置"""
 
     enable_file_tools: bool = True
@@ -96,34 +110,56 @@ class ToolsConfig:
     charles_path: Optional[str] = None
     charles_proxy_port: int = 8888
     enable_proxy: bool = False
-    proxy: ProxyConfig = field(default_factory=ProxyConfig)
+    proxy: ProxyConfig = Field(default_factory=ProxyConfig)
     enable_scraper: bool = False
-    scraper: ScraperConfig = field(default_factory=ScraperConfig)
+    scraper: ScraperConfig = Field(default_factory=ScraperConfig)
     enable_automation: bool = False
-    automation: AutomationConfig = field(default_factory=AutomationConfig)
+    automation: AutomationConfig = Field(default_factory=AutomationConfig)
+    enable_telegram: bool = False
+    telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+
+    @model_validator(mode="before")
+    def sync_tool_enables(cls, values):
+        if not isinstance(values, dict):
+            return values
+        # 如果启用了具体的模块，也设置顶级标志
+        proxy_data = values.get("proxy", {})
+        if "enabled" in proxy_data:
+            values["enable_proxy"] = values.get("enable_proxy", proxy_data["enabled"])
+            
+        scraper_data = values.get("scraper", {})
+        if "enabled" in scraper_data:
+            values["enable_scraper"] = values.get("enable_scraper", scraper_data["enabled"])
+            
+        automation_data = values.get("automation", {})
+        if "enabled" in automation_data:
+            values["enable_automation"] = values.get("enable_automation", automation_data["enabled"])
+            
+        telegram_data = values.get("telegram", {})
+        if "enabled" in telegram_data:
+            values["enable_telegram"] = values.get("enable_telegram", telegram_data["enabled"])
+            
+        return values
 
 
-@dataclass
-class MCPServerConfig:
+class MCPServerConfig(BaseModel):
     """MCP 服务器配置"""
 
-    command: str
-    args: List[str] = field(default_factory=list)
-    env: Dict[str, str] = field(default_factory=dict)
+    command: str = ""
+    args: List[str] = Field(default_factory=list)
+    env: Dict[str, str] = Field(default_factory=dict)
     cwd: Optional[str] = None
     enabled: bool = True
 
 
-@dataclass
-class MCPConfig:
+class MCPConfig(BaseModel):
     """MCP 配置"""
 
     enabled: bool = False
-    servers: Dict[str, MCPServerConfig] = field(default_factory=dict)
+    servers: Dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
-@dataclass
-class LoggingConfig:
+class LoggingConfig(BaseModel):
     """日志配置"""
     
     level: str = "INFO"
@@ -133,15 +169,14 @@ class LoggingConfig:
     backup_count: int = 5
 
 
-@dataclass
-class Config:
+class Config(BaseModel):
     """主配置"""
 
     llm: LLMConfig
-    agent: AgentConfig = field(default_factory=AgentConfig)
-    tools: ToolsConfig = field(default_factory=ToolsConfig)
-    mcp: MCPConfig = field(default_factory=MCPConfig)
-    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    agent: AgentConfig = Field(default_factory=AgentConfig)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @classmethod
     def load(cls, config_path: str | Path | None = None) -> "Config":
@@ -197,8 +232,38 @@ class Config:
             raise ValueError("配置文件为空")
 
         # 获取 API key（支持环境变量）
-        api_key = data.get("api_key", "")
-        provider = data.get("provider", "anthropic")
+        # 兼容老版本配置（llm_data打平在最外层）
+        llm_data = data.get("llm", {})
+        if not llm_data:
+            api_key = data.get("api_key", "")
+            provider = data.get("provider", "anthropic")
+            llm_data = {
+                "api_key": api_key,
+                "provider": provider,
+                "api_base": data.get("api_base", "https://api.anthropic.com"),
+                "model": data.get("model", "claude-sonnet-4-20250514"),
+                "temperature": data.get("temperature", 0.7),
+                "max_tokens": data.get("max_tokens", 4096),
+                "retry": data.get("retry", {})
+            }
+            data["llm"] = llm_data
+
+        # 兼容老版本 Agent 配置
+        agent_data = data.get("agent", {})
+        if not agent_data:
+            agent_data = {
+                "max_steps": data.get("max_steps", 50),
+                "workspace_dir": data.get("workspace_dir", "./workspace"),
+                "system_prompt_path": data.get("system_prompt_path", "system_prompt.md"),
+                "thinking_enabled": data.get("thinking_enabled", True),
+                "streaming_enabled": data.get("streaming_enabled", True),
+                "verbose": data.get("verbose", False),
+                "cache": data.get("cache", {})
+            }
+            data["agent"] = agent_data
+
+        api_key = llm_data.get("api_key", "")
+        provider = llm_data.get("provider", "anthropic")
 
         # 如果 api_key 为空或是占位符，尝试从环境变量读取
         if not api_key or api_key in ("YOUR_API_KEY_HERE", "YOUR_API_KEY"):
@@ -208,133 +273,9 @@ class Config:
                 raise ValueError(
                     f"请设置 API key：在配置文件中设置 api_key，或设置环境变量 {env_key}"
                 )
+            llm_data["api_key"] = api_key
 
-        # 解析重试配置
-        retry_data = data.get("retry", {})
-        retry_config = RetryConfig(
-            enabled=retry_data.get("enabled", True),
-            max_retries=retry_data.get("max_retries", 3),
-            initial_delay=retry_data.get("initial_delay", 1.0),
-            max_delay=retry_data.get("max_delay", 60.0),
-            exponential_base=retry_data.get("exponential_base", 2.0),
-        )
-
-        # 解析缓存配置
-        cache_data = data.get("cache", {})
-        cache_config = CacheConfig(
-            enabled=cache_data.get("enabled", True),
-            max_size=cache_data.get("max_size", 1000),
-            ttl_seconds=cache_data.get("ttl_seconds", 3600),
-        )
-
-        # LLM 配置
-        llm_config = LLMConfig(
-            api_key=api_key,
-            api_base=data.get("api_base", "https://api.anthropic.com"),
-            model=data.get("model", "claude-sonnet-4-20250514"),
-            provider=provider,
-            temperature=data.get("temperature", 0.7),
-            max_tokens=data.get("max_tokens", 4096),
-            retry=retry_config,
-        )
-
-        # Agent 配置
-        agent_config = AgentConfig(
-            max_steps=data.get("max_steps", 50),
-            workspace_dir=data.get("workspace_dir", "./workspace"),
-            system_prompt_path=data.get("system_prompt_path", "system_prompt.md"),
-            thinking_enabled=data.get("thinking_enabled", True),
-            streaming_enabled=data.get("streaming_enabled", True),
-            verbose=data.get("verbose", False),
-            cache_config=cache_config,
-        )
-
-        # 工具配置
-        tools_data = data.get("tools", {})
-
-        # 代理配置
-        proxy_data = tools_data.get("proxy", {})
-        proxy_config = ProxyConfig(
-            enabled=proxy_data.get("enabled", False),
-            port=proxy_data.get("port", 8080),
-            enable_https=proxy_data.get("enable_https", True),
-            cert_path=proxy_data.get("cert_path"),
-            storage_path=proxy_data.get("storage_path"),
-        )
-
-        # 爬虫配置
-        scraper_data = tools_data.get("scraper", {})
-        scraper_config = ScraperConfig(
-            enabled=scraper_data.get("enabled", False),
-            scraper_dir=scraper_data.get("scraper_dir"),
-            max_workers=scraper_data.get("max_workers", 4),
-            request_delay=scraper_data.get("request_delay", 1.0),
-            num_runs=scraper_data.get("num_runs", 3),
-            stability_threshold=scraper_data.get("stability_threshold", 0.9),
-        )
-
-        # 自动化配置
-        automation_data = tools_data.get("automation", {})
-        automation_config = AutomationConfig(
-            enabled=automation_data.get("enabled", False),
-            wechat_bundle_id=automation_data.get("wechat_bundle_id", "com.tencent.xinWeChat"),
-            screenshot_dir=automation_data.get("screenshot_dir"),
-            applescript_timeout=automation_data.get("applescript_timeout", 30),
-        )
-
-        tools_config = ToolsConfig(
-            enable_file_tools=tools_data.get("enable_file_tools", True),
-            enable_bash=tools_data.get("enable_bash", True),
-            enable_web_tools=tools_data.get("enable_web_tools", True),
-            enable_code_analysis=tools_data.get("enable_code_analysis", True),
-            enable_python=tools_data.get("enable_python", True),
-            enable_calculator=tools_data.get("enable_calculator", True),
-            enable_git=tools_data.get("enable_git", True),
-            enable_charles=tools_data.get("enable_charles", False),
-            charles_path=tools_data.get("charles_path"),
-            charles_proxy_port=tools_data.get("charles_proxy_port", 8888),
-            enable_proxy=tools_data.get("enable_proxy", proxy_data.get("enabled", False)),
-            proxy=proxy_config,
-            enable_scraper=tools_data.get("enable_scraper", scraper_data.get("enabled", False)),
-            scraper=scraper_config,
-            enable_automation=tools_data.get("enable_automation", automation_data.get("enabled", False)),
-            automation=automation_config,
-        )
-
-        # MCP 配置
-        mcp_data = data.get("mcp", {}) or {}
-        mcp_servers: Dict[str, MCPServerConfig] = {}
-        servers_data = mcp_data.get("servers", {}) or {}
-        for server_name, server_data in servers_data.items():
-            mcp_servers[server_name] = MCPServerConfig(
-                command=server_data.get("command", ""),
-                args=server_data.get("args", []),
-                env=server_data.get("env", {}),
-                cwd=server_data.get("cwd"),
-                enabled=server_data.get("enabled", True),
-            )
-        mcp_config = MCPConfig(
-            enabled=mcp_data.get("enabled", False),
-            servers=mcp_servers,
-        )
-
-        # 日志配置
-        logging_data = data.get("logging", {})
-        logging_config = LoggingConfig(
-            level=logging_data.get("level", "INFO"),
-            format=logging_data.get("format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
-            file_path=logging_data.get("file_path"),
-            max_bytes=logging_data.get("max_bytes", 10485760),
-            backup_count=logging_data.get("backup_count", 5),
-        )
-
-        return cls(
-            llm=llm_config,
-            agent=agent_config,
-            tools=tools_config,
-            mcp=mcp_config,
-            logging=logging_config,
-        )
+        return cls.model_validate(data)
 
     @staticmethod
     def find_config_file(filename: str) -> Path | None:

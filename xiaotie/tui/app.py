@@ -13,7 +13,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import List, Optional
+import json
+import os
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -21,8 +26,11 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, Input, Static
+from textual.widgets import Button, Footer, Header, Input, Static
 
+from ..i18n import set_language, t
+from .command_palette import CommandPalette, QuickModelSelector
+from .onboarding import OnboardingWizard, should_show_onboarding
 from .themes import ThemeManager, get_theme, get_theme_display_name, list_themes
 from .widgets import (
     Editor,
@@ -358,6 +366,11 @@ class ModelSelectorScreen(ModalScreen):
         super().__init__(**kwargs)
         self.current_model = current_model
         self.callback = callback
+        self.selected_index = 0
+        for i, (value, _) in enumerate(self.MODELS):
+            if value == current_model:
+                self.selected_index = i
+                break
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -366,6 +379,30 @@ class ModelSelectorScreen(ModalScreen):
                 is_selected = value == self.current_model
                 classes = "model-item selected" if is_selected else "model-item"
                 yield Static(display, classes=classes, id=f"model-{value}")
+
+    def on_key(self, event) -> None:
+        if event.key == "down":
+            self.selected_index = min(self.selected_index + 1, len(self.MODELS) - 1)
+            self._update_selection()
+            event.prevent_default()
+        elif event.key == "up":
+            self.selected_index = max(self.selected_index - 1, 0)
+            self._update_selection()
+            event.prevent_default()
+        elif event.key == "enter":
+            model = self.MODELS[self.selected_index][0]
+            if self.callback:
+                self.callback(model)
+            self.dismiss(model)
+            event.prevent_default()
+
+    def _update_selection(self) -> None:
+        items = list(self.query(".model-item"))
+        for i, item in enumerate(items):
+            if i == self.selected_index:
+                item.add_class("selected")
+            else:
+                item.remove_class("selected")
 
     def on_static_click(self, event) -> None:
         """处理模型点击"""
@@ -390,7 +427,7 @@ class ThemeSelectorScreen(ModalScreen):
     }
 
     ThemeSelectorScreen > Vertical {
-        width: 40;
+        width: 76;
         height: auto;
         max-height: 70%;
         background: $surface;
@@ -417,30 +454,233 @@ class ThemeSelectorScreen(ModalScreen):
     ThemeSelectorScreen .theme-item.selected {
         background: $primary 40%;
     }
+
+    ThemeSelectorScreen .theme-layout {
+        width: 100%;
+        height: auto;
+    }
+
+    ThemeSelectorScreen .theme-list {
+        width: 34;
+        height: auto;
+        max-height: 20;
+    }
+
+    ThemeSelectorScreen .theme-preview {
+        width: 1fr;
+        height: auto;
+        border: round $border;
+        padding: 1;
+        margin-left: 1;
+    }
+
+    ThemeSelectorScreen .preview-title {
+        text-style: bold;
+        color: $primary;
+    }
+
+    ThemeSelectorScreen .preview-status {
+        color: $text-muted;
+    }
     """
 
-    def __init__(self, current_theme: str = "default", callback=None, **kwargs):
+    def __init__(
+        self,
+        current_theme: str = "default",
+        callback=None,
+        preview_callback=None,
+        restore_callback=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
+        self._original_theme = current_theme
         self.current_theme = current_theme
         self.callback = callback
+        self.preview_callback = preview_callback
+        self.restore_callback = restore_callback
+        self._theme_ids = list_themes()
+        self.selected_index = self._theme_ids.index(current_theme) if current_theme in self._theme_ids else 0
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Static("󰏘 选择主题", classes="selector-title")
-            for theme_id in list_themes():
-                display = get_theme_display_name(theme_id)
-                is_selected = theme_id == self.current_theme
-                classes = "theme-item selected" if is_selected else "theme-item"
-                yield Static(f"󰏘 {display}", classes=classes, id=f"theme-{theme_id}")
+            with Horizontal(classes="theme-layout"):
+                with Vertical(classes="theme-list"):
+                    for i, theme_id in enumerate(self._theme_ids):
+                        display = get_theme_display_name(theme_id)
+                        is_selected = i == self.selected_index
+                        classes = "theme-item selected" if is_selected else "theme-item"
+                        yield Static(f"󰏘 {display}", classes=classes, id=f"theme-{theme_id}")
+                with Vertical(classes="theme-preview"):
+                    yield Static("实时预览", classes="preview-title")
+                    yield Static("", id="theme-preview-content")
+                    yield Static("󰔟 准备就绪", classes="preview-status", id="theme-preview-status")
+
+    def on_mount(self) -> None:
+        self._render_preview(self._theme_ids[self.selected_index])
+
+    def on_key(self, event) -> None:
+        if event.key == "down":
+            self.selected_index = min(self.selected_index + 1, len(self._theme_ids) - 1)
+            self._update_selection()
+            self._render_preview(self._theme_ids[self.selected_index])
+            event.prevent_default()
+        elif event.key == "up":
+            self.selected_index = max(self.selected_index - 1, 0)
+            self._update_selection()
+            self._render_preview(self._theme_ids[self.selected_index])
+            event.prevent_default()
+        elif event.key == "enter":
+            theme = self._theme_ids[self.selected_index]
+            if self.callback:
+                self.callback(theme)
+            self.dismiss(theme)
+            event.prevent_default()
+
+    def _update_selection(self) -> None:
+        items = list(self.query(".theme-item"))
+        for i, item in enumerate(items):
+            if i == self.selected_index:
+                item.add_class("selected")
+            else:
+                item.remove_class("selected")
 
     def on_static_click(self, event) -> None:
         """处理主题点击"""
         widget_id = event.widget.id
         if widget_id and widget_id.startswith("theme-"):
             theme = widget_id[6:]  # 去掉 "theme-" 前缀
+            self.selected_index = self._theme_ids.index(theme)
+            self._update_selection()
+            self._render_preview(theme)
             if self.callback:
                 self.callback(theme)
             self.dismiss(theme)
+
+    def action_dismiss(self) -> None:
+        if self.restore_callback:
+            self.restore_callback(self._original_theme)
+        self.dismiss(None)
+
+    def _render_preview(self, theme_id: str) -> None:
+        status = self.query_one("#theme-preview-status", Static)
+        status.update("󰔟 切换预览中...")
+        if self.preview_callback:
+            self.preview_callback(theme_id)
+        preview = self.query_one("#theme-preview-content", Static)
+        preview.update(
+            "\n".join(
+                [
+                    f"主题: {get_theme_display_name(theme_id)}",
+                    "用户: 请帮我优化这个函数",
+                    "小铁: 已完成重构建议并附上测试方案",
+                    "状态: 处理中 → 已完成",
+                    "命令: Ctrl+K / Ctrl+M / Ctrl+T",
+                ]
+            )
+        )
+        self.set_timer(0.15, lambda: status.update("✅ 预览已更新"))
+
+
+class RiskConfirmScreen(ModalScreen):
+    BINDINGS = [
+        Binding("escape", "dismiss", "关闭"),
+    ]
+
+    DEFAULT_CSS = """
+    RiskConfirmScreen {
+        align: center middle;
+    }
+
+    RiskConfirmScreen > Vertical {
+        width: 78;
+        height: auto;
+        background: $surface;
+        border: solid $error;
+        padding: 1;
+    }
+
+    RiskConfirmScreen .risk-title {
+        text-style: bold;
+        color: $error;
+        margin-bottom: 1;
+    }
+
+    RiskConfirmScreen .risk-meta {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+
+    RiskConfirmScreen .risk-prompt {
+        color: $warning;
+        margin-top: 1;
+    }
+
+    RiskConfirmScreen Input {
+        margin: 1 0;
+    }
+
+    RiskConfirmScreen .risk-status {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+    """
+
+    def __init__(self, command: str, intent: str, cooldown_seconds: int = 3, **kwargs):
+        super().__init__(**kwargs)
+        self.command = command
+        self.intent = intent
+        self.cooldown_seconds = cooldown_seconds
+        self._remaining = cooldown_seconds
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Static("⚠ 高风险操作确认", classes="risk-title")
+            yield Static(f"意图识别: {self.intent}", classes="risk-meta")
+            yield Static(f"操作命令: /{self.command}", classes="risk-meta")
+            yield Static("请输入 CONFIRM 进行二次确认", classes="risk-prompt")
+            yield Input(placeholder="输入 CONFIRM", id="risk-confirm-input")
+            yield Static(f"冷却中: {self._remaining}s", classes="risk-status", id="risk-status")
+            with Horizontal():
+                yield Button("取消", variant="default", id="risk-cancel")
+                yield Button("确认执行", variant="error", id="risk-confirm", disabled=True)
+
+    def on_mount(self) -> None:
+        self.query_one("#risk-confirm-input", Input).focus()
+        self.set_interval(1.0, self._tick_cooldown)
+
+    def _tick_cooldown(self) -> None:
+        if self._remaining <= 0:
+            return
+        self._remaining -= 1
+        status = self.query_one("#risk-status", Static)
+        if self._remaining <= 0:
+            status.update("冷却完成，可确认执行")
+            self._refresh_confirm_state()
+        else:
+            status.update(f"冷却中: {self._remaining}s")
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id == "risk-confirm-input":
+            self._refresh_confirm_state()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "risk-confirm-input":
+            return
+        typed = event.input.value.strip().upper() == "CONFIRM"
+        if typed and self._remaining <= 0:
+            self.dismiss(True)
+
+    def _refresh_confirm_state(self) -> None:
+        confirm_button = self.query_one("#risk-confirm", Button)
+        typed = self.query_one("#risk-confirm-input", Input).value.strip().upper() == "CONFIRM"
+        confirm_button.disabled = not (typed and self._remaining <= 0)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "risk-cancel":
+            self.dismiss(False)
+        elif event.button.id == "risk-confirm":
+            self.dismiss(True)
 
 
 class XiaoTieApp(App):
@@ -488,6 +728,10 @@ class XiaoTieApp(App):
         display: none;
     }
 
+    #sidebar.compact {
+        width: 24;
+    }
+
     /* 分隔线 */
     #divider {
         width: 1;
@@ -532,6 +776,18 @@ class XiaoTieApp(App):
         height: auto;
         layer: notification;
     }
+
+    .compact-mode #messages-pane {
+        min-width: 30;
+    }
+
+    .compact-mode #editor-container {
+        min-height: 2;
+    }
+
+    .compact-mode #status-line {
+        height: 2;
+    }
     """
 
     BINDINGS = [
@@ -555,7 +811,7 @@ class XiaoTieApp(App):
     thinking_mode = reactive(True)
     is_processing = reactive(False)
     sidebar_visible = reactive(True)
-    current_theme = reactive("default")
+    ui_theme = reactive("default")
 
     def __init__(
         self,
@@ -563,15 +819,24 @@ class XiaoTieApp(App):
         session_mgr=None,
         plugin_mgr=None,
         commands=None,
+        show_onboarding: bool = False,
+        onboarding_required: bool = False,
+        language: Optional[str] = None,
         **kwargs,
     ):
+        self._theme_manager = ThemeManager.get_instance()
         super().__init__(**kwargs)
         self.agent = agent
         self.session_mgr = session_mgr
         self.plugin_mgr = plugin_mgr
         self.commands = commands
+        self.show_onboarding = show_onboarding
+        self.onboarding_required = onboarding_required
+        self.onboarding_result: Optional[dict] = None
+        self.language = language or ("zh" if os.environ.get("LANG", "").lower().startswith("zh") else "en")
         self._thinking_widget = None
-        self._theme_manager = ThemeManager.get_instance()
+        self._risk_log_path = Path.home() / ".xiaotie" / "risk_actions.log"
+        self._theme_preview_original: Optional[str] = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -599,11 +864,19 @@ class XiaoTieApp(App):
 
     def on_mount(self) -> None:
         """挂载时初始化"""
+        set_language(self.language)
         self._theme_manager.subscribe(self._on_theme_changed)
         self._on_theme_changed(self._theme_manager.get_current_theme())
+        self._sync_sessions()
+        self._apply_responsive_layout(self.size.width)
         self._update_status()
         # 聚焦编辑器
         self.query_one("#editor-container", Editor).focus_input()
+        if self.show_onboarding or should_show_onboarding():
+            self.set_timer(0.05, self._open_onboarding)
+
+    def on_unmount(self) -> None:
+        self._theme_manager.unsubscribe(self._on_theme_changed)
 
     def watch_model_name(self, value: str) -> None:
         self._update_status()
@@ -641,22 +914,70 @@ class XiaoTieApp(App):
             sidebar.add_class("hidden")
             divider.add_class("hidden")
 
-    def watch_current_theme(self, value: str) -> None:
+    def on_resize(self, event) -> None:
+        self._apply_responsive_layout(event.size.width)
+
+    def watch_ui_theme(self, value: str) -> None:
         if self._theme_manager.get_current_theme() != value:
             if not self._theme_manager.set_theme(value):
-                self.current_theme = self._theme_manager.get_current_theme()
+                self.ui_theme = self._theme_manager.get_current_theme()
                 return
         self._update_status()
 
     def _update_status(self) -> None:
         """更新状态行"""
-        status_line = self.query_one("#status-line", StatusLine)
+        try:
+            status_line = self.query_one("#status-line", StatusLine)
+        except Exception:
+            return
         status_line.model = self.model_name
         status_line.tokens = self.total_tokens
         status_line.session = self.session_name
         status_line.parallel = self.parallel_mode
         status_line.thinking = self.thinking_mode
-        status_line.theme_name = self.current_theme
+        status_line.theme_name = self.ui_theme
+
+    def _sync_sessions(self) -> None:
+        if not self.session_mgr:
+            return
+        try:
+            sessions = self.session_mgr.list_sessions()
+            normalized = []
+            current = getattr(self.session_mgr, "current_session", None)
+            for item in sessions:
+                if isinstance(item, str):
+                    normalized.append(
+                        {
+                            "id": item,
+                            "title": item,
+                            "message_count": 0,
+                            "is_current": item == current,
+                        }
+                    )
+                elif isinstance(item, dict):
+                    normalized.append(
+                        {
+                            "id": item.get("id", ""),
+                            "title": item.get("title", "未命名"),
+                            "message_count": item.get("message_count", 0),
+                            "is_current": item.get("id") == current,
+                        }
+                    )
+            self.update_sessions(normalized)
+        except Exception:
+            pass
+
+    def _apply_responsive_layout(self, width: int) -> None:
+        sidebar = self.query_one("#sidebar")
+        if width < 110:
+            self.sidebar_visible = False
+            self.add_class("compact-mode")
+            sidebar.add_class("compact")
+            return
+        self.remove_class("compact-mode")
+        sidebar.remove_class("compact")
+        if width >= 130:
+            self.sidebar_visible = True
 
     def _on_theme_changed(self, name: str) -> None:
         """主题变更回调"""
@@ -695,8 +1016,8 @@ class XiaoTieApp(App):
         )
         self.refresh_css()
 
-        if self.current_theme != name:
-            self.current_theme = name
+        if self.ui_theme != name:
+            self.ui_theme = name
 
     def _show_thinking(self) -> None:
         """显示思考指示器"""
@@ -756,6 +1077,11 @@ class XiaoTieApp(App):
 
     async def _handle_command(self, cmd_line: str) -> None:
         """处理命令"""
+        approved, intent = await self._confirm_risky_command(cmd_line)
+        if not approved:
+            self.show_toast(t("warning"), "已取消高风险操作", variant="warning")
+            self._log_risky_action(cmd_line, intent, "cancelled")
+            return
         # 特殊命令处理
         if cmd_line == "themes":
             self.action_theme_selector()
@@ -765,11 +1091,21 @@ class XiaoTieApp(App):
             return
 
         if self.commands:
-            should_continue, message = await self.commands.execute(cmd_line)
-            if message:
-                self.add_message("system", message)
-            if not should_continue:
-                self.exit()
+            try:
+                should_continue, message = await self.commands.execute(cmd_line)
+                if message:
+                    self.add_message("system", message)
+                    if "开发中" in message or "用法" in message:
+                        self.show_toast("操作提示", message, variant="warning")
+                if not should_continue:
+                    self.exit()
+                self._sync_sessions()
+                if intent:
+                    self._log_risky_action(cmd_line, intent, "executed")
+            except Exception:
+                if intent:
+                    self._log_risky_action(cmd_line, intent, "failed")
+                raise
         else:
             self.add_message("system", "命令系统未初始化")
 
@@ -800,7 +1136,7 @@ class XiaoTieApp(App):
 
         except Exception as e:
             self.add_message("system", f"错误: {e}", is_error=True)
-            self.show_toast("错误", str(e), variant="error")
+            self.show_toast("错误", f"{e} · 可用 /help 查看命令", variant="error")
 
         finally:
             self.is_processing = False
@@ -811,7 +1147,7 @@ class XiaoTieApp(App):
         def on_command(cmd: str):
             asyncio.create_task(self._handle_command(cmd))
 
-        self.push_screen(CommandPaletteScreen(callback=on_command))
+        self.push_screen(CommandPalette(callback=on_command))
 
     def action_toggle_sidebar(self) -> None:
         """切换侧边栏"""
@@ -820,21 +1156,36 @@ class XiaoTieApp(App):
     def action_model_selector(self) -> None:
         """打开模型选择器"""
 
-        def on_model(model: str):
+        def on_model(provider: str, model: str):
             self.model_name = model
-            self.show_toast("模型已切换", f"当前模型: {model}", variant="success")
+            self.show_toast("模型已切换", f"{provider} / {model}", variant="success")
 
-        self.push_screen(ModelSelectorScreen(current_model=self.model_name, callback=on_model))
+        self.push_screen(QuickModelSelector(current_model=self.model_name, callback=on_model))
 
     def action_theme_selector(self) -> None:
         """打开主题选择器"""
+        self._theme_preview_original = self.ui_theme
 
         def on_theme(theme: str):
-            self.current_theme = theme
+            self.ui_theme = theme
             display_name = get_theme_display_name(theme)
             self.show_toast("主题已切换", f"当前主题: {display_name}", variant="success")
 
-        self.push_screen(ThemeSelectorScreen(current_theme=self.current_theme, callback=on_theme))
+        def on_preview(theme: str):
+            self.ui_theme = theme
+
+        def on_restore(theme: str):
+            if self._theme_preview_original and theme != self.ui_theme:
+                self.ui_theme = theme
+
+        self.push_screen(
+            ThemeSelectorScreen(
+                current_theme=self.ui_theme,
+                callback=on_theme,
+                preview_callback=on_preview,
+                restore_callback=on_restore,
+            )
+        )
 
     def action_new_session(self) -> None:
         """新建会话"""
@@ -861,3 +1212,60 @@ class XiaoTieApp(App):
     def on_session_item_selected(self, event: "SessionItem.Selected") -> None:
         """处理会话选择"""
         asyncio.create_task(self._handle_command(f"load {event.session_id}"))
+
+    def _open_onboarding(self) -> None:
+        def on_complete(provider: str, model: str, api_key: str):
+            self.model_name = model
+            if api_key:
+                os.environ[f"{provider.upper()}_API_KEY"] = api_key
+
+        def on_result(result):
+            if isinstance(result, dict):
+                self.onboarding_result = result
+                if result.get("completed"):
+                    self.show_toast(t("success"), "引导配置已完成", variant="success")
+                elif result.get("skipped"):
+                    self.show_toast(t("warning"), "已跳过引导，可通过 /help 查看操作", variant="warning")
+                if self.onboarding_required:
+                    self.exit()
+
+        self.push_screen(OnboardingWizard(on_complete=on_complete), on_result)
+
+    def _classify_risky_intent(self, cmd_line: str) -> Tuple[bool, str]:
+        command = cmd_line.strip().lower()
+        patterns: Dict[str, str] = {
+            r"^(quit|exit)$": "退出会话",
+            r"^(reset|clear)$": "清空上下文",
+            r"^(delete|remove|rm)\b": "删除数据",
+            r"^(danger|unsafe|safe off)\b": "降级安全策略",
+            r"^(process-manager|kill)\b": "进程终止",
+        }
+        for pattern, intent in patterns.items():
+            if re.search(pattern, command):
+                return True, intent
+        return False, ""
+
+    async def _confirm_risky_command(self, cmd_line: str) -> Tuple[bool, str]:
+        risky, intent = self._classify_risky_intent(cmd_line)
+        if not risky:
+            return True, ""
+        future: asyncio.Future = asyncio.get_running_loop().create_future()
+
+        def on_result(confirmed):
+            if not future.done():
+                future.set_result(bool(confirmed))
+
+        self.push_screen(RiskConfirmScreen(command=cmd_line, intent=intent), on_result)
+        confirmed = await future
+        return confirmed, intent
+
+    def _log_risky_action(self, command: str, intent: str, status: str) -> None:
+        self._risk_log_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "command": command,
+            "intent": intent,
+            "status": status,
+        }
+        with self._risk_log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")

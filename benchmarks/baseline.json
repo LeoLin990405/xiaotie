@@ -1,0 +1,9 @@
+{
+  "event_benchmark": {
+    "batch_events_per_sec": 300000
+  },
+  "storage_benchmark": {
+    "insert_per_sec": 300000
+  },
+  "threshold_ratio": 0.95
+}

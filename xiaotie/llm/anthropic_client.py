@@ -134,8 +134,8 @@ class AnthropicClient(LLMClientBase):
         usage = None
         if hasattr(response, "usage"):
             usage = TokenUsage(
-                prompt_tokens=response.usage.input_tokens,
-                completion_tokens=response.usage.output_tokens,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
                 total_tokens=response.usage.input_tokens + response.usage.output_tokens,
             )
 
@@ -157,10 +157,89 @@ class AnthropicClient(LLMClientBase):
         api_tools = self._convert_tools(tools) if tools else None
 
         if self.retry_config.enabled:
-            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback)
+            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback, circuit_breaker=self.circuit_breaker)
             api_call = retry_decorator(self._make_api_request)
             response = await api_call(system, api_messages, api_tools)
         else:
             response = await self._make_api_request(system, api_messages, api_tools)
 
         return self._parse_response(response)
+
+    async def generate_stream(
+        self,
+        messages: list[Message],
+        tools: list[Any] | None = None,
+        on_thinking: Callable[[str], None] | None = None,
+        on_content: Callable[[str], None] | None = None,
+        enable_thinking: bool = True,
+    ) -> LLMResponse:
+        """流式生成响应"""
+        system, api_messages = self._convert_messages(messages)
+        api_tools = self._convert_tools(tools) if tools else None
+
+        params = {
+            "model": self.model,
+            "max_tokens": 8192,
+            "messages": api_messages,
+        }
+        if system:
+            params["system"] = system
+        if api_tools:
+            params["tools"] = api_tools
+
+        text_content = ""
+        thinking_content = ""
+        tool_call_builder = None
+        tool_calls = []
+
+        async with self.client.messages.stream(**params) as stream:
+            async for event in stream:
+                if event.type == "content_block_start" and event.content_block.type == "tool_use":
+                    tool_call_builder = {
+                        "id": event.content_block.id,
+                        "name": event.content_block.name,
+                        "arguments": "",
+                    }
+                elif event.type == "content_block_delta" and event.delta.type == "text_delta":
+                    text_content += event.delta.text
+                    if on_content:
+                        on_content(event.delta.text)
+                elif event.type == "content_block_delta" and getattr(event.delta, "type", "") == "thinking_delta":
+                    thinking_content += event.delta.thinking
+                    if on_thinking:
+                        on_thinking(event.delta.thinking)
+                elif event.type == "content_block_delta" and event.delta.type == "input_json_delta":
+                    if tool_call_builder:
+                        tool_call_builder["arguments"] += event.delta.partial_json
+                elif event.type == "content_block_stop":
+                    if tool_call_builder:
+                        tool_calls.append(
+                            ToolCall(
+                                id=tool_call_builder["id"],
+                                type="function",
+                                function=FunctionCall(
+                                    name=tool_call_builder["name"],
+                                    arguments=tool_call_builder["arguments"],
+                                ),
+                            )
+                        )
+                        tool_call_builder = None
+            
+            final_message = await stream.get_final_message()
+            
+            usage = None
+            if hasattr(final_message, "usage"):
+                usage = TokenUsage(
+                    input_tokens=final_message.usage.input_tokens,
+                    output_tokens=final_message.usage.output_tokens,
+                    total_tokens=final_message.usage.input_tokens + final_message.usage.output_tokens,
+                )
+
+            return LLMResponse(
+                content=text_content,
+                thinking=thinking_content if thinking_content else None,
+                tool_calls=tool_calls if tool_calls else None,
+                finish_reason=final_message.stop_reason or "stop",
+                usage=usage,
+            )
+

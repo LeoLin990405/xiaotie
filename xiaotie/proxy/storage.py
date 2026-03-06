@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections import deque
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,8 +68,9 @@ class RequestStorage:
     """
 
     def __init__(self, max_entries: int = 10000):
-        self._entries: list[CapturedRequest] = []
         self._max_entries = max_entries
+        maxlen = max_entries if max_entries > 0 else None
+        self._entries: deque[CapturedRequest] = deque(maxlen=maxlen)
 
     @property
     def count(self) -> int:
@@ -76,8 +78,6 @@ class RequestStorage:
 
     def add(self, entry: CapturedRequest) -> None:
         """添加一条请求记录"""
-        if self._max_entries > 0 and len(self._entries) >= self._max_entries:
-            self._entries.pop(0)
         self._entries.append(entry)
 
     def clear(self) -> None:

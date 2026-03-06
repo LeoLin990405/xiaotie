@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable, Optional
 
-from ..retry import RetryConfig
+from ..retry import RetryConfig, CircuitBreaker
 from ..schema import LLMResponse, Message
 
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LLMClientBase(ABC):
     """LLM 客户端抽象基类"""
@@ -23,10 +27,11 @@ class LLMClientBase(ABC):
         self.api_base = api_base
         self.model = model
         self.retry_config = retry_config or RetryConfig()
+        self.circuit_breaker = CircuitBreaker()
 
     def retry_callback(self, exception: Exception, attempt: int):
         """重试回调"""
-        print(f"⚠️ 请求失败，第 {attempt} 次重试: {exception}")
+        logger.warning(f"⚠️ 请求失败，第 {attempt} 次重试: {exception}")
 
     @abstractmethod
     async def generate(
@@ -38,6 +43,18 @@ class LLMClientBase(ABC):
         pass
 
     @abstractmethod
+    async def generate_stream(
+        self,
+        messages: list[Message],
+        tools: list[Any] | None = None,
+        on_thinking: Optional[Callable[[str], None]] = None,
+        on_content: Optional[Callable[[str], None]] = None,
+        enable_thinking: bool = True,
+    ) -> LLMResponse:
+        """流式生成响应"""
+        pass
+
+    @abstractmethod
     def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
         """转换消息格式"""
         pass
@@ -46,3 +63,4 @@ class LLMClientBase(ABC):
     def _convert_tools(self, tools: list[Any]) -> list[dict[str, Any]]:
         """转换工具格式"""
         pass
+

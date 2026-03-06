@@ -121,7 +121,7 @@ class TestLLMResponse:
         """测试带使用统计的响应"""
         resp = LLMResponse(
             content="Test",
-            usage=TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
+            usage=TokenUsage(input_tokens=100, output_tokens=50, total_tokens=150),
         )
-        assert resp.usage.prompt_tokens == 100
-        assert resp.usage.completion_tokens == 50
+        assert resp.usage.input_tokens == 100
+        assert resp.usage.output_tokens == 50

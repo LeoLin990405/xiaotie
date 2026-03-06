@@ -135,12 +135,9 @@ class LLMClient:
         enable_thinking: bool = True,
     ) -> LLMResponse:
         """流式生成响应"""
-        if hasattr(self._client, "generate_stream"):
-            return await self._client.generate_stream(
-                messages, tools, on_thinking, on_content, enable_thinking
-            )
-        # 回退到非流式
-        return await self._client.generate(messages, tools)
+        return await self._client.generate_stream(
+            messages, tools, on_thinking, on_content, enable_thinking
+        )
 
     @classmethod
     def from_provider(

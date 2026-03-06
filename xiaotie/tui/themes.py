@@ -6,6 +6,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
 from typing import Callable, Dict
 
 
@@ -464,7 +466,6 @@ class ThemeManager:
     """主题管理器 - 单例模式"""
 
     _instance = None
-    _current_theme: str = "default"
     _callbacks: list[Callable[[str], None]] = []
 
     @classmethod
@@ -472,6 +473,11 @@ class ThemeManager:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
+
+    def __init__(self):
+        self._current_theme: str = "default"
+        self._storage_path = Path.home() / ".xiaotie" / "tui_theme.json"
+        self._load_theme()
 
     def get_current_theme(self) -> str:
         return self._current_theme
@@ -481,6 +487,7 @@ class ThemeManager:
         if name not in THEMES:
             return False
         self._current_theme = name
+        self._save_theme()
         for callback in self._callbacks:
             callback(name)
         return True
@@ -493,6 +500,27 @@ class ThemeManager:
         """取消订阅"""
         if callback in self._callbacks:
             self._callbacks.remove(callback)
+
+    def _load_theme(self):
+        try:
+            if not self._storage_path.exists():
+                return
+            data = json.loads(self._storage_path.read_text(encoding="utf-8"))
+            theme = data.get("theme")
+            if isinstance(theme, str) and theme in THEMES:
+                self._current_theme = theme
+        except Exception:
+            pass
+
+    def _save_theme(self):
+        try:
+            self._storage_path.parent.mkdir(parents=True, exist_ok=True)
+            self._storage_path.write_text(
+                json.dumps({"theme": self._current_theme}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
 
 
 def get_theme(name: str) -> Theme:

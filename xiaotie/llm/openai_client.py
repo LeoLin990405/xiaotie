@@ -163,8 +163,8 @@ class OpenAIClient(LLMClientBase):
         usage = None
         if hasattr(response, "usage") and response.usage:
             usage = TokenUsage(
-                prompt_tokens=response.usage.prompt_tokens or 0,
-                completion_tokens=response.usage.completion_tokens or 0,
+                input_tokens=response.usage.prompt_tokens or 0,
+                output_tokens=response.usage.completion_tokens or 0,
                 total_tokens=response.usage.total_tokens or 0,
             )
 
@@ -186,7 +186,7 @@ class OpenAIClient(LLMClientBase):
         api_tools = self._convert_tools(tools) if tools else None
 
         if self.retry_config.enabled:
-            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback)
+            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback, circuit_breaker=self.circuit_breaker)
             api_call = retry_decorator(self._make_api_request)
             response = await api_call(api_messages, api_tools)
         else:

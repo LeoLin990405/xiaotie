@@ -11,10 +11,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -97,6 +98,61 @@ def get_config_path() -> Path:
 
     # 回退到 ~/.config
     return Path.home() / ".config" / "xiaotie" / "config.yaml"
+
+
+def get_bootstrap_config_path() -> Path:
+    return Path.home() / ".xiaotie" / "config" / "config.yaml"
+
+
+def get_onboarding_state_path() -> Path:
+    return Path.home() / ".xiaotie" / "onboarding_state.json"
+
+
+def load_onboarding_state() -> dict:
+    path = get_onboarding_state_path()
+    if not path.exists():
+        return {"completed": False, "skipped": False}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"completed": False, "skipped": False}
+
+
+def save_onboarding_state(completed: bool = False, skipped: bool = False) -> None:
+    path = get_onboarding_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"completed": completed, "skipped": skipped}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def save_bootstrap_config(provider: str, model: str, api_key: str) -> Path:
+    path = get_bootstrap_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = "\n".join(
+        [
+            f'api_key: "{api_key}"',
+            f'provider: "{provider}"',
+            f'model: "{model}"',
+            "api_base: \"\"",
+            "temperature: 0.7",
+            "max_tokens: 4096",
+            "max_steps: 50",
+            "workspace_dir: \"./workspace\"",
+            "thinking_enabled: true",
+            "streaming_enabled: true",
+            "verbose: false",
+            "",
+            "tools:",
+            "  enable_file_tools: true",
+            "  enable_bash: true",
+            "  enable_web_tools: true",
+            "  enable_code_analysis: true",
+        ]
+    )
+    path.write_text(content + "\n", encoding="utf-8")
+    return path
 
 
 def is_first_run() -> bool:
@@ -464,6 +520,7 @@ class OnboardingWizard(ModalScreen):
 
     BINDINGS = [
         Binding("escape", "cancel", "取消"),
+        Binding("ctrl+s", "skip", "跳过"),
     ]
 
     DEFAULT_CSS = """
@@ -515,6 +572,17 @@ class OnboardingWizard(ModalScreen):
         color: $text-muted;
         margin-bottom: 1;
     }
+
+    OnboardingWizard .step-progress {
+        margin: 0 2 1 2;
+    }
+
+    OnboardingWizard .step-error {
+        text-align: center;
+        color: $error;
+        margin-bottom: 1;
+        min-height: 1;
+    }
     """
 
     def __init__(
@@ -539,17 +607,22 @@ class OnboardingWizard(ModalScreen):
                     classes="step-indicator",
                     id="step-indicator",
                 )
+                yield ProgressBar(total=len(self.steps), classes="step-progress", id="step-progress")
+                yield Static("", classes="step-error", id="step-error")
                 yield WelcomeStep(id="current-step")
 
             with Vertical(classes="wizard-footer"):
                 with Horizontal():
                     yield Button("取消", variant="default", id="btn-cancel")
+                    yield Button("跳过", variant="warning", id="btn-skip")
                     yield Button("下一步", variant="primary", id="btn-next")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """处理按钮点击"""
         if event.button.id == "btn-cancel":
             self.action_cancel()
+        elif event.button.id == "btn-skip":
+            self.action_skip()
         elif event.button.id == "btn-next":
             self._next_step()
         elif event.button.id == "btn-back":
@@ -557,17 +630,23 @@ class OnboardingWizard(ModalScreen):
         elif event.button.id == "btn-finish":
             self._finish()
 
+    def on_mount(self) -> None:
+        progress = self.query_one("#step-progress", ProgressBar)
+        progress.update(total=len(self.steps), progress=1)
+
     def on_provider_select_step_selected(self, event: ProviderSelectStep.Selected) -> None:
         """处理 Provider 选择"""
         self.selected_provider = event.provider
 
     def _next_step(self) -> None:
         """下一步"""
+        self._set_error("")
         current_step_name = self.steps[self.current_step]
 
         # 验证当前步骤
         if current_step_name == "provider":
             if not self.selected_provider:
+                self._set_error("请先选择 Provider")
                 return  # 未选择 provider
 
         elif current_step_name == "apikey":
@@ -575,6 +654,7 @@ class OnboardingWizard(ModalScreen):
             if isinstance(step_widget, ApiKeyStep):
                 self.api_key = step_widget.get_api_key()
                 if not self.api_key:
+                    self._set_error("请先输入 API Key")
                     return  # 未输入 API Key
 
         elif current_step_name == "test":
@@ -606,6 +686,9 @@ class OnboardingWizard(ModalScreen):
                 await asyncio.sleep(1)
                 self.current_step += 1
                 self._update_step()
+                self._set_error("")
+            else:
+                self._set_error("连接测试失败，可重试或跳过")
 
     def _update_step(self) -> None:
         """更新当前步骤显示"""
@@ -615,6 +698,8 @@ class OnboardingWizard(ModalScreen):
         # 更新步骤指示器
         indicator = self.query_one("#step-indicator", Static)
         indicator.update(f"步骤 {self.current_step + 1}/{len(self.steps)}")
+        progress = self.query_one("#step-progress", ProgressBar)
+        progress.update(total=len(self.steps), progress=self.current_step + 1)
 
         # 移除旧步骤
         old_step = self.query_one("#current-step")
@@ -653,30 +738,49 @@ class OnboardingWizard(ModalScreen):
 
         if step_name == "welcome":
             horizontal.mount(Button("取消", variant="default", id="btn-cancel"))
+            horizontal.mount(Button("跳过", variant="warning", id="btn-skip"))
             horizontal.mount(Button("开始配置", variant="primary", id="btn-next"))
         elif step_name == "complete":
             horizontal.mount(Button("完成", variant="success", id="btn-finish"))
         else:
             if self.current_step > 0:
                 horizontal.mount(Button("上一步", variant="default", id="btn-back"))
+            horizontal.mount(Button("跳过", variant="warning", id="btn-skip"))
             horizontal.mount(Button("下一步", variant="primary", id="btn-next"))
 
     def _finish(self) -> None:
         """完成向导"""
+        if self.selected_provider and self.api_key:
+            save_bootstrap_config(
+                self.selected_provider.name,
+                self.selected_provider.default_model,
+                self.api_key,
+            )
+        save_onboarding_state(completed=True, skipped=False)
         if self.on_complete and self.selected_provider:
             self.on_complete(
                 self.selected_provider.name,
                 self.selected_provider.default_model,
                 self.api_key,
             )
-        self.dismiss(True)
+        self.dismiss({"completed": True, "skipped": False})
 
     def action_cancel(self) -> None:
         """取消向导"""
-        self.dismiss(False)
+        self.dismiss({"completed": False, "skipped": False})
+
+    def action_skip(self) -> None:
+        save_onboarding_state(completed=False, skipped=True)
+        self.dismiss({"completed": False, "skipped": True})
+
+    def _set_error(self, message: str) -> None:
+        self.query_one("#step-error", Static).update(message)
 
 
 def should_show_onboarding() -> bool:
     """判断是否应该显示向导"""
+    state = load_onboarding_state()
+    if state.get("completed") or state.get("skipped"):
+        return False
     # 首次运行且没有 API Key
     return is_first_run() and not has_any_api_key()

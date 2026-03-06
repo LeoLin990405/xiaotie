@@ -1,8 +1,5 @@
 """配置模块测试"""
 
-import os
-from pathlib import Path
-
 import pytest
 import yaml
 
@@ -10,12 +7,8 @@ from xiaotie.config import (
     AgentConfig,
     CacheConfig,
     Config,
-    LLMConfig,
-    LoggingConfig,
-    MCPConfig,
     ToolsConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # 配置加载
@@ -51,9 +44,34 @@ class TestConfigLoad:
         assert config.agent.max_steps == 100
         assert config.llm.temperature == 0.5
         assert config.tools.enable_bash is False
+        assert config.tools.enable_telegram is False
         assert config.agent.cache_config.enabled is False
         assert config.agent.cache_config.max_size == 500
         assert config.logging.level == "DEBUG"
+
+    def test_telegram_config_parse(self, tmp_path):
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text(yaml.dump({
+            "api_key": "key-abc",
+            "tools": {
+                "enable_telegram": True,
+                "telegram": {
+                    "enabled": True,
+                    "bot_token": "telegram-token",
+                    "webhook_host": "0.0.0.0",
+                    "webhook_port": 9001,
+                    "webhook_path": "/hook",
+                    "webhook_secret_token": "secret",
+                    "allowed_chat_ids": [12345],
+                    "allowed_cidrs": ["149.154.160.0/20"],
+                },
+            },
+        }))
+        config = Config.from_yaml(cfg_file)
+        assert config.tools.enable_telegram is True
+        assert config.tools.telegram.enabled is True
+        assert config.tools.telegram.bot_token == "telegram-token"
+        assert config.tools.telegram.webhook_port == 9001
 
     def test_empty_yaml_raises(self, tmp_path):
         """空配置文件应抛出 ValueError"""
@@ -138,6 +156,7 @@ class TestConfigDefaults:
         cfg = ToolsConfig()
         assert cfg.enable_bash is True
         assert cfg.enable_git is True
+        assert cfg.enable_telegram is False
 
     def test_cache_config_defaults(self):
         cfg = CacheConfig()

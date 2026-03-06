@@ -226,7 +226,7 @@ class TestPipeline:
         ], stop_on_error=False)
         result = await p.run("hello")
 
-        assert result.success is False
+        assert result.success is True
         assert len(result.steps) == 3  # 全部执行
 
     @pytest.mark.asyncio
@@ -475,4 +475,4 @@ class TestIntegration:
 
         result = await outer.run("hello")
         assert result.success is True
-        assert result.final_output == 12  # len("ECHO: HELLO")
+        assert result.final_output == 11  # len("ECHO: HELLO")

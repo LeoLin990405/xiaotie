@@ -1,0 +1,113 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "sum(rate(xiaotie_runs_total[5m]))",
+          "legendFormat": "runs/s",
+          "refId": "A"
+        }
+      ],
+      "title": "Run Throughput",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(rate(xiaotie_llm_calls_total{success=\"false\"}[5m])) / clamp_min(sum(rate(xiaotie_llm_calls_total[5m])), 1e-9)",
+          "legendFormat": "llm_error_rate",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(xiaotie_tool_calls_total{success=\"false\"}[5m])) / clamp_min(sum(rate(xiaotie_tool_calls_total[5m])), 1e-9)",
+          "legendFormat": "tool_error_rate",
+          "refId": "B"
+        }
+      ],
+      "title": "Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(xiaotie_llm_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "llm_p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(xiaotie_tool_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "tool_p95",
+          "refId": "B"
+        }
+      ],
+      "title": "Latency P95",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum(xiaotie_stream_queue_depth)",
+          "legendFormat": "stream_queue_depth",
+          "refId": "A"
+        }
+      ],
+      "title": "Stream Queue Depth",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "xiaotie",
+    "agent",
+    "observability"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "Xiaotie Agent Overview",
+  "uid": "xiaotie-agent-overview",
+  "version": 1,
+  "weekStart": ""
+}

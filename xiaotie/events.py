@@ -268,6 +268,44 @@ class EventBroker(Generic[T]):
                 async with self._lock:
                     await self._batch_cleanup_dead_refs()
 
+    async def publish_batch(self, events: List[T]):
+        """批量发布事件"""
+        if not events:
+            return
+
+        local_dead = 0
+        events_by_type: Dict[EventType, List[T]] = {}
+        for event in events:
+            events_by_type.setdefault(event.type, []).append(event)
+
+        for event_type, typed_events in events_by_type.items():
+            refs = self._subscribers.get(event_type)
+            if not refs:
+                continue
+
+            snapshot = list(refs)
+            for ref in snapshot:
+                queue = ref()
+                if queue is None:
+                    local_dead += 1
+                    continue
+
+                for event in typed_events:
+                    try:
+                        queue.put_nowait(event)
+                    except asyncio.QueueFull:
+                        try:
+                            queue.get_nowait()
+                            queue.put_nowait(event)
+                        except (asyncio.QueueEmpty, asyncio.QueueFull):
+                            pass
+
+        if local_dead > 0:
+            self._dead_ref_count += local_dead
+            if self._dead_ref_count >= self._dead_ref_threshold:
+                async with self._lock:
+                    await self._batch_cleanup_dead_refs()
+
     def publish_sync(self, event: T):
         """同步发布事件（用于非异步上下文，copy-on-read）"""
         refs = self._subscribers.get(event.type)

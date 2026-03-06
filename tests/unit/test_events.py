@@ -65,6 +65,19 @@ class TestEventBrokerPubSub:
         await broker.publish(MessageDeltaEvent(content="3"))
         assert queue.qsize() == 2
 
+    async def test_publish_batch(self):
+        """批量发布应保留事件顺序并全部送达"""
+        broker = EventBroker()
+        queue = await broker.subscribe([EventType.MESSAGE_DELTA])
+        events = [
+            MessageDeltaEvent(content="a"),
+            MessageDeltaEvent(content="b"),
+            MessageDeltaEvent(content="c"),
+        ]
+        await broker.publish_batch(events)
+        received = [queue.get_nowait().content for _ in range(3)]
+        assert received == ["a", "b", "c"]
+
 
 # ---------------------------------------------------------------------------
 # 取消订阅

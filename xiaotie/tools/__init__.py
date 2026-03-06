@@ -15,6 +15,7 @@ from .charles_tool import CharlesProxyTool
 from .proxy_tool import ProxyServerTool
 from .scraper_tool import ScraperTool
 from .automation_tool import AutomationTool
+from .telegram_tool import TelegramTool
 
 __all__ = [
     "Tool",
@@ -40,4 +41,5 @@ __all__ = [
     "ProxyServerTool",
     "ScraperTool",
     "AutomationTool",
+    "TelegramTool",
 ]

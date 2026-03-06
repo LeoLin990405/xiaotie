@@ -119,3 +119,23 @@ class TestPermissionCheck:
         stats = pm.get_stats()
         assert stats["total_requests"] == 0
         assert "auto_approve_low_risk" in stats
+
+    async def test_medium_risk_auto_approved(self):
+        pm = PermissionManager()
+        allowed, reason = await pm.check_permission("write_file", {"path": "x.txt"})
+        assert allowed is True
+        assert "中风险自动批准" in reason
+
+    async def test_high_risk_requires_double_confirm(self):
+        pm = PermissionManager()
+        calls = {"n": 0}
+
+        def _approve(_):
+            calls["n"] += 1
+            return True
+
+        pm.set_approval_callback(_approve)
+        allowed, reason = await pm.check_permission("bash", {"command": "python script.py"})
+        assert allowed is True
+        assert "二次确认" in reason
+        assert calls["n"] == 2

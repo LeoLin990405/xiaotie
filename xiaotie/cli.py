@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -43,6 +44,7 @@ from .tools import (
     ReadTool,
     ScraperTool,
     SystemInfoTool,
+    TelegramTool,
     WebFetchTool,
     WebSearchTool,
     WriteTool,
@@ -50,6 +52,21 @@ from .tools import (
 
 # MCP 客户端管理器 (全局，用于清理)
 _mcp_manager = None
+
+
+def start_metrics_server(display: Display):
+    enabled = os.getenv("XIAOTIE_METRICS_ENABLED", "1").lower() not in {"0", "false", "off"}
+    if not enabled:
+        return
+    host = os.getenv("XIAOTIE_METRICS_HOST", "0.0.0.0")
+    port = int(os.getenv("XIAOTIE_METRICS_PORT", "9464"))
+    try:
+        from prometheus_client import start_http_server
+
+        start_http_server(port=port, addr=host)
+        display.info(f"Prometheus 指标地址: http://{host}:{port}/")
+    except Exception as e:
+        display.warning(f"Prometheus 指标服务启动失败: {e}")
 
 
 async def load_mcp_tools(config: Config) -> list:
@@ -164,6 +181,19 @@ def create_tools(config: Config, workspace: Path) -> list:
             applescript_timeout=config.tools.automation.applescript_timeout,
         ))
 
+    if config.tools.enable_telegram and config.tools.telegram.bot_token:
+        tools.append(
+            TelegramTool(
+                bot_token=config.tools.telegram.bot_token,
+                webhook_host=config.tools.telegram.webhook_host,
+                webhook_port=config.tools.telegram.webhook_port,
+                webhook_path=config.tools.telegram.webhook_path,
+                webhook_secret_token=config.tools.telegram.webhook_secret_token,
+                allowed_chat_ids=config.tools.telegram.allowed_chat_ids,
+                allowed_cidrs=config.tools.telegram.allowed_cidrs,
+            )
+        )
+
     # 扩展工具
     tools.extend(EXTENDED_TOOLS)
 
@@ -264,6 +294,7 @@ async def main_async(stream: bool = True, thinking: bool = True):
     # 初始化显示
     display = Display()
     set_display(display)
+    start_metrics_server(display)
 
     # 加载配置
     try:
@@ -461,6 +492,7 @@ async def run_non_interactive(
     thinking: bool = True,
 ):
     """非交互模式"""
+    start_metrics_server(Display())
     # 加载配置
     try:
         config = Config.load()

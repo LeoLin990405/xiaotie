@@ -271,7 +271,7 @@ class TestLLMClientProviderIntegration:
 
     def test_client_from_unknown_provider(self):
         """测试从未知 provider 创建客户端"""
-        with pytest.raises(ValueError, match="Unknown provider"):
+        with pytest.raises(ValueError, match="Unknown provider|不支持|未知"):
             LLMClient.from_provider("unknown_provider")
 
     def test_client_capabilities(self):

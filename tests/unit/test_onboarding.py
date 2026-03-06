@@ -9,9 +9,14 @@ import pytest
 from xiaotie.tui.onboarding import (
     ProviderSetup,
     SUPPORTED_PROVIDERS,
+    get_bootstrap_config_path,
     get_config_path,
+    get_onboarding_state_path,
     has_any_api_key,
     is_first_run,
+    load_onboarding_state,
+    save_bootstrap_config,
+    save_onboarding_state,
     should_show_onboarding,
 )
 
@@ -152,18 +157,44 @@ class TestShouldShowOnboarding:
 
     def test_show_when_first_run_and_no_key(self):
         """测试首次运行且无 API Key 时显示向导"""
-        with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
-            with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
-                assert should_show_onboarding() is True
+        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": False, "skipped": False}):
+            with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
+                with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
+                    assert should_show_onboarding() is True
 
     def test_not_show_when_not_first_run(self):
         """测试非首次运行时不显示向导"""
-        with patch("xiaotie.tui.onboarding.is_first_run", return_value=False):
-            with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
-                assert should_show_onboarding() is False
+        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": False, "skipped": False}):
+            with patch("xiaotie.tui.onboarding.is_first_run", return_value=False):
+                with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
+                    assert should_show_onboarding() is False
 
     def test_not_show_when_has_api_key(self):
         """测试有 API Key 时不显示向导"""
-        with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
-            with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=True):
-                assert should_show_onboarding() is False
+        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": False, "skipped": False}):
+            with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
+                with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=True):
+                    assert should_show_onboarding() is False
+
+    def test_not_show_when_state_completed(self):
+        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": True, "skipped": False}):
+            with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
+                with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
+                    assert should_show_onboarding() is False
+
+
+class TestOnboardingState:
+    def test_save_and_load_state(self, monkeypatch, tmp_path):
+        monkeypatch.setattr("xiaotie.tui.onboarding.get_onboarding_state_path", lambda: tmp_path / "state.json")
+        save_onboarding_state(completed=True, skipped=False)
+        state = load_onboarding_state()
+        assert state["completed"] is True
+        assert state["skipped"] is False
+
+    def test_save_bootstrap_config(self, monkeypatch, tmp_path):
+        monkeypatch.setattr("xiaotie.tui.onboarding.get_bootstrap_config_path", lambda: tmp_path / "config.yaml")
+        path = save_bootstrap_config("openai", "gpt-4o", "sk-test")
+        text = path.read_text(encoding="utf-8")
+        assert "provider: \"openai\"" in text
+        assert "model: \"gpt-4o\"" in text
+        assert "api_key: \"sk-test\"" in text

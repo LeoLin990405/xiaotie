@@ -27,6 +27,7 @@ from ..tools import (
     WriteTool,
 )
 from .app import XiaoTieApp
+from .onboarding import get_bootstrap_config_path
 
 
 def create_tools(config: Config, workspace: Path) -> list:
@@ -79,13 +80,22 @@ def load_system_prompt(config: Config) -> str:
 
 def run_tui():
     """运行 TUI 模式"""
-    # 加载配置
+    config = None
     try:
         config = Config.load()
-    except (FileNotFoundError, ValueError) as e:
-        print(f"❌ 配置错误: {e}")
-        print("\n请创建配置文件 config/config.yaml")
-        sys.exit(1)
+    except (FileNotFoundError, ValueError):
+        bootstrap_app = XiaoTieApp(show_onboarding=True, onboarding_required=True)
+        bootstrap_app.run()
+        result = bootstrap_app.onboarding_result or {}
+        if not result.get("completed"):
+            print("❌ 未完成引导配置，已退出。")
+            sys.exit(1)
+        bootstrap_config = get_bootstrap_config_path()
+        if bootstrap_config.exists():
+            config = Config.load(bootstrap_config)
+        else:
+            print("❌ 引导配置未生成有效配置文件。")
+            sys.exit(1)
 
     # 创建工作目录
     workspace = Path(config.agent.workspace_dir).absolute()
@@ -138,12 +148,7 @@ def run_tui():
     commands = Commands(agent, session_mgr, plugin_mgr)
 
     # 创建并运行 TUI 应用
-    app = XiaoTieApp(
-        agent=agent,
-        session_mgr=session_mgr,
-        plugin_mgr=plugin_mgr,
-        commands=commands,
-    )
+    app = XiaoTieApp(agent=agent, session_mgr=session_mgr, plugin_mgr=plugin_mgr, commands=commands)
 
     # 设置模型名称
     app.model_name = config.llm.model

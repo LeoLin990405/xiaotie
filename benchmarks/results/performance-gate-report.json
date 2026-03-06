@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-03-06T00:19:44.430663+00:00",
+  "benchmark_timestamp": 1772756336,
+  "threshold_ratio": 0.95,
+  "passed": true,
+  "metrics": [
+    {
+      "name": "event.batch_events_per_sec",
+      "actual": 823566.35,
+      "baseline": 300000.0,
+      "required": 285000.0,
+      "ratio": 0.95,
+      "passed": true
+    },
+    {
+      "name": "storage.insert_per_sec",
+      "actual": 747460.73,
+      "baseline": 300000.0,
+      "required": 285000.0,
+      "ratio": 0.95,
+      "passed": true
+    }
+  ]
+}

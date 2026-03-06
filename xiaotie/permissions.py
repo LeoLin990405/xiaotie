@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set
@@ -125,14 +126,18 @@ class PermissionManager:
     def __init__(
         self,
         auto_approve_low_risk: bool = True,
+        auto_approve_medium_risk: bool = True,
         auto_approve_patterns: Optional[List[str]] = None,
         deny_patterns: Optional[List[str]] = None,
         interactive: bool = True,
+        require_double_confirm_high_risk: bool = True,
     ):
         self.auto_approve_low_risk = auto_approve_low_risk
+        self.auto_approve_medium_risk = auto_approve_medium_risk
         self.auto_approve_patterns = auto_approve_patterns or SAFE_PATTERNS
         self.deny_patterns = deny_patterns or DANGEROUS_PATTERNS
         self.interactive = interactive
+        self.require_double_confirm_high_risk = require_double_confirm_high_risk
 
         # 会话级白名单
         self._session_whitelist: Set[str] = set()
@@ -140,6 +145,7 @@ class PermissionManager:
         self._permanent_whitelist: Set[str] = set()
         # 审批历史
         self._approval_history: List[PermissionRequest] = []
+        self._decision_history: List[Dict[str, Any]] = []
         # 自定义审批回调
         self._approval_callback: Optional[Callable[[PermissionRequest], bool]] = None
 
@@ -173,6 +179,9 @@ class PermissionManager:
                     return RiskLevel.LOW
 
         return base_risk
+
+    def get_risk_level(self, tool_name: str, arguments: Dict[str, Any]) -> RiskLevel:
+        return self._get_risk_level(tool_name, arguments)
 
     def _is_whitelisted(self, tool_name: str, arguments: Dict[str, Any]) -> bool:
         """检查是否在白名单中"""
@@ -240,26 +249,41 @@ class PermissionManager:
 
         # 低风险自动批准
         if self.auto_approve_low_risk and risk_level == RiskLevel.LOW:
+            self._record_decision(request, True, "低风险自动批准")
             return True, "低风险自动批准"
+
+        if self.auto_approve_medium_risk and risk_level == RiskLevel.MEDIUM:
+            self._record_decision(request, True, "中风险自动批准")
+            return True, "中风险自动批准"
 
         # 危险操作拒绝
         if risk_level == RiskLevel.CRITICAL:
+            self._record_decision(request, False, "危险操作被拒绝")
             return False, f"危险操作被拒绝: {request.description}"
 
         # 非交互模式
         if not self.interactive:
             if risk_level in (RiskLevel.LOW, RiskLevel.MEDIUM):
+                self._record_decision(request, True, "非交互模式自动批准")
                 return True, "非交互模式自动批准"
+            self._record_decision(request, False, "非交互模式拒绝高风险操作")
             return False, "非交互模式拒绝高风险操作"
 
-        # 自定义回调
-        if self._approval_callback:
-            approved = self._approval_callback(request)
-            self._approval_history.append(request)
-            return approved, "用户决定"
+        if risk_level == RiskLevel.HIGH and self.require_double_confirm_high_risk:
+            approved, reason = await self._ask_for_approval(request)
+            if not approved:
+                self._record_decision(request, False, reason)
+                return False, reason
+            approved_second, reason_second = await self._ask_for_approval(request)
+            if not approved_second:
+                self._record_decision(request, False, f"二次确认未通过: {reason_second}")
+                return False, f"二次确认未通过: {reason_second}"
+            self._record_decision(request, True, "高风险二次确认通过")
+            return True, "高风险二次确认通过"
 
-        # 默认交互式确认
-        return await self._interactive_confirm(request)
+        approved, reason = await self._ask_for_approval(request)
+        self._record_decision(request, approved, reason)
+        return approved, reason
 
     def _format_request_description(self, tool_name: str, arguments: Dict[str, Any]) -> str:
         """格式化请求描述"""
@@ -274,8 +298,10 @@ class PermissionManager:
 
     async def _interactive_confirm(self, request: PermissionRequest) -> tuple[bool, str]:
         """交互式确认"""
-        print(self._format_request(request))
-        print("\n   [y] 允许  [n] 拒绝  [a] 允许并加入白名单  [q] 退出")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(self._format_request(request))
+        logger.info("\n   [y] 允许  [n] 拒绝  [a] 允许并加入白名单  [q] 退出")
 
         try:
             response = input("   选择: ").strip().lower()
@@ -299,11 +325,35 @@ class PermissionManager:
         else:
             return False, "用户拒绝"
 
+    async def _ask_for_approval(self, request: PermissionRequest) -> tuple[bool, str]:
+        if self._approval_callback:
+            approved = self._approval_callback(request)
+            self._approval_history.append(request)
+            return approved, "用户决定"
+        return await self._interactive_confirm(request)
+
+    def _record_decision(self, request: PermissionRequest, approved: bool, reason: str):
+        self._decision_history.append(
+            {
+                "timestamp": time.time(),
+                "tool_name": request.tool_name,
+                "risk_level": request.risk_level.value,
+                "approved": approved,
+                "reason": reason,
+                "description": request.description,
+            }
+        )
+
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""
         return {
             "total_requests": len(self._approval_history),
+            "total_decisions": len(self._decision_history),
             "session_whitelist": len(self._session_whitelist),
             "permanent_whitelist": len(self._permanent_whitelist),
             "auto_approve_low_risk": self.auto_approve_low_risk,
+            "auto_approve_medium_risk": self.auto_approve_medium_risk,
         }
+
+    def get_decision_history(self) -> List[Dict[str, Any]]:
+        return list(self._decision_history)

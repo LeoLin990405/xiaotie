@@ -1,0 +1,18 @@
+{
+  "timestamp": 1772756336,
+  "event_benchmark": {
+    "single_publish_seconds": 0.029368,
+    "batch_publish_seconds": 0.024285,
+    "events": 20000,
+    "single_events_per_sec": 681007.55,
+    "batch_events_per_sec": 823566.35,
+    "speedup": 1.21
+  },
+  "storage_benchmark": {
+    "insert_seconds": 0.267573,
+    "insert_per_sec": 747460.73,
+    "total_entries": 200000,
+    "retained_entries": 10000,
+    "max_entries": 10000
+  }
+}

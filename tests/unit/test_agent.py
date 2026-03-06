@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from xiaotie.agent import Agent, AgentConfig, SessionState
-from xiaotie.schema import LLMResponse, Message, TokenUsage, ToolResult
+from xiaotie.schema import FunctionCall, LLMResponse, Message, TokenUsage, ToolCall, ToolResult
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +86,8 @@ class TestAgentConversation:
         await agent.run("hi")
         stats = agent.get_stats()
         assert stats["message_count"] >= 3  # system + user + assistant
+        assert "telemetry" in stats
+        assert stats["telemetry"]["runs_total"] >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +199,55 @@ class TestAgentReset:
         assert agent.api_total_tokens == 0
 
 
+class TestAgentSecurity:
+    async def test_sensitive_tool_output_blocked(self, mock_llm):
+        tool = MagicMock()
+        tool.name = "dummy"
+        tool.description = "dummy tool"
+        tool.parameters = {"type": "object", "properties": {}}
+        tool.to_schema.return_value = {
+            "type": "function",
+            "function": {"name": "dummy", "description": "dummy", "parameters": {}},
+        }
+        tool.execute = AsyncMock(return_value=ToolResult(success=True, content="api_key=secret123"))
+
+        agent = Agent(
+            llm_client=mock_llm,
+            system_prompt="test",
+            tools=[tool],
+            max_steps=3,
+            stream=False,
+            quiet=True,
+        )
+        tc = ToolCall(id="tc1", function=FunctionCall(name="dummy", arguments={}))
+        _, _, result = await agent._execute_single_tool(tc)
+        assert "输出已拦截" in result
+
+    async def test_high_risk_tool_denied_in_non_interactive(self, mock_llm):
+        tool = MagicMock()
+        tool.name = "bash"
+        tool.description = "bash tool"
+        tool.parameters = {"type": "object", "properties": {}}
+        tool.to_schema.return_value = {
+            "type": "function",
+            "function": {"name": "bash", "description": "bash", "parameters": {}},
+        }
+        tool.execute = AsyncMock(return_value=ToolResult(success=True, content="ok"))
+
+        agent = Agent(
+            llm_client=mock_llm,
+            system_prompt="test",
+            tools=[tool],
+            max_steps=3,
+            stream=False,
+            quiet=True,
+        )
+        agent.permission_manager.interactive = False
+        tc = ToolCall(id="tc1", function=FunctionCall(name="bash", arguments={"command": "python script.py"}))
+        _, _, result = await agent._execute_single_tool(tc)
+        assert "权限拒绝" in result
+
+
 # ---------------------------------------------------------------------------
 # SessionState
 # ---------------------------------------------------------------------------
@@ -214,3 +265,55 @@ class TestSessionState:
         assert await state.acquire("s1")
         assert not await state.acquire("s1")
         await state.release("s1")
+
+
+# ---------------------------------------------------------------------------
+# Tool Execution and Utility
+# ---------------------------------------------------------------------------
+
+class TestToolExecution:
+    @pytest.mark.asyncio
+    async def test_execute_tools_sequential(self, agent, dummy_tool):
+        from xiaotie.schema import ToolCall, FunctionCall
+        tc1 = ToolCall(id="tc1", function=FunctionCall(name="dummy", arguments={"arg": 1}))
+        tc2 = ToolCall(id="tc2", function=FunctionCall(name="dummy", arguments={"arg": 2}))
+        
+        results = await agent._execute_tools_sequential([tc1, tc2])
+        assert len(results) == 2
+        assert results[0][0] == "tc1"
+        assert results[1][0] == "tc2"
+        assert dummy_tool.execute.call_count == 2
+        
+    @pytest.mark.asyncio
+    async def test_execute_tools_parallel(self, agent, dummy_tool):
+        from xiaotie.schema import ToolCall, FunctionCall
+        tc1 = ToolCall(id="tc3", function=FunctionCall(name="dummy", arguments={"arg": 1}))
+        tc2 = ToolCall(id="tc4", function=FunctionCall(name="dummy", arguments={"arg": 2}))
+        
+        results = await agent._execute_tools_parallel([tc1, tc2])
+        assert len(results) == 2
+        assert dummy_tool.execute.call_count == 2
+        assert set(r[0] for r in results) == {"tc3", "tc4"}
+
+    @pytest.mark.asyncio
+    async def test_summarize_messages(self, agent, mock_llm):
+        # We need mock_llm to return a summary
+        mock_llm.generate = AsyncMock(return_value=LLMResponse(content="System Summary", tool_calls=None))
+        
+        # Add 10 messages
+        for i in range(10):
+            agent.messages.append(Message(role="user", content=f"msg {i}"))
+            
+        # Force the condition to be true
+        agent.config.token_limit = 10
+        agent._estimate_tokens = MagicMock(return_value=100)
+        
+        await agent._summarize_messages()
+        
+        # summary should replace inner messages. 
+        # system message (1) + summary (1) + recent messages (depends on config, default 5)
+        assert len(agent.messages) <= 7 
+        roles = [m.role for m in agent.messages]
+        assert "system" in roles
+        # check if it added the assistant summary
+        assert any(m.role == "assistant" and "System Summary" in str(m.content) for m in agent.messages)
