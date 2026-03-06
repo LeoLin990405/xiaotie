@@ -75,8 +75,14 @@ class SystemCommandsMixin(CommandsBase):
         if not args:
             return True, f"📊 当前模型: {self.agent.llm._client.model}"
 
-        # TODO: 实现模型切换
-        return True, "⚠️ 模型切换功能开发中"
+        new_model = args.strip()
+        self.agent.llm.model = new_model
+        if hasattr(self.agent.llm, "_client"):
+            self.agent.llm._client.model = new_model
+        if hasattr(self.agent, "config") and hasattr(self.agent.config, "llm"):
+            self.agent.config.llm.model = new_model
+            
+        return True, f"✅ 已切换到模型: {new_model}"
         
     def cmd_config(self, args: str) -> tuple[bool, str]:
         """显示当前配置"""

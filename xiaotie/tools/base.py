@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Dict
+from typing import Any, Dict
 
 from ..schema import ToolResult
 
@@ -27,24 +27,20 @@ class Tool(ABC):
     @abstractmethod
     def name(self) -> str:
         """工具名称"""
-        pass
 
     @property
     @abstractmethod
     def description(self) -> str:
         """工具描述"""
-        pass
 
     @property
     @abstractmethod
     def parameters(self) -> dict[str, Any]:
         """参数 JSON Schema"""
-        pass
 
     @abstractmethod
     async def execute(self, **kwargs) -> ToolResult:
         """执行工具"""
-        pass
 
     async def execute_with_monitoring(self, **kwargs) -> ToolResult:
         """执行工具并监控性能"""

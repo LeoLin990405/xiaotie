@@ -32,11 +32,10 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple, Union
+from typing import Optional, Dict, Any, List, Tuple
 import sqlite3
 import re
 import time
-from pathlib import Path
 from contextlib import contextmanager
 
 
@@ -122,17 +121,14 @@ class DatabaseError(Exception):
 
 class ConnectionError(DatabaseError):
     """连接错误"""
-    pass
 
 
 class QueryError(DatabaseError):
     """查询错误"""
-    pass
 
 
 class SecurityError(DatabaseError):
     """安全错误"""
-    pass
 
 
 class SQLValidator:
@@ -222,7 +218,7 @@ class SQLiteConnection:
             )
             self._connection.row_factory = sqlite3.Row
         except sqlite3.Error as e:
-            raise ConnectionError(f"Failed to connect: {e}")
+            raise ConnectionError(f"Failed to connect: {e}") from e
 
     def close(self):
         """关闭连接"""
@@ -404,6 +400,7 @@ class DatabaseTool:
 
         result = self.query(sql)
         if result.success:
+            import logging
             logger = logging.getLogger(__name__)
             if result.rows:
                 logger.info(result.rows)

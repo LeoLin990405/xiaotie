@@ -113,7 +113,7 @@ class TestAnthropicClient:
         # that yields a stream object.
         mock_context_manager = AsyncMock()
         mock_stream_obj = AsyncMock()
-        mock_stream_obj.__aiter__.side_effect = lambda: mock_stream_generator()
+        mock_stream_obj.__aiter__.side_effect = mock_stream_generator
         mock_stream_obj.get_final_message = AsyncMock(return_value=mock_final)
         
         mock_context_manager.__aenter__.return_value = mock_stream_obj

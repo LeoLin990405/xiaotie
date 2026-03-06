@@ -119,6 +119,7 @@ class ToolsConfig(BaseModel):
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
 
     @model_validator(mode="before")
+    @classmethod
     def sync_tool_enables(cls, values):
         if not isinstance(values, dict):
             return values
