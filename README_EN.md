@@ -10,11 +10,13 @@
 
 **A state-machine-driven AI coding agent framework with built-in OS-level sandboxing, tree-sitter code navigation, and layered secret management.**
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Tests](https://img.shields.io/badge/Tests-1703%20passed-brightgreen)
-![Coverage](https://img.shields.io/badge/Coverage-61%25-yellow)
-![Version](https://img.shields.io/badge/Version-2.1.0-blue)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/github/license/LeoLin990405/xiaotie?color=green)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/LeoLin990405/xiaotie?style=social)](https://github.com/LeoLin990405/xiaotie/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/LeoLin990405/xiaotie)](https://github.com/LeoLin990405/xiaotie/issues)
+[![Tests](https://img.shields.io/badge/Tests-1703%20passed-brightgreen)](https://github.com/LeoLin990405/xiaotie/actions)
+[![Coverage](https://img.shields.io/badge/Coverage-61%25-yellow)](#project-stats)
+[![Version](https://img.shields.io/badge/Version-2.1.0-blue)](CHANGELOG.md)
 
 [中文](./README.md) · [Changelog](./CHANGELOG.md) · [API Reference](./docs/api-reference.md)
 

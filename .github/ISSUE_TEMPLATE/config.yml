@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/LeoLin990405/xiaotie#readme
+    about: Check the README and docs before opening an issue.
