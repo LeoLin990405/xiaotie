@@ -12,16 +12,16 @@
     - CapturedRequest: 单条请求数据模型
 """
 
-from .storage import CapturedRequest, RequestStorage
 from .cert_manager import CertManager
+from .storage import CapturedRequest, RequestStorage
 
 # 向后兼容
 SessionStorage = RequestStorage
 
 # ProxyServer 和 addons 需要 mitmproxy，延迟导入
 try:
+    from .addons import MiniAppFilter, RequestCapture
     from .proxy_server import ProxyServer
-    from .addons import RequestCapture, MiniAppFilter
 except ImportError:
     ProxyServer = None  # type: ignore[assignment,misc]
     RequestCapture = None  # type: ignore[assignment,misc]

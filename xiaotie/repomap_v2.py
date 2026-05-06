@@ -13,14 +13,12 @@ Falls back to regex extraction (v1 RepoMap) if tree-sitter is unavailable.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
 import re
 import sqlite3
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -87,16 +85,49 @@ EXTENSION_TO_LANGUAGE = {
 }
 
 DEFAULT_IGNORE = {
-    ".git", ".svn", ".hg", "node_modules", "__pycache__", ".pytest_cache",
-    "venv", ".venv", "env", ".env", "dist", "build", ".next", ".nuxt",
-    "target", "out", "bin", "obj", ".idea", ".vscode", "coverage",
-    ".nyc_output", ".ruff_cache", "htmlcov", ".mypy_cache", ".tox",
+    ".git",
+    ".svn",
+    ".hg",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    "venv",
+    ".venv",
+    "env",
+    ".env",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    "target",
+    "out",
+    "bin",
+    "obj",
+    ".idea",
+    ".vscode",
+    "coverage",
+    ".nyc_output",
+    ".ruff_cache",
+    "htmlcov",
+    ".mypy_cache",
+    ".tox",
     "egg-info",
 }
 
 DEFAULT_IGNORE_EXTENSIONS = {
-    ".pyc", ".pyo", ".so", ".dll", ".dylib", ".o", ".a",
-    ".min.js", ".min.css", ".map", ".lock", ".whl", ".egg",
+    ".pyc",
+    ".pyo",
+    ".so",
+    ".dll",
+    ".dylib",
+    ".o",
+    ".a",
+    ".min.js",
+    ".min.css",
+    ".map",
+    ".lock",
+    ".whl",
+    ".egg",
 }
 
 
@@ -179,8 +210,7 @@ class TreeSitterParser:
     def __init__(self):
         if not HAS_TREE_SITTER:
             raise ImportError(
-                "tree-sitter-languages is required. Install with: "
-                "pip install 'xiaotie[repomap]'"
+                "tree-sitter-languages is required. Install with: pip install 'xiaotie[repomap]'"
             )
         self._parsers: Dict[str, object] = {}
 
@@ -193,7 +223,9 @@ class TreeSitterParser:
                 return None
         return self._parsers[language]
 
-    def _extract_name_from_node(self, node, name_field: Optional[str], language: str) -> Optional[str]:
+    def _extract_name_from_node(
+        self, node, name_field: Optional[str], language: str
+    ) -> Optional[str]:
         """Extract the identifier name from a definition node."""
         if name_field is None:
             # Special handling
@@ -255,27 +287,39 @@ class TreeSitterParser:
         return tags
 
     def _walk_for_definitions(
-        self, node, rel_path: str, abs_path: str, language: str,
-        def_queries: list, tags: List[Tag],
+        self,
+        node,
+        rel_path: str,
+        abs_path: str,
+        language: str,
+        def_queries: list,
+        tags: List[Tag],
     ):
         """Walk AST to find definition nodes."""
         for node_type, name_field in def_queries:
             if node.type == node_type:
                 name = self._extract_name_from_node(node, name_field, language)
                 if name and _is_valid_identifier(name):
-                    tags.append(Tag(
-                        rel_fname=rel_path,
-                        fname=abs_path,
-                        line=node.start_point[0] + 1,
-                        name=name,
-                        kind="def",
-                    ))
+                    tags.append(
+                        Tag(
+                            rel_fname=rel_path,
+                            fname=abs_path,
+                            line=node.start_point[0] + 1,
+                            name=name,
+                            kind="def",
+                        )
+                    )
 
         for child in node.children:
             self._walk_for_definitions(child, rel_path, abs_path, language, def_queries, tags)
 
     def _walk_for_references(
-        self, node, rel_path: str, abs_path: str, language: str, tags: List[Tag],
+        self,
+        node,
+        rel_path: str,
+        abs_path: str,
+        language: str,
+        tags: List[Tag],
     ):
         """Walk AST to find identifier references (not definitions)."""
         if node.type == "identifier" and node.parent is not None:
@@ -285,13 +329,15 @@ class TreeSitterParser:
             if parent_type not in def_node_types:
                 name = node.text.decode("utf-8", errors="replace")
                 if _is_valid_identifier(name) and len(name) > 1:
-                    tags.append(Tag(
-                        rel_fname=rel_path,
-                        fname=abs_path,
-                        line=node.start_point[0] + 1,
-                        name=name,
-                        kind="ref",
-                    ))
+                    tags.append(
+                        Tag(
+                            rel_fname=rel_path,
+                            fname=abs_path,
+                            line=node.start_point[0] + 1,
+                            name=name,
+                            kind="ref",
+                        )
+                    )
                 return  # Don't recurse into identifier children
 
         for child in node.children:
@@ -320,8 +366,7 @@ class TagCache:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
             self._db = sqlite3.connect(str(self._db_path), timeout=5.0)
             self._db.execute(
-                "CREATE TABLE IF NOT EXISTS tags "
-                "(path TEXT PRIMARY KEY, mtime REAL, data TEXT)"
+                "CREATE TABLE IF NOT EXISTS tags (path TEXT PRIMARY KEY, mtime REAL, data TEXT)"
             )
             self._db.execute("PRAGMA journal_mode=WAL")
             self._db.commit()
@@ -410,9 +455,7 @@ class DependencyGraph:
 
     def __init__(self):
         if not HAS_NETWORKX:
-            raise ImportError(
-                "networkx is required. Install with: pip install 'xiaotie[repomap]'"
-            )
+            raise ImportError("networkx is required. Install with: pip install 'xiaotie[repomap]'")
 
     def build(self, all_tags: Dict[str, List[Tag]]) -> "nx.MultiDiGraph":
         """Build dependency graph from file -> tags mapping.
@@ -621,12 +664,10 @@ class RepoMapEngine:
     def get_stats(self) -> Dict:
         """Get statistics about the last scan."""
         total_defs = sum(
-            sum(1 for t in tags if t.kind == "def")
-            for tags in self._file_tags.values()
+            sum(1 for t in tags if t.kind == "def") for tags in self._file_tags.values()
         )
         total_refs = sum(
-            sum(1 for t in tags if t.kind == "ref")
-            for tags in self._file_tags.values()
+            sum(1 for t in tags if t.kind == "ref") for tags in self._file_tags.values()
         )
         languages = set()
         for rel_path in self._file_tags:
@@ -690,18 +731,17 @@ class RepoMapEngine:
             return []
 
         tags = []
-        for match in re.finditer(
-            r"^(?:async\s+)?(?:class|def)\s+(\w+)", content, re.MULTILINE
-        ):
+        for match in re.finditer(r"^(?:async\s+)?(?:class|def)\s+(\w+)", content, re.MULTILINE):
             line = content[: match.start()].count("\n") + 1
-            kind_word = match.group(0).split()[0]
-            tags.append(Tag(
-                rel_fname=rel_path,
-                fname=abs_path,
-                line=line,
-                name=match.group(1),
-                kind="def",
-            ))
+            tags.append(
+                Tag(
+                    rel_fname=rel_path,
+                    fname=abs_path,
+                    line=line,
+                    name=match.group(1),
+                    kind="def",
+                )
+            )
 
         return tags
 
@@ -710,10 +750,7 @@ class RepoMapEngine:
         files = []
         for root, dirs, filenames in os.walk(self.workspace):
             # Filter directories in-place
-            dirs[:] = [
-                d for d in dirs
-                if d not in self.ignore_patterns and not d.startswith(".")
-            ]
+            dirs[:] = [d for d in dirs if d not in self.ignore_patterns and not d.startswith(".")]
 
             for filename in filenames:
                 # Skip ignored extensions
@@ -732,12 +769,14 @@ class RepoMapEngine:
                         continue
 
                     rel_path = str(file_path.relative_to(self.workspace))
-                    files.append(FileEntry(
-                        rel_path=rel_path,
-                        abs_path=str(file_path),
-                        mtime=stat.st_mtime,
-                        size=stat.st_size,
-                    ))
+                    files.append(
+                        FileEntry(
+                            rel_path=rel_path,
+                            abs_path=str(file_path),
+                            mtime=stat.st_mtime,
+                            size=stat.st_size,
+                        )
+                    )
                 except (OSError, PermissionError):
                     continue
 
@@ -809,20 +848,78 @@ def _is_valid_identifier(name: str) -> bool:
         return False
     # Skip single-character names and Python builtins/keywords
     if name in {
-        "self", "cls", "None", "True", "False", "pass", "return", "yield",
-        "import", "from", "as", "if", "else", "elif", "for", "while",
-        "try", "except", "finally", "with", "raise", "break", "continue",
-        "def", "class", "and", "or", "not", "is", "in", "lambda",
-        "global", "nonlocal", "del", "assert", "async", "await",
+        "self",
+        "cls",
+        "None",
+        "True",
+        "False",
+        "pass",
+        "return",
+        "yield",
+        "import",
+        "from",
+        "as",
+        "if",
+        "else",
+        "elif",
+        "for",
+        "while",
+        "try",
+        "except",
+        "finally",
+        "with",
+        "raise",
+        "break",
+        "continue",
+        "def",
+        "class",
+        "and",
+        "or",
+        "not",
+        "is",
+        "in",
+        "lambda",
+        "global",
+        "nonlocal",
+        "del",
+        "assert",
+        "async",
+        "await",
         # JS/TS keywords
-        "var", "let", "const", "function", "this", "new", "typeof",
-        "instanceof", "void", "delete", "null", "undefined", "true", "false",
+        "var",
+        "let",
+        "const",
+        "function",
+        "this",
+        "new",
+        "typeof",
+        "instanceof",
+        "void",
+        "delete",
+        "null",
+        "undefined",
+        "true",
+        "false",
         # Go keywords
-        "func", "type", "struct", "interface", "package",
-        "nil", "err",
+        "func",
+        "type",
+        "struct",
+        "interface",
+        "package",
+        "nil",
+        "err",
         # Rust keywords
-        "fn", "pub", "mod", "use", "impl", "trait", "enum",
-        "mut", "ref", "let", "match",
+        "fn",
+        "pub",
+        "mod",
+        "use",
+        "impl",
+        "trait",
+        "enum",
+        "mut",
+        "ref",
+        "let",
+        "match",
     }:
         return False
     return True
@@ -836,16 +933,18 @@ def _language_for_file(path: str) -> Optional[str]:
 
 def _serialize_tags(tags: List[Tag]) -> str:
     """Serialize tags to JSON for cache storage."""
-    return json.dumps([
-        {
-            "r": t.rel_fname,
-            "f": t.fname,
-            "l": t.line,
-            "n": t.name,
-            "k": t.kind,
-        }
-        for t in tags
-    ])
+    return json.dumps(
+        [
+            {
+                "r": t.rel_fname,
+                "f": t.fname,
+                "l": t.line,
+                "n": t.name,
+                "k": t.kind,
+            }
+            for t in tags
+        ]
+    )
 
 
 def _deserialize_tags(data: str) -> List[Tag]:

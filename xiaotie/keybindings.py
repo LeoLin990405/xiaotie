@@ -20,12 +20,10 @@
     action = kb.get_action("ctrl+s")  # "save"
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Callable, Set
 import json
-import re
+from dataclasses import dataclass
 from pathlib import Path
-
+from typing import Any, Callable, Dict, List, Optional
 
 # 修饰键
 MODIFIERS = {"ctrl", "alt", "shift", "meta", "cmd", "super"}
@@ -51,9 +49,18 @@ SPECIAL_KEYS = {
     "down": "down",
     "left": "left",
     "right": "right",
-    "f1": "f1", "f2": "f2", "f3": "f3", "f4": "f4",
-    "f5": "f5", "f6": "f6", "f7": "f7", "f8": "f8",
-    "f9": "f9", "f10": "f10", "f11": "f11", "f12": "f12",
+    "f1": "f1",
+    "f2": "f2",
+    "f3": "f3",
+    "f4": "f4",
+    "f5": "f5",
+    "f6": "f6",
+    "f7": "f7",
+    "f8": "f8",
+    "f9": "f9",
+    "f10": "f10",
+    "f11": "f11",
+    "f12": "f12",
 }
 
 # 默认快捷键
@@ -63,7 +70,6 @@ DEFAULT_BINDINGS = {
     "ctrl+o": "open",
     "ctrl+n": "new",
     "ctrl+w": "close",
-
     # 编辑操作
     "ctrl+z": "undo",
     "ctrl+y": "redo",
@@ -72,23 +78,19 @@ DEFAULT_BINDINGS = {
     "ctrl+x": "cut",
     "ctrl+v": "paste",
     "ctrl+a": "select_all",
-
     # 搜索
     "ctrl+f": "find",
     "ctrl+h": "replace",
     "ctrl+g": "goto_line",
-
     # 视图
     "ctrl+shift+p": "command_palette",
     "ctrl+`": "toggle_terminal",
     "ctrl+b": "toggle_sidebar",
     "ctrl+\\": "split_editor",
-
     # 导航
     "ctrl+p": "quick_open",
     "ctrl+tab": "next_tab",
     "ctrl+shift+tab": "prev_tab",
-
     # Agent 操作
     "ctrl+enter": "submit",
     "ctrl+shift+enter": "submit_and_run",
@@ -100,6 +102,7 @@ DEFAULT_BINDINGS = {
 @dataclass
 class KeyBinding:
     """快捷键绑定"""
+
     key: str  # 标准化的快捷键字符串
     action: str  # 动作名称
     description: Optional[str] = None
@@ -118,6 +121,7 @@ class KeyBinding:
 
 class KeyParseError(Exception):
     """快捷键解析错误"""
+
     pass
 
 

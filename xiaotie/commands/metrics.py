@@ -3,11 +3,13 @@ Metrics and observability commands Mixin.
 """
 
 import json
+
 from .base import CommandsBase
+
 
 class MetricsCommandsMixin(CommandsBase):
     """Metrics related commands like metrics, status"""
-    
+
     def cmd_metrics(self, args: str) -> tuple[bool, str]:
         """显示运行监控指标 (用法: /metrics [json])"""
         snapshot = self.agent.telemetry.snapshot()

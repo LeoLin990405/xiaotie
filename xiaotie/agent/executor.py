@@ -11,11 +11,9 @@ import logging
 import re
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Protocol
+from typing import Dict
 
 from xiaotie.events import (
-    Event,
-    EventType,
     ToolCompleteEvent,
     ToolStartEvent,
     get_event_broker,
@@ -30,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ToolResult:
     """工具执行结果"""
+
     tool_call_id: str
     function_name: str
     content: str
@@ -43,10 +42,13 @@ _SENSITIVE_PATTERNS = [
     (re.compile(r"-----BEGIN (RSA|EC|DSA|OPENSSH|PGP) PRIVATE KEY-----"), "检测到私钥内容"),
     (re.compile(r"gh[pousr]_[A-Za-z0-9_]{36,}"), "检测到疑似 GitHub Token"),
     (re.compile(r"glpat-[A-Za-z0-9\-_]{20,}"), "检测到疑似 GitLab Token"),
-    (re.compile(
-        r'(?i)(?:api[_-]?key|secret[_-]?key|api[_-]?secret|password|passwd|private[_-]?key)'
-        r'\s*[:=]\s*["\']?([A-Za-z0-9+/=_\-]{16,})["\']?'
-    ), "检测到疑似凭据赋值"),
+    (
+        re.compile(
+            r"(?i)(?:api[_-]?key|secret[_-]?key|api[_-]?secret|password|passwd|private[_-]?key)"
+            r'\s*[:=]\s*["\']?([A-Za-z0-9+/=_\-]{16,})["\']?'
+        ),
+        "检测到疑似凭据赋值",
+    ),
 ]
 
 
@@ -122,12 +124,14 @@ class ToolExecutor:
         for i, r in enumerate(raw_results):
             if isinstance(r, Exception):
                 tc = tool_calls[i]
-                results.append(ToolResult(
-                    tool_call_id=tc.id,
-                    function_name=tc.function.name,
-                    content=f"执行异常: {r}",
-                    success=False,
-                ))
+                results.append(
+                    ToolResult(
+                        tool_call_id=tc.id,
+                        function_name=tc.function.name,
+                        content=f"执行异常: {r}",
+                        success=False,
+                    )
+                )
             else:
                 results.append(r)
         return results
@@ -140,16 +144,19 @@ class ToolExecutor:
 
         risk_level = self.permission_manager.get_risk_level(function_name, arguments).value
         tool_origin = self._resolve_tool_origin(function_name)
-        audit_data = self._make_audit_data(tool_origin, risk_level,
-                                            arguments_summary=_summarize_arguments(arguments))
+        audit_data = self._make_audit_data(
+            tool_origin, risk_level, arguments_summary=_summarize_arguments(arguments)
+        )
 
         # 发布开始事件
-        await self._publish_event(ToolStartEvent(
-            tool_name=function_name,
-            tool_id=tool_call_id,
-            arguments=arguments,
-            data=audit_data,
-        ))
+        await self._publish_event(
+            ToolStartEvent(
+                tool_name=function_name,
+                tool_id=tool_call_id,
+                arguments=arguments,
+                data=audit_data,
+            )
+        )
 
         if not self.quiet:
             args_display = ", ".join(f"{k}={repr(v)[:50]}" for k, v in arguments.items())
@@ -160,14 +167,18 @@ class ToolExecutor:
         if not tool:
             available = ", ".join(sorted(self.tools.keys())[:5])
             error_msg = f"错误: 未知工具 '{function_name}'\n  → 可用工具: {available}..."
-            await self._publish_tool_complete(function_name, tool_call_id, False, 0.0, {}, error=error_msg)
+            await self._publish_tool_complete(
+                function_name, tool_call_id, False, 0.0, {}, error=error_msg
+            )
             return ToolResult(tool_call_id, function_name, error_msg, success=False)
 
         # 权限检查
         allowed, reason = await self.permission_manager.check_permission(function_name, arguments)
         if not allowed:
             error_msg = f"权限拒绝: {reason}\n  → 当前风险等级: {risk_level.upper()}"
-            await self._publish_tool_complete(function_name, tool_call_id, False, 0.0, {}, error=error_msg)
+            await self._publish_tool_complete(
+                function_name, tool_call_id, False, 0.0, {}, error=error_msg
+            )
             return ToolResult(tool_call_id, function_name, error_msg, success=False)
 
         # 执行
@@ -187,25 +198,46 @@ class ToolExecutor:
                     logger.info("工具 %s OK (%.1fs): %s", function_name, elapsed, preview)
 
                 await self._publish_tool_complete(
-                    function_name, tool_call_id, not blocked, elapsed, audit_data,
-                    result=content, error=block_reason if blocked else "",
+                    function_name,
+                    tool_call_id,
+                    not blocked,
+                    elapsed,
+                    audit_data,
+                    result=content,
+                    error=block_reason if blocked else "",
                 )
-                return ToolResult(tool_call_id, function_name, content, success=True, elapsed=elapsed)
+                return ToolResult(
+                    tool_call_id, function_name, content, success=True, elapsed=elapsed
+                )
             else:
                 error_content = f"错误: {result.error}"
                 await self._publish_tool_complete(
-                    function_name, tool_call_id, False, elapsed, audit_data, error=result.error or "",
+                    function_name,
+                    tool_call_id,
+                    False,
+                    elapsed,
+                    audit_data,
+                    error=result.error or "",
                 )
-                return ToolResult(tool_call_id, function_name, error_content, success=False, elapsed=elapsed)
+                return ToolResult(
+                    tool_call_id, function_name, error_content, success=False, elapsed=elapsed
+                )
 
         except Exception as e:
             elapsed = time.perf_counter() - start_time
             error_content = f"执行异常: {e}"
             logger.error("工具 %s 异常: %s", function_name, e)
             await self._publish_tool_complete(
-                function_name, tool_call_id, False, elapsed, audit_data, error=str(e),
+                function_name,
+                tool_call_id,
+                False,
+                elapsed,
+                audit_data,
+                error=str(e),
             )
-            return ToolResult(tool_call_id, function_name, error_content, success=False, elapsed=elapsed)
+            return ToolResult(
+                tool_call_id, function_name, error_content, success=False, elapsed=elapsed
+            )
 
     def _resolve_tool_origin(self, function_name: str) -> str:
         tool = self.tools.get(function_name)
@@ -233,17 +265,23 @@ class ToolExecutor:
         event.session_id = self.session_id
         await self._event_broker.publish(event)
 
-    async def _publish_tool_complete(self, function_name, tool_call_id, success, elapsed, audit_data, *, result="", error=""):
-        await self._publish_event(ToolCompleteEvent(
-            tool_name=function_name,
-            tool_id=tool_call_id,
-            success=success,
-            result=result[:500] if result else "",
-            error=error or None,
-            duration=elapsed,
-            data=audit_data,
-        ))
-        self.telemetry.record_tool_call(tool_name=function_name, latency_sec=elapsed, success=success)
+    async def _publish_tool_complete(
+        self, function_name, tool_call_id, success, elapsed, audit_data, *, result="", error=""
+    ):
+        await self._publish_event(
+            ToolCompleteEvent(
+                tool_name=function_name,
+                tool_id=tool_call_id,
+                success=success,
+                result=result[:500] if result else "",
+                error=error or None,
+                duration=elapsed,
+                data=audit_data,
+            )
+        )
+        self.telemetry.record_tool_call(
+            tool_name=function_name, latency_sec=elapsed, success=success
+        )
 
 
 def _filter_sensitive_output(output: str) -> tuple[str, bool, str]:

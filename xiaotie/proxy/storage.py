@@ -10,11 +10,10 @@ import json
 import logging
 import time
 from collections import deque
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -129,10 +128,7 @@ class RequestStorage:
 
     def filter_miniapp(self) -> list[CapturedRequest]:
         """过滤微信小程序相关请求"""
-        return [
-            e for e in self._entries
-            if any(d in e.host for d in self.MINIAPP_DOMAINS)
-        ]
+        return [e for e in self._entries if any(d in e.host for d in self.MINIAPP_DOMAINS)]
 
     # ------------------------------------------------------------------
     # 导出

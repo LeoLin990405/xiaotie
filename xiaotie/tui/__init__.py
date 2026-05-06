@@ -15,9 +15,9 @@ from .command_palette import (
 )
 from .layout import BorderedContainer, Panel, SplitPane
 from .onboarding import (
+    SUPPORTED_PROVIDERS,
     OnboardingWizard,
     ProviderSetup,
-    SUPPORTED_PROVIDERS,
     is_first_run,
     should_show_onboarding,
 )

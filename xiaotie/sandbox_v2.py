@@ -27,7 +27,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Flag, auto
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +35,16 @@ logger = logging.getLogger(__name__)
 # Capability flags
 # ---------------------------------------------------------------------------
 
+
 class Capability(Flag):
     """Capabilities that a sandboxed process can request."""
+
     NONE = 0
-    READ_FS = auto()       # Read files within workspace
-    WRITE_FS = auto()      # Write files within workspace
-    NETWORK = auto()       # Outbound network access
-    SUBPROCESS = auto()    # Spawn child processes
-    DANGEROUS = auto()     # System-level ops (requires explicit approval)
+    READ_FS = auto()  # Read files within workspace
+    WRITE_FS = auto()  # Write files within workspace
+    NETWORK = auto()  # Outbound network access
+    SUBPROCESS = auto()  # Spawn child processes
+    DANGEROUS = auto()  # System-level ops (requires explicit approval)
 
     # Convenience combos
     READ_WRITE = READ_FS | WRITE_FS
@@ -69,9 +70,11 @@ TOOL_CAPABILITIES: dict[str, Capability] = {
 # Execution result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SandboxResult:
     """Result of a sandboxed execution."""
+
     exit_code: int
     stdout: str
     stderr: str
@@ -86,6 +89,7 @@ class SandboxResult:
 # ---------------------------------------------------------------------------
 # Abstract backend
 # ---------------------------------------------------------------------------
+
 
 class SandboxBackend(ABC):
     """Abstract base for OS-specific sandbox backends."""
@@ -198,15 +202,16 @@ class SeatbeltBackend(SandboxBackend):
                 cwd=workspace,
             )
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout
-                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
                 return SandboxResult(
-                    exit_code=-1, stdout="", stderr=f"Timed out ({timeout}s)",
-                    backend=self.name, sandboxed=True,
+                    exit_code=-1,
+                    stdout="",
+                    stderr=f"Timed out ({timeout}s)",
+                    backend=self.name,
+                    sandboxed=True,
                 )
 
             return SandboxResult(
@@ -223,6 +228,7 @@ class SeatbeltBackend(SandboxBackend):
 # ---------------------------------------------------------------------------
 # Linux bubblewrap backend
 # ---------------------------------------------------------------------------
+
 
 class BubblewrapBackend(SandboxBackend):
     """Linux bubblewrap (bwrap) backend."""
@@ -298,15 +304,16 @@ class BubblewrapBackend(SandboxBackend):
             env=env,
         )
         try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             proc.kill()
             await proc.wait()
             return SandboxResult(
-                exit_code=-1, stdout="", stderr=f"Timed out ({timeout}s)",
-                backend=self.name, sandboxed=True,
+                exit_code=-1,
+                stdout="",
+                stderr=f"Timed out ({timeout}s)",
+                backend=self.name,
+                sandboxed=True,
             )
 
         return SandboxResult(
@@ -321,6 +328,7 @@ class BubblewrapBackend(SandboxBackend):
 # ---------------------------------------------------------------------------
 # Fallback backend (subprocess + rlimits)
 # ---------------------------------------------------------------------------
+
 
 class FallbackBackend(SandboxBackend):
     """Fallback backend using subprocess with resource limits.
@@ -356,15 +364,16 @@ class FallbackBackend(SandboxBackend):
             preexec_fn=preexec,
         )
         try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             proc.kill()
             await proc.wait()
             return SandboxResult(
-                exit_code=-1, stdout="", stderr=f"Timed out ({timeout}s)",
-                backend=self.name, sandboxed=False,
+                exit_code=-1,
+                stdout="",
+                stderr=f"Timed out ({timeout}s)",
+                backend=self.name,
+                sandboxed=False,
             )
 
         return SandboxResult(
@@ -378,8 +387,10 @@ class FallbackBackend(SandboxBackend):
     @staticmethod
     def _make_preexec():
         """Create a preexec_fn that sets resource limits."""
+
         def _set_limits():
             import resource
+
             # Memory: 512 MB
             mem = 512 * 1024 * 1024
             try:
@@ -391,12 +402,14 @@ class FallbackBackend(SandboxBackend):
                 resource.setrlimit(resource.RLIMIT_CPU, (300, 300))
             except (ValueError, resource.error):
                 pass
+
         return _set_limits
 
 
 # ---------------------------------------------------------------------------
 # SandboxManager
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SandboxManager:
@@ -520,8 +533,13 @@ class SandboxManager:
     def _build_safe_env() -> dict[str, str]:
         """Build a filtered environment, stripping sensitive variables."""
         sensitive_prefixes = (
-            "AWS_", "ANTHROPIC_API", "OPENAI_API", "GOOGLE_API",
-            "GITHUB_TOKEN", "SSH_", "GPG_",
+            "AWS_",
+            "ANTHROPIC_API",
+            "OPENAI_API",
+            "GOOGLE_API",
+            "GITHUB_TOKEN",
+            "SSH_",
+            "GPG_",
         )
         env = {}
         for key, value in os.environ.items():

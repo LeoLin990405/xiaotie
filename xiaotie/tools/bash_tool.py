@@ -12,21 +12,21 @@ from .base import Tool
 
 # Dangerous command patterns that should be blocked or require confirmation
 _DANGEROUS_PATTERNS = [
-    r"\brm\s+-[rf]*\s+/\s",          # rm -rf /
-    r"\bsudo\s+",                      # sudo
-    r"\bdd\s+if=",                     # dd disk operations
-    r"\bmkfs\b",                       # format filesystem
-    r"curl\s.*\|\s*(ba)?sh",          # curl pipe to shell
-    r"wget\s.*\|\s*(ba)?sh",          # wget pipe to shell
-    r"\bbase64\s.*\|\s*(ba)?sh",      # base64 decode to shell
-    r">\s*/etc/",                      # redirect to /etc
-    r">\s*/dev/sd",                    # redirect to block device
-    r"\bnc\s+-[el]",                   # netcat listen (reverse shell)
+    r"\brm\s+-[rf]*\s+/\s",  # rm -rf /
+    r"\bsudo\s+",  # sudo
+    r"\bdd\s+if=",  # dd disk operations
+    r"\bmkfs\b",  # format filesystem
+    r"curl\s.*\|\s*(ba)?sh",  # curl pipe to shell
+    r"wget\s.*\|\s*(ba)?sh",  # wget pipe to shell
+    r"\bbase64\s.*\|\s*(ba)?sh",  # base64 decode to shell
+    r">\s*/etc/",  # redirect to /etc
+    r">\s*/dev/sd",  # redirect to block device
+    r"\bnc\s+-[el]",  # netcat listen (reverse shell)
     r"python[23]?\s+-c\s+['\"].*import\s+os",  # python -c os commands
-    r"\bchmod\s+[0-7]*7[0-7]*\s",     # overly permissive chmod
-    r"\bkill\s+-9\s+1\b",             # kill init
-    r"\bshutdown\b",                   # shutdown
-    r"\breboot\b",                     # reboot
+    r"\bchmod\s+[0-7]*7[0-7]*\s",  # overly permissive chmod
+    r"\bkill\s+-9\s+1\b",  # kill init
+    r"\bshutdown\b",  # shutdown
+    r"\breboot\b",  # reboot
 ]
 
 
@@ -131,7 +131,6 @@ class BashTool(Tool):
 
     async def _execute_sandboxed(self, command: str, timeout: int) -> ToolResult:
         """Execute command through the OS-level SandboxManager."""
-        from ..sandbox_v2 import Capability
 
         capabilities = self._sandbox.get_capabilities_for_tool("bash")
         result = await self._sandbox.execute_shell(
@@ -146,7 +145,8 @@ class BashTool(Tool):
 
         if not result.success:
             return ToolResult(
-                success=False, content=output,
+                success=False,
+                content=output,
                 error=f"命令失败，退出码: {result.exit_code}",
             )
 

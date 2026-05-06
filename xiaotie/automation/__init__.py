@@ -9,22 +9,29 @@ __all__ = [
     "MiniAppAutomation",
 ]
 
+
 # 延迟导入，避免appium硬依赖阻塞整个模块
 def get_appium_driver():
     """获取Appium驱动（延迟导入）"""
     from .appium_driver import AppiumDriver
+
     return AppiumDriver
+
 
 def get_miniapp_automation():
     """获取小程序自动化（延迟导入）"""
     from .miniapp_automation import MiniAppAutomation
+
     return MiniAppAutomation
+
 
 # macOS原生自动化（延迟导入）
 def get_macos_module():
     """获取macOS自动化模块"""
     from . import macos
+
     return macos
+
 
 # 为了向后兼容，提供懒加载属性
 def __getattr__(name):

@@ -79,6 +79,7 @@ class WebSearchTool(Tool):
         url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&no_html=1"
 
         try:
+
             def _fetch():
                 req = urllib.request.Request(url, headers={"User-Agent": "XiaoTie/0.3.0"})
                 with urllib.request.urlopen(req, timeout=10) as response:
@@ -121,15 +122,15 @@ class WebFetchTool(Tool):
 
     # 禁止访问的私有/保留 IP 网段
     _BLOCKED_NETWORKS = [
-        ipaddress.ip_network("127.0.0.0/8"),       # 回环地址
-        ipaddress.ip_network("10.0.0.0/8"),         # 私有网段 A
-        ipaddress.ip_network("172.16.0.0/12"),      # 私有网段 B
-        ipaddress.ip_network("192.168.0.0/16"),     # 私有网段 C
-        ipaddress.ip_network("169.254.0.0/16"),     # 链路本地
-        ipaddress.ip_network("0.0.0.0/8"),          # 当前网络
-        ipaddress.ip_network("::1/128"),            # IPv6 回环
-        ipaddress.ip_network("fc00::/7"),           # IPv6 唯一本地
-        ipaddress.ip_network("fe80::/10"),          # IPv6 链路本地
+        ipaddress.ip_network("127.0.0.0/8"),  # 回环地址
+        ipaddress.ip_network("10.0.0.0/8"),  # 私有网段 A
+        ipaddress.ip_network("172.16.0.0/12"),  # 私有网段 B
+        ipaddress.ip_network("192.168.0.0/16"),  # 私有网段 C
+        ipaddress.ip_network("169.254.0.0/16"),  # 链路本地
+        ipaddress.ip_network("0.0.0.0/8"),  # 当前网络
+        ipaddress.ip_network("::1/128"),  # IPv6 回环
+        ipaddress.ip_network("fc00::/7"),  # IPv6 唯一本地
+        ipaddress.ip_network("fe80::/10"),  # IPv6 链路本地
     ]
 
     @property

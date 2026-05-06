@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional
 
-from ..retry import RetryConfig, CircuitBreaker
+from ..retry import CircuitBreaker, RetryConfig
 from ..schema import LLMResponse, Message
 
-
-import logging
-
 logger = logging.getLogger(__name__)
+
 
 class LLMClientBase(ABC):
     """LLM 客户端抽象基类"""
@@ -63,4 +62,3 @@ class LLMClientBase(ABC):
     def _convert_tools(self, tools: list[Any]) -> list[dict[str, Any]]:
         """转换工具格式"""
         pass
-

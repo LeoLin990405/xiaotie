@@ -4,9 +4,9 @@
 支持微信窗口控制、小程序操作、代理集成。
 """
 
-from .wechat_controller import WeChatController, WeChatConfig, WeChatState
 from .miniapp_controller import MiniAppController, MiniAppInfo
-from .proxy_integration import ProxyIntegration, AutomationSession
+from .proxy_integration import AutomationSession, ProxyIntegration
+from .wechat_controller import WeChatConfig, WeChatController, WeChatState
 
 __all__ = [
     "WeChatController",

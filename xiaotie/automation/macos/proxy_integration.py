@@ -9,13 +9,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import platform
-import subprocess
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from .wechat_controller import WeChatController, WeChatConfig
-from .miniapp_controller import MiniAppController, MiniAppInfo
+from .miniapp_controller import MiniAppController
+from .wechat_controller import WeChatConfig, WeChatController
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +22,15 @@ logger = logging.getLogger(__name__)
 def _get_proxy_server():
     try:
         from xiaotie.proxy import ProxyServer
+
         return ProxyServer
     except ImportError:
         return None
 
 
 def _get_request_storage():
-    from xiaotie.proxy.storage import RequestStorage, CapturedRequest
+    from xiaotie.proxy.storage import CapturedRequest, RequestStorage
+
     return RequestStorage, CapturedRequest
 
 
@@ -65,15 +65,13 @@ class ProxyIntegration:
             return self._network_service
 
         proc = await asyncio.create_subprocess_exec(
-            "networksetup", "-listallnetworkservices",
+            "networksetup",
+            "-listallnetworkservices",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, _ = await proc.communicate()
-        services = [
-            s for s in stdout.decode().split("\n")[1:]
-            if s and not s.startswith("*")
-        ]
+        services = [s for s in stdout.decode().split("\n")[1:] if s and not s.startswith("*")]
         # 优先选择Wi-Fi
         for svc in services:
             if "Wi-Fi" in svc or "wi-fi" in svc.lower():
@@ -95,7 +93,9 @@ class ProxyIntegration:
             ("https", "-getsecurewebproxy"),
         ]:
             proc = await asyncio.create_subprocess_exec(
-                "networksetup", cmd, svc,
+                "networksetup",
+                cmd,
+                svc,
                 stdout=asyncio.subprocess.PIPE,
             )
             stdout, _ = await proc.communicate()

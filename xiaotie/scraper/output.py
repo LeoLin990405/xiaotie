@@ -10,7 +10,6 @@ import csv
 import io
 import json
 import re
-import shutil
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -54,20 +53,26 @@ class SanitizeConfig:
 
     def _add_default_rules(self):
         if self.mask_email:
-            self.rules.append(SanitizeRule(
-                pattern=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
-                replacement="***@***.***",
-            ))
+            self.rules.append(
+                SanitizeRule(
+                    pattern=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+                    replacement="***@***.***",
+                )
+            )
         if self.mask_phone:
-            self.rules.append(SanitizeRule(
-                pattern=r"1[3-9]\d{9}",
-                replacement="1**********",
-            ))
+            self.rules.append(
+                SanitizeRule(
+                    pattern=r"1[3-9]\d{9}",
+                    replacement="1**********",
+                )
+            )
         if self.mask_id_card:
-            self.rules.append(SanitizeRule(
-                pattern=r"\d{17}[\dXx]",
-                replacement="******************",
-            ))
+            self.rules.append(
+                SanitizeRule(
+                    pattern=r"\d{17}[\dXx]",
+                    replacement="******************",
+                )
+            )
 
 
 class OutputManager:
@@ -128,9 +133,7 @@ class OutputManager:
         fieldnames = fields or list(processed[0].keys())
 
         output = io.StringIO()
-        writer = csv.DictWriter(
-            output, fieldnames=fieldnames, extrasaction="ignore"
-        )
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(processed)
         return output.getvalue()
@@ -206,10 +209,14 @@ class OutputManager:
         with zipfile.ZipFile(ap, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(data_filename, content)
             # 写入元数据
-            meta = json.dumps({
-                "record_count": len(records),
-                "format": fmt.value,
-                "created_at": datetime.now().isoformat(),
-                "sanitized": self._sanitize.enabled,
-            }, ensure_ascii=False, indent=2)
+            meta = json.dumps(
+                {
+                    "record_count": len(records),
+                    "format": fmt.value,
+                    "created_at": datetime.now().isoformat(),
+                    "sanitized": self._sanitize.enabled,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
             zf.writestr("metadata.json", meta)

@@ -1,6 +1,7 @@
 import asyncio
 from typing import Dict
 
+
 class SessionState:
     """会话状态管理 - 防止并发冲突"""
 
@@ -36,6 +37,7 @@ class SessionState:
             return True
         except asyncio.TimeoutError:
             return False
+
 
 # 全局会话状态
 _session_state = SessionState()

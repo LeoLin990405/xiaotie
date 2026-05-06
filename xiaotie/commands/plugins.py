@@ -4,9 +4,10 @@ Plugins related commands Mixin.
 
 from .base import CommandsBase
 
+
 class PluginsCommandsMixin(CommandsBase):
     """Plugins related commands like plugins, plugin-new, plugin-reload"""
-    
+
     def cmd_plugins(self, args: str) -> tuple[bool, str]:
         """显示已加载的插件"""
         if not self.plugin_mgr:

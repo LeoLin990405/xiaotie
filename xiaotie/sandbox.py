@@ -27,29 +27,31 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional, Any, Callable
-import subprocess
-import tempfile
 import os
-import sys
 import resource
+import subprocess
+import sys
+import tempfile
 import threading
 import time
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class SandboxRuntime(Enum):
     """沙箱运行时类型"""
+
     SUBPROCESS = "subprocess"
     DOCKER = "docker"
 
 
 class ExecutionStatus(Enum):
     """执行状态"""
+
     SUCCESS = "success"
     ERROR = "error"
     TIMEOUT = "timeout"
@@ -60,6 +62,7 @@ class ExecutionStatus(Enum):
 @dataclass
 class SandboxConfig:
     """沙箱配置"""
+
     runtime: str = "subprocess"
     timeout: float = 30.0  # 秒
     memory_limit_mb: int = 256  # MB
@@ -89,6 +92,7 @@ class SandboxConfig:
 @dataclass
 class ExecutionResult:
     """执行结果"""
+
     status: ExecutionStatus
     stdout: str = ""
     stderr: str = ""
@@ -117,29 +121,32 @@ class ExecutionResult:
 
 class SandboxError(Exception):
     """沙箱错误基类"""
+
     pass
 
 
 class TimeoutError(SandboxError):
     """执行超时"""
+
     pass
 
 
 class MemoryExceededError(SandboxError):
     """内存超限"""
+
     pass
 
 
 class SecurityError(SandboxError):
     """安全违规"""
+
     pass
 
 
 class ImportChecker:
     """导入检查器"""
 
-    def __init__(self, allowed: Optional[list[str]] = None,
-                 blocked: Optional[list[str]] = None):
+    def __init__(self, allowed: Optional[list[str]] = None, blocked: Optional[list[str]] = None):
         self.allowed = set(allowed) if allowed else None
         self.blocked = set(blocked) if blocked else set()
 
@@ -149,6 +156,7 @@ class ImportChecker:
 
         # 简单的导入检测
         import ast
+
         try:
             tree = ast.parse(code)
         except SyntaxError:
@@ -196,11 +204,7 @@ class SubprocessExecutor:
         start_time = time.time()
 
         # 创建临时文件
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.py',
-            delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             # 包装代码以捕获输出
             wrapped_code = self._wrap_code(code)
             f.write(wrapped_code)
@@ -218,17 +222,15 @@ class SubprocessExecutor:
                 stderr=subprocess.PIPE,
                 env=env,
                 cwd=self.config.working_dir,
-                preexec_fn=self._set_limits if sys.platform != 'win32' else None,
+                preexec_fn=self._set_limits if sys.platform != "win32" else None,
             )
 
             try:
-                stdout, stderr = process.communicate(
-                    timeout=self.config.timeout
-                )
+                stdout, stderr = process.communicate(timeout=self.config.timeout)
                 execution_time = time.time() - start_time
 
-                stdout_str = stdout.decode('utf-8', errors='replace')
-                stderr_str = stderr.decode('utf-8', errors='replace')
+                stdout_str = stdout.decode("utf-8", errors="replace")
+                stderr_str = stderr.decode("utf-8", errors="replace")
 
                 if process.returncode == 0:
                     return ExecutionResult(
@@ -266,7 +268,7 @@ class SubprocessExecutor:
 
     def _wrap_code(self, code: str) -> str:
         """包装代码"""
-        return f'''
+        return f"""
 import sys
 import traceback
 
@@ -275,12 +277,12 @@ try:
 except Exception as e:
     print(traceback.format_exc(), file=sys.stderr)
     sys.exit(1)
-'''
+"""
 
     def _indent_code(self, code: str) -> str:
         """缩进代码"""
-        lines = code.split('\n')
-        return '\n'.join('    ' + line for line in lines)
+        lines = code.split("\n")
+        return "\n".join("    " + line for line in lines)
 
     def _set_limits(self):
         """设置资源限制 (Unix only)"""
@@ -347,8 +349,8 @@ class DockerExecutor:
                     )
                     execution_time = time.time() - start_time
 
-                    stdout_str = stdout.decode('utf-8', errors='replace')
-                    stderr_str = stderr.decode('utf-8', errors='replace')
+                    stdout_str = stdout.decode("utf-8", errors="replace")
+                    stderr_str = stderr.decode("utf-8", errors="replace")
 
                     if process.returncode == 0:
                         return ExecutionResult(
@@ -401,7 +403,8 @@ class DockerExecutor:
     def _build_docker_command(self, temp_dir: str) -> list[str]:
         """构建 Docker 命令"""
         cmd = [
-            "docker", "run",
+            "docker",
+            "run",
             "--rm",
             f"--name=sandbox_{os.getpid()}",
             f"--memory={self.config.memory_limit_mb}m",
@@ -409,8 +412,10 @@ class DockerExecutor:
             "--pids-limit=100",
             "--read-only",
             "--tmpfs=/tmp:size=64m",
-            "-v", f"{temp_dir}:/code:ro",
-            "-w", "/code",
+            "-v",
+            f"{temp_dir}:/code:ro",
+            "-w",
+            "/code",
         ]
 
         # 网络设置
@@ -426,10 +431,13 @@ class DockerExecutor:
             cmd.extend(["-v", f"{host_path}:{container_path}:ro"])
 
         # 镜像和命令
-        cmd.extend([
-            self.config.docker_image,
-            "python", "/code/code.py",
-        ])
+        cmd.extend(
+            [
+                self.config.docker_image,
+                "python",
+                "/code/code.py",
+            ]
+        )
 
         return cmd
 
@@ -506,8 +514,7 @@ class Sandbox:
 class SandboxPool:
     """沙箱池，用于并发执行"""
 
-    def __init__(self, config: Optional[SandboxConfig] = None,
-                 pool_size: int = 4):
+    def __init__(self, config: Optional[SandboxConfig] = None, pool_size: int = 4):
         self.config = config or SandboxConfig()
         self.pool_size = pool_size
         self._sandboxes: list[Sandbox] = []

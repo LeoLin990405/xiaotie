@@ -75,8 +75,7 @@ class ProxyServer:
     ):
         if not _HAS_MITMPROXY:
             raise ImportError(
-                "mitmproxy 未安装。请运行: pip install mitmproxy\n"
-                "或: pip install xiaotie[proxy]"
+                "mitmproxy 未安装。请运行: pip install mitmproxy\n或: pip install xiaotie[proxy]"
             )
 
         self.port = port
@@ -128,7 +127,7 @@ class ProxyServer:
         self._master = DumpMaster(opts)
 
         # 添加捕获插件
-        from .addons import RequestCapture, MiniAppFilter
+        from .addons import MiniAppFilter, RequestCapture
 
         if self.miniapp_only:
             self._addon = MiniAppFilter(
@@ -279,11 +278,13 @@ class ProxyServer:
                 for svc in services:
                     subprocess.run(
                         ["networksetup", "-setwebproxy", svc, "127.0.0.1", str(self.port)],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
                     subprocess.run(
                         ["networksetup", "-setsecurewebproxy", svc, "127.0.0.1", str(self.port)],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
             elif system == "Linux":
                 os.environ["http_proxy"] = f"http://127.0.0.1:{self.port}"
@@ -301,11 +302,13 @@ class ProxyServer:
                 for svc in services:
                     subprocess.run(
                         ["networksetup", "-setwebproxystate", svc, "off"],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
                     subprocess.run(
                         ["networksetup", "-setsecurewebproxystate", svc, "off"],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
             elif system == "Linux":
                 os.environ.pop("http_proxy", None)
@@ -319,12 +322,10 @@ class ProxyServer:
         """获取 macOS 网络服务列表"""
         result = subprocess.run(
             ["networksetup", "-listallnetworkservices"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
-        return [
-            s for s in result.stdout.split("\n")[1:]
-            if s and not s.startswith("*")
-        ]
+        return [s for s in result.stdout.split("\n")[1:] if s and not s.startswith("*")]
 
     # ------------------------------------------------------------------
     # 上下文管理器

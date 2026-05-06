@@ -186,7 +186,11 @@ class OpenAIClient(LLMClientBase):
         api_tools = self._convert_tools(tools) if tools else None
 
         if self.retry_config.enabled:
-            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback, circuit_breaker=self.circuit_breaker)
+            retry_decorator = async_retry(
+                config=self.retry_config,
+                on_retry=self.retry_callback,
+                circuit_breaker=self.circuit_breaker,
+            )
             api_call = retry_decorator(self._make_api_request)
             response = await api_call(api_messages, api_tools)
         else:

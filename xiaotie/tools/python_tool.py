@@ -8,7 +8,7 @@ import operator
 import traceback
 from typing import Any, Dict
 
-from ..sandbox import Sandbox, SandboxConfig, ExecutionStatus
+from ..sandbox import ExecutionStatus, Sandbox, SandboxConfig
 from .base import Tool, ToolResult
 
 
@@ -78,33 +78,73 @@ class CalculatorTool(Tool):
 
     # 允许的 AST 节点类型（仅数学运算）
     _ALLOWED_NODES = (
-        ast.Expression, ast.Module,
-        ast.Constant, ast.Num,  # 数字字面量
-        ast.UnaryOp, ast.UOp if hasattr(ast, 'UOp') else ast.unaryop,
-        ast.USub, ast.UAdd,  # 一元运算符
+        ast.Expression,
+        ast.Module,
+        ast.Constant,
+        ast.Num,  # 数字字面量
+        ast.UnaryOp,
+        ast.UOp if hasattr(ast, "UOp") else ast.unaryop,
+        ast.USub,
+        ast.UAdd,  # 一元运算符
         ast.BinOp,  # 二元运算
-        ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv,
-        ast.Mod, ast.Pow,  # 算术运算符
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.FloorDiv,
+        ast.Mod,
+        ast.Pow,  # 算术运算符
         ast.Call,  # 函数调用（受限）
-        ast.Name, ast.Load,  # 变量引用
+        ast.Name,
+        ast.Load,  # 变量引用
         ast.Attribute,  # 属性访问（如 math.sqrt）
-        ast.List, ast.Tuple,  # 用于 min/max/sum
+        ast.List,
+        ast.Tuple,  # 用于 min/max/sum
     )
 
     # 允许的函数名
     _SAFE_FUNCTIONS = {
-        "abs": abs, "round": round, "min": min, "max": max,
-        "sum": sum, "pow": pow, "int": int, "float": float,
+        "abs": abs,
+        "round": round,
+        "min": min,
+        "max": max,
+        "sum": sum,
+        "pow": pow,
+        "int": int,
+        "float": float,
     }
 
     # 允许的 math 函数
     _SAFE_MATH = {
-        name: getattr(math, name) for name in [
-            "sqrt", "ceil", "floor", "log", "log2", "log10",
-            "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
-            "exp", "factorial", "gcd", "pi", "e", "inf",
-            "degrees", "radians", "hypot", "isfinite", "isinf", "isnan",
-        ] if hasattr(math, name)
+        name: getattr(math, name)
+        for name in [
+            "sqrt",
+            "ceil",
+            "floor",
+            "log",
+            "log2",
+            "log10",
+            "sin",
+            "cos",
+            "tan",
+            "asin",
+            "acos",
+            "atan",
+            "atan2",
+            "exp",
+            "factorial",
+            "gcd",
+            "pi",
+            "e",
+            "inf",
+            "degrees",
+            "radians",
+            "hypot",
+            "isfinite",
+            "isinf",
+            "isnan",
+        ]
+        if hasattr(math, name)
     }
 
     @property
@@ -147,9 +187,12 @@ class CalculatorTool(Tool):
             left = self._safe_eval_node(node.left)
             right = self._safe_eval_node(node.right)
             ops = {
-                ast.Add: operator.add, ast.Sub: operator.sub,
-                ast.Mult: operator.mul, ast.Div: operator.truediv,
-                ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
+                ast.Add: operator.add,
+                ast.Sub: operator.sub,
+                ast.Mult: operator.mul,
+                ast.Div: operator.truediv,
+                ast.FloorDiv: operator.floordiv,
+                ast.Mod: operator.mod,
                 ast.Pow: operator.pow,
             }
             op_func = ops.get(type(node.op))
@@ -186,7 +229,7 @@ class CalculatorTool(Tool):
         # 确保函数在白名单中
         allowed = set(self._SAFE_FUNCTIONS.values()) | set(self._SAFE_MATH.values())
         if func not in allowed:
-            raise ValueError(f"不允许的函数调用")
+            raise ValueError("不允许的函数调用")
         args = [self._safe_eval_node(arg) for arg in node.args]
         return func(*args)
 

@@ -7,8 +7,6 @@ xiaotie secret set/get/list/delete/migrate
 from __future__ import annotations
 
 import getpass
-import sys
-from typing import Callable
 
 from .base import CommandsBase
 
@@ -67,11 +65,11 @@ class SecretCommands(CommandsBase):
         if mgr.set(key, value):
             print(f"✓ 密钥 [{key}] 已安全存储")
         else:
-            print(f"✗ 存储失败，请检查 keyring 是否可用")
+            print("✗ 存储失败，请检查 keyring 是否可用")
 
     def _secret_get(self, key: str):
         """获取密钥 (掩码显示)"""
-        from xiaotie.secrets import get_secret_manager, _mask_value
+        from xiaotie.secrets import _mask_value, get_secret_manager
 
         if not key:
             print("用法: secret get <key_name>")
@@ -117,8 +115,9 @@ class SecretCommands(CommandsBase):
 
     def _secret_migrate(self, config_path: str = ""):
         """迁移配置文件中的明文密钥到 keyring"""
-        from xiaotie.secrets import get_secret_manager
         from pathlib import Path
+
+        from xiaotie.secrets import get_secret_manager
 
         if not config_path:
             # 默认配置文件路径
@@ -144,6 +143,6 @@ class SecretCommands(CommandsBase):
             print(f"\n✓ 已迁移 {len(migrated)} 个密钥到 keyring:")
             for key in migrated:
                 print(f"  - {key}")
-            print(f"\n配置文件已更新，明文密钥已替换为 ${{secret:...}} 占位符")
+            print("\n配置文件已更新，明文密钥已替换为 ${secret:...} 占位符")
         else:
             print("未发现需要迁移的明文密钥")

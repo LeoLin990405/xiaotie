@@ -105,8 +105,11 @@ class ScraperTool(Tool):
                 "action": {
                     "type": "string",
                     "enum": [
-                        "scrape", "verify", "export",
-                        "list_scrapers", "create_scraper",
+                        "scrape",
+                        "verify",
+                        "export",
+                        "list_scrapers",
+                        "create_scraper",
                     ],
                     "description": (
                         "操作类型：scrape-运行爬虫，verify-验证稳定性，"
@@ -208,13 +211,11 @@ class ScraperTool(Tool):
             lines = [
                 f"抓取完成 ({elapsed:.1f}s)",
                 f"- URL: {url}",
-                f"- 状态: 成功",
+                "- 状态: 成功",
                 f"- 数据字段: {len(result.data) if result.data else 0}",
             ]
             if result.data:
-                preview = json.dumps(
-                    result.data, ensure_ascii=False, indent=2
-                )
+                preview = json.dumps(result.data, ensure_ascii=False, indent=2)
                 if len(preview) > 2000:
                     preview = preview[:2000] + "\n... (已截断)"
                 lines.append(f"\n数据预览:\n{preview}")
@@ -238,7 +239,8 @@ class ScraperTool(Tool):
             )
 
         from ..scraper import (
-            BaseScraper, ScraperConfig,
+            BaseScraper,
+            ScraperConfig,
             StabilityAnalyzer,
         )
 
@@ -279,7 +281,7 @@ class ScraperTool(Tool):
         # 分析稳定性
         report = analyzer.analyze(results)
         lines.append("")
-        lines.append(f"稳定性报告:")
+        lines.append("稳定性报告:")
         lines.append(f"- 成功率: {report.success_rate:.0%}")
         lines.append(f"- 数据一致性: {report.consistency_score:.0%}")
         lines.append(f"- 稳定: {'是' if report.is_stable else '否'}")
@@ -287,9 +289,7 @@ class ScraperTool(Tool):
         if report.changes:
             lines.append(f"- 变化字段: {', '.join(report.changes)}")
 
-        self._last_results = [
-            r.data for r in results if r.success and r.data
-        ]
+        self._last_results = [r.data for r in results if r.success and r.data]
 
         return ToolResult(success=True, content="\n".join(lines))
 
@@ -309,7 +309,7 @@ class ScraperTool(Tool):
         output_path = Path(output_file).resolve()
 
         try:
-            from ..scraper import OutputManager, OutputFormat
+            from ..scraper import OutputFormat, OutputManager
 
             fmt_enum = OutputFormat.CSV if fmt == "csv" else OutputFormat.JSON
             manager = OutputManager()
@@ -349,11 +349,13 @@ class ScraperTool(Tool):
             for py_file in sorted(d.glob("*.py")):
                 if py_file.name.startswith("_"):
                     continue
-                scrapers.append({
-                    "name": py_file.stem,
-                    "path": str(py_file),
-                    "dir": str(d),
-                })
+                scrapers.append(
+                    {
+                        "name": py_file.stem,
+                        "path": str(py_file),
+                        "dir": str(d),
+                    }
+                )
 
         if not scrapers:
             return ToolResult(
@@ -384,9 +386,9 @@ class ScraperTool(Tool):
             )
 
         # 生成类名
-        class_name = "".join(
-            word.capitalize() for word in name.replace("-", "_").split("_")
-        ) + "Scraper"
+        class_name = (
+            "".join(word.capitalize() for word in name.replace("-", "_").split("_")) + "Scraper"
+        )
 
         # 确定输出目录
         dirs = self._get_scraper_dirs()
@@ -441,9 +443,7 @@ class ScraperTool(Tool):
 
     def _import_scraper(self, py_file: Path):
         """从文件导入爬虫类并实例化"""
-        spec = importlib.util.spec_from_file_location(
-            py_file.stem, str(py_file)
-        )
+        spec = importlib.util.spec_from_file_location(py_file.stem, str(py_file))
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
@@ -452,17 +452,11 @@ class ScraperTool(Tool):
 
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
-            if (
-                isinstance(attr, type)
-                and issubclass(attr, BaseScraper)
-                and attr is not BaseScraper
-            ):
+            if isinstance(attr, type) and issubclass(attr, BaseScraper) and attr is not BaseScraper:
                 return attr()
         return None
 
-    async def _run_named_scraper(
-        self, scraper_name: str, url: Optional[str]
-    ) -> ToolResult:
+    async def _run_named_scraper(self, scraper_name: str, url: Optional[str]) -> ToolResult:
         """运行指定名称的爬虫"""
         scraper = self._load_scraper(scraper_name)
         if scraper is None:
@@ -481,12 +475,10 @@ class ScraperTool(Tool):
             lines = [
                 f"爬虫 '{scraper_name}' 完成 ({elapsed:.1f}s)",
                 f"- URL: {target}",
-                f"- 状态: 成功",
+                "- 状态: 成功",
             ]
             if result.data:
-                preview = json.dumps(
-                    result.data, ensure_ascii=False, indent=2
-                )
+                preview = json.dumps(result.data, ensure_ascii=False, indent=2)
                 if len(preview) > 2000:
                     preview = preview[:2000] + "\n... (已截断)"
                 lines.append(f"\n数据预览:\n{preview}")

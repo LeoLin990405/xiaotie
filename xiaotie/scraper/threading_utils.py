@@ -11,7 +11,7 @@ import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import aiohttp
 
@@ -51,9 +51,7 @@ class SessionManager:
                         limit=self._config.max_connections,
                         ssl=self._config.verify_ssl,
                     )
-                    timeout = aiohttp.ClientTimeout(
-                        total=self._config.timeout
-                    )
+                    timeout = aiohttp.ClientTimeout(total=self._config.timeout)
                     self._session = aiohttp.ClientSession(
                         connector=connector,
                         timeout=timeout,
@@ -83,9 +81,7 @@ class SessionManager:
                 last_error = e
                 self._error_count.increment()
                 if attempt < self._config.max_retries - 1:
-                    await asyncio.sleep(
-                        self._config.retry_delay * (attempt + 1)
-                    )
+                    await asyncio.sleep(self._config.retry_delay * (attempt + 1))
 
         raise last_error  # type: ignore[misc]
 
@@ -158,9 +154,7 @@ class RateLimiter:
         async with self._lock:
             now = time.monotonic()
             elapsed = now - self._last_time
-            self._tokens = min(
-                self._burst, self._tokens + elapsed * self._rate
-            )
+            self._tokens = min(self._burst, self._tokens + elapsed * self._rate)
             self._last_time = now
 
             if self._tokens < 1.0:
@@ -175,9 +169,7 @@ class RateLimiter:
         """同步版本的速率限制"""
         now = time.monotonic()
         elapsed = now - self._last_time
-        self._tokens = min(
-            self._burst, self._tokens + elapsed * self._rate
-        )
+        self._tokens = min(self._burst, self._tokens + elapsed * self._rate)
         self._last_time = now
 
         if self._tokens < 1.0:

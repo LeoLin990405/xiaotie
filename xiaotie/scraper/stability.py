@@ -17,10 +17,10 @@ from typing import Any, Dict, List, Optional, Sequence
 class StabilityLevel(Enum):
     """稳定性等级"""
 
-    STABLE = "stable"          # 变化率 < 5%
-    MODERATE = "moderate"      # 变化率 5-20%
-    UNSTABLE = "unstable"      # 变化率 20-50%
-    VOLATILE = "volatile"      # 变化率 > 50%
+    STABLE = "stable"  # 变化率 < 5%
+    MODERATE = "moderate"  # 变化率 5-20%
+    UNSTABLE = "unstable"  # 变化率 20-50%
+    VOLATILE = "volatile"  # 变化率 > 50%
 
 
 @dataclass
@@ -119,20 +119,21 @@ class StabilityAnalyzer:
 
             # 名称启发式
             key_lower = key.lower()
-            name_match = any(
-                p in key_lower for p in ("id", "_id", "key", "uuid", "pk")
-            )
+            name_match = any(p in key_lower for p in ("id", "_id", "key", "uuid", "pk"))
 
             # 唯一性检查
             non_none = [v for v in values if v is not None]
             is_unique = len(set(str(v) for v in non_none)) == len(non_none)
 
             # 类型检查：整数或类 UUID 字符串
-            is_id_type = all(
-                isinstance(v, int)
-                or (isinstance(v, str) and (v.isdigit() or len(v) >= 8))
-                for v in non_none
-            ) if non_none else False
+            is_id_type = (
+                all(
+                    isinstance(v, int) or (isinstance(v, str) and (v.isdigit() or len(v) >= 8))
+                    for v in non_none
+                )
+                if non_none
+                else False
+            )
 
             if name_match and is_unique:
                 candidates.append(key)
@@ -167,9 +168,7 @@ class StabilityAnalyzer:
 
         metrics: Dict[str, ChangeMetrics] = {}
         for fname in all_fields:
-            cm = ChangeMetrics(
-                field_name=fname, total_samples=len(snapshots)
-            )
+            cm = ChangeMetrics(field_name=fname, total_samples=len(snapshots))
             prev_hash: Optional[str] = None
             for i, snap in enumerate(snapshots):
                 val = snap.get(fname)

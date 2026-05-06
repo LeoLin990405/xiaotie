@@ -16,15 +16,17 @@ if TYPE_CHECKING:
 from xiaotie.custom_commands import CustomCommandExecutor, CustomCommandManager
 
 from .base import CommandsBase
-from .system import SystemCommandsMixin, AgentOpsMixin
-from .session import SessionCommandsMixin
-from .workspace import WorkspaceCommandsMixin
-from .plugins import PluginsCommandsMixin
-from .metrics import MetricsCommandsMixin
-from .quality import QualityCommandsMixin
-from .profiles import ProfilesCommandsMixin
 from .custom import CustomCommandsMixin
+from .metrics import MetricsCommandsMixin
+from .plugins import PluginsCommandsMixin
+from .profiles import ProfilesCommandsMixin
+from .quality import QualityCommandsMixin
 from .secret_cmd import SecretCommands
+from .session import SessionCommandsMixin
+from .system import AgentOpsMixin, SystemCommandsMixin
+from .workspace import WorkspaceCommandsMixin
+
+__all__ = ["Commands", "CommandsBase"]
 
 
 class Commands(
@@ -41,7 +43,7 @@ class Commands(
 ):
     """
     命令管理器
-    
+
     This class combines all the specific command domain mixins.
     """
 
@@ -57,13 +59,13 @@ class Commands(
         self.session_mgr = session_mgr
         self.plugin_mgr = plugin_mgr
         self.on_quit = on_quit
-        
+
         # Merge aliases from all base classes
         self.ALIASES = {}
         for base in reversed(self.__class__.__mro__):
-            if hasattr(base, 'ALIASES') and isinstance(base.ALIASES, dict):
+            if hasattr(base, "ALIASES") and isinstance(base.ALIASES, dict):
                 self.ALIASES.update(base.ALIASES)
-                
+
         self._commands = self._discover_commands()
 
         # 自定义命令系统
@@ -97,5 +99,6 @@ class Commands(
             result = await result
 
         return result
+
 
 __all__ = ["Commands"]

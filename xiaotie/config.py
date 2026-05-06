@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import logging
-from dataclasses import dataclass, field
+import os
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -14,6 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class RetryConfig(BaseModel):
     """重试配置"""
+
     enabled: bool = True
     max_retries: int = 3
     initial_delay: float = 1.0
@@ -23,7 +23,7 @@ class RetryConfig(BaseModel):
 
 class CacheConfig(BaseModel):
     """缓存配置"""
-    
+
     enabled: bool = True
     max_size: int = 1000
     ttl_seconds: int = 3600  # 1 hour
@@ -127,19 +127,21 @@ class ToolsConfig(BaseModel):
         proxy_data = values.get("proxy", {})
         if "enabled" in proxy_data:
             values["enable_proxy"] = values.get("enable_proxy", proxy_data["enabled"])
-            
+
         scraper_data = values.get("scraper", {})
         if "enabled" in scraper_data:
             values["enable_scraper"] = values.get("enable_scraper", scraper_data["enabled"])
-            
+
         automation_data = values.get("automation", {})
         if "enabled" in automation_data:
-            values["enable_automation"] = values.get("enable_automation", automation_data["enabled"])
-            
+            values["enable_automation"] = values.get(
+                "enable_automation", automation_data["enabled"]
+            )
+
         telegram_data = values.get("telegram", {})
         if "enabled" in telegram_data:
             values["enable_telegram"] = values.get("enable_telegram", telegram_data["enabled"])
-            
+
         return values
 
 
@@ -162,7 +164,7 @@ class MCPConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     """日志配置"""
-    
+
     level: str = "INFO"
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     file_path: Optional[str] = None
@@ -235,6 +237,7 @@ class Config(BaseModel):
         # 解析 ${secret:...} 和 ${env:...} 占位符
         try:
             from xiaotie.secrets import get_secret_manager
+
             data = get_secret_manager().resolve_config(data)
         except Exception as e:
             logging.getLogger(__name__).warning(f"密钥解析失败，使用原始配置: {e}")
@@ -252,7 +255,7 @@ class Config(BaseModel):
                 "model": data.get("model", "claude-sonnet-4-20250514"),
                 "temperature": data.get("temperature", 0.7),
                 "max_tokens": data.get("max_tokens", 4096),
-                "retry": data.get("retry", {})
+                "retry": data.get("retry", {}),
             }
             data["llm"] = llm_data
 
@@ -266,7 +269,7 @@ class Config(BaseModel):
                 "thinking_enabled": data.get("thinking_enabled", True),
                 "streaming_enabled": data.get("streaming_enabled", True),
                 "verbose": data.get("verbose", False),
-                "cache": data.get("cache", {})
+                "cache": data.get("cache", {}),
             }
             data["agent"] = agent_data
 

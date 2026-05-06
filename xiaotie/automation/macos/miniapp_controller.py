@@ -9,9 +9,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
-from .wechat_controller import WeChatController, WeChatConfig
+from .wechat_controller import WeChatConfig, WeChatController
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MiniAppInfo:
     """小程序信息"""
+
     name: str
     app_id: Optional[str] = None
     description: str = ""
@@ -232,6 +233,7 @@ end tell'''
         """截取小程序页面截图"""
         if not filename and self._current_miniapp:
             import time
+
             safe_name = self._current_miniapp.name.replace(" ", "_")
             filename = f"miniapp_{safe_name}_{int(time.time())}.png"
         return await self.wechat.screenshot(filename)

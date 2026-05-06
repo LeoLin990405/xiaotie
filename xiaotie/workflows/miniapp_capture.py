@@ -35,9 +35,10 @@ logger = logging.getLogger(__name__)
 
 class AutomationEngine(Enum):
     """自动化引擎类型"""
-    MACOS = "macos"       # macOS AppleScript (仅 macOS)
-    APPIUM = "appium"     # Appium (Android/iOS 模拟器)
-    NONE = "none"         # 不使用自动化（手动操作小程序）
+
+    MACOS = "macos"  # macOS AppleScript (仅 macOS)
+    APPIUM = "appium"  # Appium (Android/iOS 模拟器)
+    NONE = "none"  # 不使用自动化（手动操作小程序）
 
 
 class ExportFormat(Enum):
@@ -48,25 +49,28 @@ class ExportFormat(Enum):
 @dataclass
 class PageAction:
     """页面操作指令"""
-    action: str           # scroll_down, click, wait, screenshot
+
+    action: str  # scroll_down, click, wait, screenshot
     params: Dict[str, Any] = field(default_factory=dict)
-    delay: float = 1.0    # 操作后等待秒数
+    delay: float = 1.0  # 操作后等待秒数
 
 
 @dataclass
 class MiniAppTarget:
     """单个小程序抓取目标"""
-    name: str                                    # 小程序名称
-    app_id: Optional[str] = None                 # 小程序 AppID
-    deeplink: Optional[str] = None               # 深链接
+
+    name: str  # 小程序名称
+    app_id: Optional[str] = None  # 小程序 AppID
+    deeplink: Optional[str] = None  # 深链接
     actions: List[PageAction] = field(default_factory=list)
-    capture_duration: float = 30.0               # 抓取持续时间（秒）
+    capture_duration: float = 30.0  # 抓取持续时间（秒）
     export_format: ExportFormat = ExportFormat.JSON
 
 
 @dataclass
 class CaptureConfig:
     """抓取工作流配置"""
+
     # 代理
     proxy_port: int = 8080
     enable_https: bool = True
@@ -92,6 +96,7 @@ class CaptureConfig:
 @dataclass
 class CaptureResult:
     """单个小程序的抓取结果"""
+
     miniapp_name: str
     success: bool
     total_requests: int = 0
@@ -180,9 +185,7 @@ class MiniAppCaptureWorkflow:
                 duration_seconds=time.time() - start,
             )
 
-    async def capture_batch(
-        self, targets: Sequence[MiniAppTarget]
-    ) -> List[CaptureResult]:
+    async def capture_batch(self, targets: Sequence[MiniAppTarget]) -> List[CaptureResult]:
         """批量抓取多个小程序"""
         results = []
         self._log(f"批量抓取: {len(targets)} 个小程序")
@@ -260,6 +263,7 @@ class MiniAppCaptureWorkflow:
 
         if self.config.engine == AutomationEngine.MACOS:
             from ..automation.macos import WeChatController
+
             self._automation = WeChatController()
             self._log("macOS 自动化引擎已启动")
 
@@ -341,15 +345,10 @@ class MiniAppCaptureWorkflow:
             await asyncio.sleep(act.delay)
         elif act.action == "screenshot":
             if hasattr(self._automation, "screenshot"):
-                filename = act.params.get(
-                    "filename", f"screenshot_{int(time.time())}.png"
-                )
+                filename = act.params.get("filename", f"screenshot_{int(time.time())}.png")
                 await self._automation.screenshot(filename)
         elif act.action == "click":
-            if (
-                hasattr(self._automation, "driver")
-                and self._automation.driver
-            ):
+            if hasattr(self._automation, "driver") and self._automation.driver:
                 x = act.params.get("x", 0)
                 y = act.params.get("y", 0)
                 await self._automation.driver.tap(x, y)

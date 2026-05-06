@@ -8,19 +8,19 @@
 - 向量数据库
 """
 
+import hashlib
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
-import hashlib
-import json
-import re
 
 
 class SourceType(Enum):
     """知识源类型"""
+
     LOCAL = "local"
     NOTION = "notion"
     CONFLUENCE = "confluence"
@@ -31,6 +31,7 @@ class SourceType(Enum):
 @dataclass
 class Document:
     """文档"""
+
     id: str
     content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -47,6 +48,7 @@ class Document:
 @dataclass
 class SearchResult:
     """搜索结果"""
+
     document: Document
     score: float
     highlights: List[str] = field(default_factory=list)
@@ -55,10 +57,11 @@ class SearchResult:
 @dataclass
 class SourceConfig:
     """知识源配置"""
+
     type: SourceType
     path: Optional[str] = None  # 本地路径
-    url: Optional[str] = None   # 远程 URL
-    token: Optional[str] = None # API Token
+    url: Optional[str] = None  # 远程 URL
+    token: Optional[str] = None  # API Token
     options: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -91,7 +94,7 @@ class KnowledgeSource(ABC):
 class LocalSource(KnowledgeSource):
     """本地文件知识源"""
 
-    SUPPORTED_EXTENSIONS = {'.md', '.txt', '.json', '.yaml', '.yml'}
+    SUPPORTED_EXTENSIONS = {".md", ".txt", ".json", ".yaml", ".yml"}
 
     async def load(self) -> List[Document]:
         """加载本地文件"""
@@ -109,7 +112,7 @@ class LocalSource(KnowledgeSource):
             if doc:
                 documents.append(doc)
         elif path.is_dir():
-            for file_path in path.rglob('*'):
+            for file_path in path.rglob("*"):
                 if file_path.is_file() and file_path.suffix in self.SUPPORTED_EXTENSIONS:
                     doc = await self._load_file(file_path)
                     if doc:
@@ -123,14 +126,14 @@ class LocalSource(KnowledgeSource):
     async def _load_file(self, file_path: Path) -> Optional[Document]:
         """加载单个文件"""
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             return Document(
                 id=hashlib.md5(str(file_path).encode()).hexdigest()[:12],
                 content=content,
                 metadata={
-                    'filename': file_path.name,
-                    'extension': file_path.suffix,
-                    'size': file_path.stat().st_size,
+                    "filename": file_path.name,
+                    "extension": file_path.suffix,
+                    "size": file_path.stat().st_size,
                 },
                 source=str(file_path),
                 source_type=SourceType.LOCAL,
@@ -166,11 +169,13 @@ class LocalSource(KnowledgeSource):
                     score += 0.2
 
             if score > 0:
-                results.append(SearchResult(
-                    document=doc,
-                    score=score,
-                    highlights=highlights[:3],
-                ))
+                results.append(
+                    SearchResult(
+                        document=doc,
+                        score=score,
+                        highlights=highlights[:3],
+                    )
+                )
 
         # 按分数排序
         results.sort(key=lambda r: r.score, reverse=True)
@@ -205,11 +210,13 @@ class NotionSource(KnowledgeSource):
 
         for doc in self._documents.values():
             if query_lower in doc.content.lower():
-                results.append(SearchResult(
-                    document=doc,
-                    score=1.0,
-                    highlights=[],
-                ))
+                results.append(
+                    SearchResult(
+                        document=doc,
+                        score=1.0,
+                        highlights=[],
+                    )
+                )
 
         return results[:limit]
 
@@ -237,11 +244,13 @@ class ConfluenceSource(KnowledgeSource):
 
         for doc in self._documents.values():
             if query_lower in doc.content.lower():
-                results.append(SearchResult(
-                    document=doc,
-                    score=1.0,
-                    highlights=[],
-                ))
+                results.append(
+                    SearchResult(
+                        document=doc,
+                        score=1.0,
+                        highlights=[],
+                    )
+                )
 
         return results[:limit]
 
@@ -284,11 +293,13 @@ class VectorDBSource(KnowledgeSource):
             score = self._cosine_similarity(query_embedding, doc_embedding)
             doc = self._documents.get(doc_id)
             if doc:
-                results.append(SearchResult(
-                    document=doc,
-                    score=score,
-                    highlights=[],
-                ))
+                results.append(
+                    SearchResult(
+                        document=doc,
+                        score=score,
+                        highlights=[],
+                    )
+                )
 
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:limit]
@@ -300,11 +311,13 @@ class VectorDBSource(KnowledgeSource):
 
         for doc in self._documents.values():
             if query_lower in doc.content.lower():
-                results.append(SearchResult(
-                    document=doc,
-                    score=1.0,
-                    highlights=[],
-                ))
+                results.append(
+                    SearchResult(
+                        document=doc,
+                        score=1.0,
+                        highlights=[],
+                    )
+                )
 
         return results[:limit]
 
@@ -349,14 +362,14 @@ class KnowledgeBase:
             source_name = name or f"source_{len(self._sources)}"
         elif isinstance(source, dict):
             config = SourceConfig(
-                type=SourceType(source.get('type', 'local')),
-                path=source.get('path'),
-                url=source.get('url'),
-                token=source.get('token'),
-                options=source.get('options', {}),
+                type=SourceType(source.get("type", "local")),
+                path=source.get("path"),
+                url=source.get("url"),
+                token=source.get("token"),
+                options=source.get("options", {}),
             )
             source_obj = self._create_source(config)
-            source_name = name or source.get('name', f"source_{len(self._sources)}")
+            source_name = name or source.get("name", f"source_{len(self._sources)}")
         else:
             source_obj = self._create_source(source)
             source_name = name or f"source_{len(self._sources)}"
@@ -473,23 +486,19 @@ class DocumentChunker:
                 current_chunk += para
             else:
                 if current_chunk:
-                    chunks.append(self._create_chunk(
-                        document, current_chunk, chunk_index
-                    ))
+                    chunks.append(self._create_chunk(document, current_chunk, chunk_index))
                     chunk_index += 1
 
                 # 处理超长段落
                 if len(para) > self.chunk_size:
                     sub_chunks = self._split_long_text(para)
                     for sub_chunk in sub_chunks:
-                        chunks.append(self._create_chunk(
-                            document, sub_chunk, chunk_index
-                        ))
+                        chunks.append(self._create_chunk(document, sub_chunk, chunk_index))
                         chunk_index += 1
                     current_chunk = ""
                 else:
                     # 保留重叠部分
-                    overlap_text = current_chunk[-self.chunk_overlap:] if current_chunk else ""
+                    overlap_text = current_chunk[-self.chunk_overlap :] if current_chunk else ""
                     current_chunk = overlap_text + self.separator + para if overlap_text else para
 
         if current_chunk:
@@ -509,8 +518,8 @@ class DocumentChunker:
             content=content,
             metadata={
                 **original.metadata,
-                'chunk_index': index,
-                'parent_id': original.id,
+                "chunk_index": index,
+                "parent_id": original.id,
             },
             source=original.source,
             source_type=original.source_type,
@@ -527,7 +536,7 @@ class DocumentChunker:
             # 尝试在句子边界分割
             if end < len(text):
                 # 查找最近的句子结束
-                for sep in ['. ', '。', '! ', '? ', '\n']:
+                for sep in [". ", "。", "! ", "? ", "\n"]:
                     last_sep = text.rfind(sep, start, end)
                     if last_sep > start:
                         end = last_sep + len(sep)
@@ -549,22 +558,22 @@ class MarkdownParser:
         current_section = None
         current_content = []
 
-        for line in content.split('\n'):
-            header_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+        for line in content.split("\n"):
+            header_match = re.match(r"^(#{1,6})\s+(.+)$", line)
 
             if header_match:
                 # 保存前一个章节
                 if current_section:
-                    current_section['content'] = '\n'.join(current_content)
+                    current_section["content"] = "\n".join(current_content)
                     sections.append(current_section)
 
                 level = len(header_match.group(1))
                 title = header_match.group(2)
 
                 current_section = {
-                    'level': level,
-                    'title': title,
-                    'content': '',
+                    "level": level,
+                    "title": title,
+                    "content": "",
                 }
                 current_content = []
             else:
@@ -572,7 +581,7 @@ class MarkdownParser:
 
         # 保存最后一个章节
         if current_section:
-            current_section['content'] = '\n'.join(current_content)
+            current_section["content"] = "\n".join(current_content)
             sections.append(current_section)
 
         return sections
@@ -580,21 +589,15 @@ class MarkdownParser:
     @staticmethod
     def extract_code_blocks(content: str) -> List[Dict[str, str]]:
         """提取代码块"""
-        pattern = r'```(\w*)\n(.*?)```'
+        pattern = r"```(\w*)\n(.*?)```"
         matches = re.findall(pattern, content, re.DOTALL)
 
-        return [
-            {'language': lang or 'text', 'code': code.strip()}
-            for lang, code in matches
-        ]
+        return [{"language": lang or "text", "code": code.strip()} for lang, code in matches]
 
     @staticmethod
     def extract_links(content: str) -> List[Dict[str, str]]:
         """提取链接"""
-        pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+        pattern = r"\[([^\]]+)\]\(([^)]+)\)"
         matches = re.findall(pattern, content)
 
-        return [
-            {'text': text, 'url': url}
-            for text, url in matches
-        ]
+        return [{"text": text, "url": url} for text, url in matches]

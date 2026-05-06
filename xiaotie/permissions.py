@@ -299,6 +299,7 @@ class PermissionManager:
     async def _interactive_confirm(self, request: PermissionRequest) -> tuple[bool, str]:
         """交互式确认"""
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(self._format_request(request))
         logger.info("\n   [y] 允许  [n] 拒绝  [a] 允许并加入白名单  [q] 退出")

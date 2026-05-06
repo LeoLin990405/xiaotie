@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
+
+from .storage import CapturedRequest, RequestStorage
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +22,11 @@ try:
 except ImportError:
     _HAS_MITMPROXY = False
 
-from .storage import CapturedRequest, RequestStorage
-
 
 def _check_mitmproxy() -> None:
     if not _HAS_MITMPROXY:
         raise ImportError(
-            "mitmproxy 未安装。请运行: pip install mitmproxy\n"
-            "或: pip install xiaotie[proxy]"
+            "mitmproxy 未安装。请运行: pip install mitmproxy\n或: pip install xiaotie[proxy]"
         )
 
 
@@ -159,9 +158,10 @@ class RequestCapture:
     def error(self, flow: "http.HTTPFlow") -> None:
         """mitmproxy 错误钩子"""
         self._flow_start.pop(flow.id, None)
-        if hasattr(flow, 'error') and flow.error:
-            logger.debug("请求错误: %s %s - %s",
-                         flow.request.method, flow.request.pretty_url, flow.error)
+        if hasattr(flow, "error") and flow.error:
+            logger.debug(
+                "请求错误: %s %s - %s", flow.request.method, flow.request.pretty_url, flow.error
+            )
 
 
 class MiniAppFilter:

@@ -5,15 +5,18 @@
 """
 
 import asyncio
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
 from appium.webdriver.common.appiumby import AppiumBy
-from .appium_driver import AppiumDriver, AppiumConfig
+
+from .appium_driver import AppiumConfig, AppiumDriver
 
 
 @dataclass
 class MiniAppConfig:
     """小程序配置"""
+
     miniapp_name: str  # 小程序名称
     miniapp_id: Optional[str] = None  # 小程序AppID（可选）
     wait_timeout: int = 30  # 等待超时（秒）
@@ -27,7 +30,7 @@ class MiniAppAutomation:
     def __init__(
         self,
         appium_config: Optional[AppiumConfig] = None,
-        miniapp_config: Optional[MiniAppConfig] = None
+        miniapp_config: Optional[MiniAppConfig] = None,
     ):
         self.appium_config = appium_config or AppiumConfig()
         self.miniapp_config = miniapp_config or MiniAppConfig(miniapp_name="示例小程序")
@@ -53,15 +56,13 @@ class MiniAppAutomation:
         await asyncio.sleep(1)
 
         # 输入小程序名称
-        await self.driver.send_keys(
-            AppiumBy.ID,
-            "com.tencent.mm:id/cd7",
-            miniapp_name
-        )
+        await self.driver.send_keys(AppiumBy.ID, "com.tencent.mm:id/cd7", miniapp_name)
         await asyncio.sleep(2)
 
         # 点击小程序搜索结果
-        await self.driver.click(AppiumBy.XPATH, f"//android.widget.TextView[@text='{miniapp_name}']")
+        await self.driver.click(
+            AppiumBy.XPATH, f"//android.widget.TextView[@text='{miniapp_name}']"
+        )
         await asyncio.sleep(3)
 
     async def open_miniapp_by_name(self, miniapp_name: str) -> None:
@@ -82,17 +83,15 @@ class MiniAppAutomation:
         # 使用ADB打开深链接（Android）
         if self.appium_config.platform == "Android":
             import subprocess
-            subprocess.run([
-                "adb", "shell", "am", "start",
-                "-a", "android.intent.action.VIEW",
-                "-d", deeplink
-            ])
+
+            subprocess.run(
+                ["adb", "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", deeplink]
+            )
         else:
             # iOS使用xcrun simctl
             import subprocess
-            subprocess.run([
-                "xcrun", "simctl", "openurl", "booted", deeplink
-            ])
+
+            subprocess.run(["xcrun", "simctl", "openurl", "booted", deeplink])
 
         await asyncio.sleep(5)  # 等待小程序加载
 
@@ -102,7 +101,7 @@ class MiniAppAutomation:
             try:
                 await self.driver.find_element(by, value)
                 return True
-            except:
+            except Exception:
                 await asyncio.sleep(1)
         return False
 
@@ -113,8 +112,8 @@ class MiniAppAutomation:
             raise RuntimeError("Driver not started")
 
         size = self.driver.driver.get_window_size()
-        start_x = size['width'] // 2
-        start_y = size['height'] * 3 // 4
+        start_x = size["width"] // 2
+        start_y = size["height"] * 3 // 4
         end_y = start_y - distance
 
         await self.driver.swipe(start_x, start_y, start_x, end_y)
@@ -155,10 +154,9 @@ class MiniAppAutomation:
                     elements = await self.get_page_elements(selector)
                     if i < len(elements):
                         item[key] = await asyncio.get_event_loop().run_in_executor(
-                            None,
-                            lambda: elements[i].text
+                            None, lambda: elements[i].text
                         )
-                except:
+                except Exception:
                     item[key] = None
             data.append(item)
 
@@ -186,8 +184,7 @@ class MiniAppAutomation:
 
 # macOS专用：iOS模拟器配置
 def create_ios_simulator_config(
-    simulator_name: str = "iPhone 15",
-    ios_version: str = "17.0"
+    simulator_name: str = "iPhone 15", ios_version: str = "17.0"
 ) -> AppiumConfig:
     """创建iOS模拟器配置"""
     return AppiumConfig(
@@ -196,14 +193,12 @@ def create_ios_simulator_config(
         platform_version=ios_version,
         app_package="com.tencent.xin",  # 微信Bundle ID
         automation_name="XCUITest",
-        appium_server="http://localhost:4723"
+        appium_server="http://localhost:4723",
     )
 
 
 # macOS专用：Android模拟器配置
-def create_android_emulator_config(
-    emulator_name: str = "Pixel_5_API_31"
-) -> AppiumConfig:
+def create_android_emulator_config(emulator_name: str = "Pixel_5_API_31") -> AppiumConfig:
     """创建Android模拟器配置"""
     return AppiumConfig(
         platform="Android",
@@ -212,5 +207,5 @@ def create_android_emulator_config(
         app_package="com.tencent.mm",
         app_activity=".ui.LauncherUI",
         automation_name="UiAutomator2",
-        appium_server="http://localhost:4723"
+        appium_server="http://localhost:4723",
     )

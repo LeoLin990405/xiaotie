@@ -274,8 +274,11 @@ def get_database() -> Database:
     if _database is None:
         with _database_lock:
             if _database is None:
-                _database = BatchCommitDatabase(get_default_db_path(), flush_interval=0.5, max_pending=50)
+                _database = BatchCommitDatabase(
+                    get_default_db_path(), flush_interval=0.5, max_pending=50
+                )
     return _database
+
 
 async def init_database(db_path: Optional[str] = None) -> Database:
     """初始化数据库"""
@@ -284,7 +287,9 @@ async def init_database(db_path: Optional[str] = None) -> Database:
         if db_path:
             _database = BatchCommitDatabase(db_path, flush_interval=0.5, max_pending=50)
         else:
-            _database = BatchCommitDatabase(get_default_db_path(), flush_interval=0.5, max_pending=50)
+            _database = BatchCommitDatabase(
+                get_default_db_path(), flush_interval=0.5, max_pending=50
+            )
 
     await _database.connect()
     await _database.migrate()

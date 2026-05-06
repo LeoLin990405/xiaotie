@@ -8,15 +8,15 @@
 import asyncio
 import hashlib
 import time
-import threading
-from typing import Any, Optional, Dict
-from dataclasses import dataclass
 from collections import OrderedDict
+from dataclasses import dataclass
+from typing import Any, Optional
 
 
 @dataclass
 class CacheEntry:
     """缓存条目"""
+
     value: Any
     timestamp: float
     ttl: float
@@ -25,8 +25,9 @@ class CacheEntry:
 class AsyncLRUCache:
     """异步LRU缓存实现（带清理间隔优化）"""
 
-    def __init__(self, max_size: int = 1000, default_ttl: float = 3600.0,
-                 cleanup_interval: float = 60.0):
+    def __init__(
+        self, max_size: int = 1000, default_ttl: float = 3600.0, cleanup_interval: float = 60.0
+    ):
         self.max_size = max_size
         self.default_ttl = default_ttl
         self.cleanup_interval = cleanup_interval
@@ -64,11 +65,7 @@ class AsyncLRUCache:
             if ttl is None:
                 ttl = self.default_ttl
 
-            self._cache[key] = CacheEntry(
-                value=value,
-                timestamp=now,
-                ttl=ttl
-            )
+            self._cache[key] = CacheEntry(value=value, timestamp=now, ttl=ttl)
 
             # 如果超出大小限制，移除最老的项
             if len(self._cache) > self.max_size:
@@ -93,8 +90,7 @@ class AsyncLRUCache:
         if current_time is None:
             current_time = time.time()
         expired_keys = [
-            key for key, entry in self._cache.items()
-            if current_time - entry.timestamp > entry.ttl
+            key for key, entry in self._cache.items() if current_time - entry.timestamp > entry.ttl
         ]
         for key in expired_keys:
             del self._cache[key]
@@ -125,13 +121,14 @@ def get_global_cache() -> AsyncLRUCache:
     global _global_cache
     if _global_cache is None:
         from .config import Config  # 延迟导入避免循环依赖
+
         try:
             config = Config.load()
             _global_cache = AsyncLRUCache(
                 max_size=config.agent.cache_config.max_size,
-                default_ttl=config.agent.cache_config.ttl_seconds
+                default_ttl=config.agent.cache_config.ttl_seconds,
             )
-        except:
+        except Exception:
             # 如果无法加载配置，使用默认值
             _global_cache = AsyncLRUCache()
     return _global_cache
@@ -139,10 +136,13 @@ def get_global_cache() -> AsyncLRUCache:
 
 def cache_result(ttl: Optional[float] = None):
     """装饰器：缓存函数结果"""
+
     def decorator(func):
         async def wrapper(*args, **kwargs):
             # 生成稳定的缓存键
-            key_source = f"{func.__module__}.{func.__qualname__}:{repr(args)}:{repr(sorted(kwargs.items()))}"
+            key_source = (
+                f"{func.__module__}.{func.__qualname__}:{repr(args)}:{repr(sorted(kwargs.items()))}"
+            )
             cache_key = hashlib.md5(key_source.encode()).hexdigest()
 
             cache = get_global_cache()
@@ -157,5 +157,7 @@ def cache_result(ttl: Optional[float] = None):
             await cache.set(cache_key, result, ttl)
 
             return result
+
         return wrapper
+
     return decorator

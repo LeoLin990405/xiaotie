@@ -4,9 +4,10 @@ Quality and feedback loop commands Mixin.
 
 from .base import CommandsBase
 
+
 class QualityCommandsMixin(CommandsBase):
     """Quality related commands like lint, test, autolint"""
-    
+
     async def cmd_lint(self, args: str) -> tuple[bool, str]:
         """对文件运行 lint 检查 (用法: /lint <文件路径>)"""
         if not args:
@@ -51,7 +52,7 @@ class QualityCommandsMixin(CommandsBase):
                 for err in result.errors[:5]:
                     lines.append(f"  • {err}")
             return True, "\\n".join(lines)
-            
+
     def cmd_autolint(self, args: str) -> tuple[bool, str]:
         """切换自动 lint 检查"""
         # 需要在 agent 中添加 feedback_loop 属性

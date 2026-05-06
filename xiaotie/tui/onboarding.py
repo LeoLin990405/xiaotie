@@ -20,10 +20,10 @@ from typing import Callable, List, Optional
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center, Horizontal, Vertical
+from textual.containers import Horizontal, Vertical
 from textual.message import Message
-from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Input, Label, ProgressBar, Static
+from textual.screen import ModalScreen
+from textual.widgets import Button, Input, ProgressBar, Static
 
 
 @dataclass
@@ -135,11 +135,11 @@ def save_bootstrap_config(provider: str, model: str, api_key: str) -> Path:
             f'api_key: "{api_key}"',
             f'provider: "{provider}"',
             f'model: "{model}"',
-            "api_base: \"\"",
+            'api_base: ""',
             "temperature: 0.7",
             "max_tokens: 4096",
             "max_steps: 50",
-            "workspace_dir: \"./workspace\"",
+            'workspace_dir: "./workspace"',
             "thinking_enabled: true",
             "streaming_enabled: true",
             "verbose: false",
@@ -607,7 +607,9 @@ class OnboardingWizard(ModalScreen):
                     classes="step-indicator",
                     id="step-indicator",
                 )
-                yield ProgressBar(total=len(self.steps), classes="step-progress", id="step-progress")
+                yield ProgressBar(
+                    total=len(self.steps), classes="step-progress", id="step-progress"
+                )
                 yield Static("", classes="step-error", id="step-error")
                 yield WelcomeStep(id="current-step")
 
@@ -714,9 +716,7 @@ class OnboardingWizard(ModalScreen):
         elif step_name == "apikey":
             new_step = ApiKeyStep(self.selected_provider, id="current-step")
         elif step_name == "test":
-            new_step = TestConnectionStep(
-                self.selected_provider, self.api_key, id="current-step"
-            )
+            new_step = TestConnectionStep(self.selected_provider, self.api_key, id="current-step")
         else:  # complete
             new_step = CompleteStep(self.selected_provider, id="current-step")
 

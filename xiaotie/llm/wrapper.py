@@ -8,9 +8,7 @@ from typing import Any, Callable, Optional
 
 from ..retry import RetryConfig
 from ..schema import LLMResponse, Message
-from .anthropic_client import AnthropicClient
 from .base import LLMClientBase
-from .openai_client import OpenAIClient
 from .providers import PROVIDER_CONFIGS, ProviderConfig, get_provider_config
 
 
@@ -66,6 +64,8 @@ class LLMClient:
         # 根据 provider 创建对应客户端
         self._client: LLMClientBase
         if provider == LLMProvider.ANTHROPIC:
+            from .anthropic_client import AnthropicClient
+
             self._client = AnthropicClient(
                 api_key=api_key or "",
                 api_base=full_api_base,
@@ -74,6 +74,8 @@ class LLMClient:
             )
         else:
             # 所有其他 provider 使用 OpenAI 兼容客户端
+            from .openai_client import OpenAIClient
+
             self._client = OpenAIClient(
                 api_key=api_key or "",
                 api_base=full_api_base,

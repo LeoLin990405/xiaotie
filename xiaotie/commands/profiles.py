@@ -4,9 +4,10 @@ Profiles management commands Mixin.
 
 from .base import CommandsBase
 
+
 class ProfilesCommandsMixin(CommandsBase):
     """Profiles related commands like profiles, profile"""
-    
+
     def cmd_profiles(self, args: str) -> tuple[bool, str]:
         """列出所有配置 profiles"""
         from xiaotie.profiles import ProfileManager

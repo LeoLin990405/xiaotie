@@ -4,21 +4,22 @@ Session management commands Mixin.
 
 from .base import CommandsBase
 
+
 class SessionCommandsMixin(CommandsBase):
     """Session related commands like save, load, sessions, new, reset, history, compact"""
-    
+
     ALIASES = {
         "s": "save",
         "l": "load",
         "r": "reset",
         "hist": "history",
     }
-    
+
     def cmd_reset(self, args: str) -> tuple[bool, str]:
         """重置对话历史"""
         self.agent.reset()
         return True, "✅ 对话已重置"
-        
+
     def cmd_save(self, args: str) -> tuple[bool, str]:
         """保存当前会话"""
         if not self.session_mgr.current_session:
@@ -67,7 +68,7 @@ class SessionCommandsMixin(CommandsBase):
         session_id = self.session_mgr.create_session(title)
         self.agent.reset()
         return True, f"✅ 新会话已创建: {session_id}"
-        
+
     def cmd_history(self, args: str) -> tuple[bool, str]:
         """显示对话历史摘要"""
         messages = self.agent.messages
@@ -89,14 +90,14 @@ class SessionCommandsMixin(CommandsBase):
             lines.insert(1, "  ... (显示最近 10 条)")
 
         return True, "\\n".join(lines)
-        
+
     async def cmd_compact(self, args: str) -> tuple[bool, str]:
         """手动压缩对话历史"""
         before_tokens = self.agent._estimate_tokens()
         before_messages = len(self.agent.messages)
 
         old_limit = self.agent.token_limit
-        self.agent.token_limit = 0  
+        self.agent.token_limit = 0
         await self.agent._summarize_messages()
         self.agent.token_limit = old_limit
 

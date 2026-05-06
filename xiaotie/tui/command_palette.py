@@ -355,9 +355,7 @@ class CommandPalette(ModalScreen):
             if cmd.category != current_category:
                 current_category = cmd.category
                 category_name = self._get_category_name(current_category)
-                container.mount(
-                    Static(category_name, classes="category-header")
-                )
+                container.mount(Static(category_name, classes="category-header"))
 
             classes = "cmd-item selected" if item_index == 0 else "cmd-item"
             container.mount(
@@ -577,8 +575,7 @@ class QuickModelSelector(ModalScreen):
         if query:
             query_lower = query.lower()
             self.filtered_models = [
-                m for m in self.models
-                if query_lower in m[1].lower() or query_lower in m[0].lower()
+                m for m in self.models if query_lower in m[1].lower() or query_lower in m[0].lower()
             ]
         else:
             self.filtered_models = self.models.copy()
@@ -599,9 +596,7 @@ class QuickModelSelector(ModalScreen):
             if provider != current_provider:
                 current_provider = provider
                 icon = self.PROVIDER_ICONS.get(provider, "󰮯")
-                model_list.mount(
-                    Static(f"{icon} {provider.upper()}", classes="provider-header")
-                )
+                model_list.mount(Static(f"{icon} {provider.upper()}", classes="provider-header"))
 
             is_current = model == self.current_model
             classes = "model-item"
@@ -615,9 +610,7 @@ class QuickModelSelector(ModalScreen):
             if is_current:
                 text.append(" ✓", style="green")
 
-            model_list.mount(
-                Static(text, classes=classes, id=f"model-{i}")
-            )
+            model_list.mount(Static(text, classes=classes, id=f"model-{i}"))
 
     def _move_selection(self, delta: int) -> None:
         if not self.filtered_models:

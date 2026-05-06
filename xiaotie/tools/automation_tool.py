@@ -16,9 +16,7 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import subprocess
 import time
 from pathlib import Path
 from typing import Any, Optional
@@ -53,9 +51,7 @@ class AutomationTool(Tool):
     ):
         super().__init__()
         self._wechat_bundle_id = wechat_bundle_id
-        self._screenshot_dir = screenshot_dir or str(
-            Path.home() / ".xiaotie" / "screenshots"
-        )
+        self._screenshot_dir = screenshot_dir or str(Path.home() / ".xiaotie" / "screenshots")
         self._applescript_timeout = applescript_timeout
         self._running = False
         self._start_time: Optional[float] = None
@@ -80,9 +76,13 @@ class AutomationTool(Tool):
                 "action": {
                     "type": "string",
                     "enum": [
-                        "start", "stop", "status",
-                        "launch_app", "send_message",
-                        "screenshot", "execute",
+                        "start",
+                        "stop",
+                        "status",
+                        "launch_app",
+                        "send_message",
+                        "screenshot",
+                        "execute",
                     ],
                     "description": (
                         "操作类型：start-启动会话，stop-停止会话，"
@@ -147,7 +147,9 @@ class AutomationTool(Tool):
     async def _run_applescript(self, script: str) -> tuple[bool, str]:
         """执行 AppleScript 并返回 (success, output)"""
         proc = await asyncio.create_subprocess_exec(
-            "osascript", "-e", script,
+            "osascript",
+            "-e",
+            script,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -238,8 +240,7 @@ class AutomationTool(Tool):
 
         # 检查微信是否在运行
         ok, output = await self._run_applescript(
-            'tell application "System Events" to return '
-            '(name of processes) contains "WeChat"'
+            'tell application "System Events" to return (name of processes) contains "WeChat"'
         )
         if ok:
             wechat_running = output.strip().lower() == "true"
@@ -253,9 +254,7 @@ class AutomationTool(Tool):
         if not app_name:
             return ToolResult(success=False, error="请指定 app_name 参数")
 
-        ok, output = await self._run_applescript(
-            f'tell application "{app_name}" to activate'
-        )
+        ok, output = await self._run_applescript(f'tell application "{app_name}" to activate')
         if not ok:
             return ToolResult(success=False, error=f"启动应用失败: {output}")
 
@@ -319,9 +318,7 @@ end tell
 
         if not output_file:
             ts = int(time.time())
-            output_file = str(
-                Path(self._screenshot_dir) / f"screenshot_{ts}.png"
-            )
+            output_file = str(Path(self._screenshot_dir) / f"screenshot_{ts}.png")
 
         output_path = Path(output_file).resolve()
         output_path.parent.mkdir(parents=True, exist_ok=True)

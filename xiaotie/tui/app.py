@@ -499,7 +499,9 @@ class ThemeSelectorScreen(ModalScreen):
         self.preview_callback = preview_callback
         self.restore_callback = restore_callback
         self._theme_ids = list_themes()
-        self.selected_index = self._theme_ids.index(current_theme) if current_theme in self._theme_ids else 0
+        self.selected_index = (
+            self._theme_ids.index(current_theme) if current_theme in self._theme_ids else 0
+        )
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -833,7 +835,9 @@ class XiaoTieApp(App):
         self.show_onboarding = show_onboarding
         self.onboarding_required = onboarding_required
         self.onboarding_result: Optional[dict] = None
-        self.language = language or ("zh" if os.environ.get("LANG", "").lower().startswith("zh") else "en")
+        self.language = language or (
+            "zh" if os.environ.get("LANG", "").lower().startswith("zh") else "en"
+        )
         self._thinking_widget = None
         self._risk_log_path = Path.home() / ".xiaotie" / "risk_actions.log"
         self._theme_preview_original: Optional[str] = None
@@ -1115,9 +1119,9 @@ class XiaoTieApp(App):
 
         try:
             from .streaming import StreamingMessage, StreamingRenderer
-            
+
             messages = self.query_one("#messages-pane", MessageList)
-            
+
             # 移除欢迎消息
             if not messages._has_messages:
                 welcome = messages.query("#welcome-msg")
@@ -1129,10 +1133,10 @@ class XiaoTieApp(App):
             streaming_msg = StreamingMessage()
             messages.mount(streaming_msg)
             messages.scroll_end(animate=False)
-            
+
             renderer = StreamingRenderer(
                 message_widget=streaming_msg,
-                scroll_callback=lambda: messages.scroll_end(animate=False)
+                scroll_callback=lambda: messages.scroll_end(animate=False),
             )
             await renderer.start()
 
@@ -1141,8 +1145,8 @@ class XiaoTieApp(App):
             self.agent.on_content = renderer.on_content
 
             # 运行
-            result = await self.agent.run(user_input)
-            
+            await self.agent.run(user_input)
+
             await renderer.stop()
 
             # 更新 token 统计
@@ -1153,7 +1157,12 @@ class XiaoTieApp(App):
             if "rate" in error_str or "429" in error_str or "quota" in error_str:
                 guidance = "请稍后重试，或使用 Ctrl+M 切换到其他模型"
                 variant = "warning"
-            elif "auth" in error_str or "401" in error_str or "api_key" in error_str or "invalid" in error_str:
+            elif (
+                "auth" in error_str
+                or "401" in error_str
+                or "api_key" in error_str
+                or "invalid" in error_str
+            ):
                 guidance = "请检查 API Key 配置，使用 /config 查看当前设置"
                 variant = "error"
             elif "timeout" in error_str or "timed out" in error_str:
@@ -1255,7 +1264,9 @@ class XiaoTieApp(App):
                 if result.get("completed"):
                     self.show_toast(t("success"), "引导配置已完成", variant="success")
                 elif result.get("skipped"):
-                    self.show_toast(t("warning"), "已跳过引导，可通过 /help 查看操作", variant="warning")
+                    self.show_toast(
+                        t("warning"), "已跳过引导，可通过 /help 查看操作", variant="warning"
+                    )
                 if self.onboarding_required:
                     self.exit()
 

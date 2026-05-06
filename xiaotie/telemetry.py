@@ -102,11 +102,15 @@ class AgentTelemetry:
         with self._lock:
             self._llm_calls_total += 1
             self._llm_latency.append(max(0.0, latency_sec))
-            self._llm_calls_by_provider_model[key] = self._llm_calls_by_provider_model.get(key, 0) + 1
+            self._llm_calls_by_provider_model[key] = (
+                self._llm_calls_by_provider_model.get(key, 0) + 1
+            )
             if not success:
                 self._llm_calls_error += 1
         if _PROM_AVAILABLE:
-            _LLM_CALLS_TOTAL.labels(provider=provider, model=model, success=str(success).lower()).inc()
+            _LLM_CALLS_TOTAL.labels(
+                provider=provider, model=model, success=str(success).lower()
+            ).inc()
             _LLM_LATENCY_SEC.labels(provider=provider, model=model).observe(max(0.0, latency_sec))
 
     def record_tool_call(self, tool_name: str, latency_sec: float, success: bool):
@@ -116,7 +120,9 @@ class AgentTelemetry:
             self._tool_calls_by_name[tool_name] = self._tool_calls_by_name.get(tool_name, 0) + 1
             if not success:
                 self._tool_calls_error += 1
-                self._tool_errors_by_name[tool_name] = self._tool_errors_by_name.get(tool_name, 0) + 1
+                self._tool_errors_by_name[tool_name] = (
+                    self._tool_errors_by_name.get(tool_name, 0) + 1
+                )
         if _PROM_AVAILABLE:
             _TOOL_CALLS_TOTAL.labels(tool=tool_name, success=str(success).lower()).inc()
             _TOOL_LATENCY_SEC.labels(tool=tool_name).observe(max(0.0, latency_sec))
@@ -150,7 +156,9 @@ class AgentTelemetry:
             run_error_rate = _safe_rate(self._runs_error, runs_total)
             run_cancel_rate = _safe_rate(self._runs_cancelled, runs_total)
             stream_events_per_flush = (
-                self._stream_event_total / self._stream_flush_total if self._stream_flush_total > 0 else 0.0
+                self._stream_event_total / self._stream_flush_total
+                if self._stream_flush_total > 0
+                else 0.0
             )
 
             return {

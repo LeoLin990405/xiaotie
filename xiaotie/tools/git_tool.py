@@ -17,7 +17,6 @@ from typing import Any
 
 from .base import Tool, ToolResult
 
-
 # 禁止通过 args 注入的危险 git 选项
 _DANGEROUS_GIT_ARGS = re.compile(
     r"^--(?:exec|upload-pack|receive-pack|config|work-tree|git-dir|exec-path)"

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -71,8 +70,12 @@ class CertManager:
         # 尝试从 mitmproxy 默认目录复制
         mitm_dir = Path.home() / ".mitmproxy"
         if (mitm_dir / "mitmproxy-ca-cert.pem").exists():
-            for name in ("mitmproxy-ca-cert.pem", "mitmproxy-ca.pem",
-                         "mitmproxy-ca-cert.p12", "mitmproxy-ca-cert.cer"):
+            for name in (
+                "mitmproxy-ca-cert.pem",
+                "mitmproxy-ca.pem",
+                "mitmproxy-ca-cert.p12",
+                "mitmproxy-ca-cert.cer",
+            ):
                 src = mitm_dir / name
                 if src.exists():
                     shutil.copy2(src, self.cert_dir / name)
@@ -83,8 +86,9 @@ class CertManager:
         logger.info("CA 证书将在代理首次启动时自动生成")
         return False
 
-    def get_install_instructions(self, proxy_host: str = "127.0.0.1",
-                                  proxy_port: int = 8080) -> str:
+    def get_install_instructions(
+        self, proxy_host: str = "127.0.0.1", proxy_port: int = 8080
+    ) -> str:
         """获取证书安装说明
 
         Args:

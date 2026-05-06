@@ -59,7 +59,9 @@ class TelegramIntegrationService:
             return f"已收到图片，file_id={largest.get('file_id', '')}"
         if message.get("document"):
             doc = message["document"]
-            return f"已收到文件，file_name={doc.get('file_name', '')} file_id={doc.get('file_id', '')}"
+            return (
+                f"已收到文件，file_name={doc.get('file_name', '')} file_id={doc.get('file_id', '')}"
+            )
         return "暂不支持该消息类型，请发送文本、图片或文件。"
 
     async def handle_update_and_reply(self, update: dict[str, Any]) -> None:
@@ -76,7 +78,9 @@ class TelegramIntegrationService:
                 await self.bot_client.send_message(chat_id=chat_id, text=reply_text)
         except Exception as exc:
             logger.exception("telegram update 处理失败: %s", exc)
-            await self.bot_client.send_message(chat_id=chat_id, text="处理请求时发生异常，请稍后重试。")
+            await self.bot_client.send_message(
+                chat_id=chat_id, text="处理请求时发生异常，请稍后重试。"
+            )
 
     async def push_message(
         self,

@@ -17,17 +17,7 @@ import re
 import time
 import uuid
 import warnings
-from dataclasses import dataclass
 from typing import Callable, Dict, Optional
-
-logger = logging.getLogger(__name__)
-
-try:
-    import tiktoken
-
-    HAS_TIKTOKEN = True
-except ImportError:
-    HAS_TIKTOKEN = False
 
 from xiaotie.events import (
     AgentStartEvent,
@@ -46,8 +36,19 @@ from xiaotie.permissions import PermissionManager
 from xiaotie.schema import LLMResponse, Message
 from xiaotie.telemetry import AgentTelemetry
 from xiaotie.tools import Tool
+
 from .config import AgentConfig
-from .state import SessionState, _session_state
+from .state import _session_state
+
+logger = logging.getLogger(__name__)
+
+try:
+    import tiktoken
+
+    HAS_TIKTOKEN = True
+except ImportError:
+    HAS_TIKTOKEN = False
+
 
 class Agent:
     """小铁 Agent - 优化版"""
@@ -83,8 +84,7 @@ class Agent:
         """
         self.llm = llm_client
         warnings.warn(
-            "Agent class is deprecated, use AgentRuntime instead. "
-            "Agent will be removed in v3.0.",
+            "Agent class is deprecated, use AgentRuntime instead. Agent will be removed in v3.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -101,7 +101,7 @@ class Agent:
             stream=stream,
             quiet=quiet,
             cache_enabled=True,  # 默认启用缓存
-            cache_ttl=3600,      # 默认1小时TTL
+            cache_ttl=3600,  # 默认1小时TTL
         )
 
         # 兼容旧属性
@@ -196,7 +196,7 @@ class Agent:
             # 没有 tiktoken，按字符估算（增量）
             new_chars = sum(
                 len(str(msg.content)) + len(str(msg.thinking or ""))
-                for msg in self.messages[self._cached_message_count:]
+                for msg in self.messages[self._cached_message_count :]
             )
             self._cached_token_count += new_chars // 4
             self._cached_message_count = current_count
@@ -204,7 +204,7 @@ class Agent:
 
         # 仅编码新增消息
         new_tokens = 0
-        for msg in self.messages[self._cached_message_count:]:
+        for msg in self.messages[self._cached_message_count :]:
             if isinstance(msg.content, str):
                 new_tokens += len(self._encoding.encode(msg.content))
             if msg.thinking:
@@ -227,7 +227,11 @@ class Agent:
 
         estimated = self._estimate_tokens()
         if not self.quiet:
-            logger.info("Token approaching limit (%d/%d), summarizing...", estimated, self.config.token_limit)
+            logger.info(
+                "Token approaching limit (%d/%d), summarizing...",
+                estimated,
+                self.config.token_limit,
+            )
 
         # 保留 system 消息
         system_msg = self.messages[0] if self.messages[0].role == "system" else None
@@ -484,8 +488,9 @@ class Agent:
         )
         return provider_name, model_name
 
-    def _make_audit_data(self, provider_name: str, model_name: str,
-                         tool_origin: str, risk_level: str, **extra) -> dict:
+    def _make_audit_data(
+        self, provider_name: str, model_name: str, tool_origin: str, risk_level: str, **extra
+    ) -> dict:
         """Build audit data dict for tool events."""
         audit = {
             "caller": "agent",
@@ -497,10 +502,17 @@ class Agent:
         audit.update(extra)
         return {"audit": audit}
 
-    async def _publish_tool_complete(self, function_name: str, tool_call_id: str,
-                                     success: bool, elapsed: float,
-                                     audit_data: dict, *,
-                                     result: str = "", error: str = ""):
+    async def _publish_tool_complete(
+        self,
+        function_name: str,
+        tool_call_id: str,
+        success: bool,
+        elapsed: float,
+        audit_data: dict,
+        *,
+        result: str = "",
+        error: str = "",
+    ):
         """Publish ToolCompleteEvent and record telemetry."""
         await self._publish_event(
             ToolCompleteEvent(
@@ -526,7 +538,10 @@ class Agent:
         risk_level = self.permission_manager.get_risk_level(function_name, arguments).value
         tool_origin = self._resolve_tool_origin(function_name)
         audit_data = self._make_audit_data(
-            provider_name, model_name, tool_origin, risk_level,
+            provider_name,
+            model_name,
+            tool_origin,
+            risk_level,
             arguments_summary=self._summarize_arguments(arguments),
         )
 
@@ -568,8 +583,12 @@ class Agent:
             )
             result_content = f"\u6743\u9650\u62d2\u7edd: {reason}\n{recovery_hint}"
             denied_audit = self._make_audit_data(
-                provider_name, model_name, tool_origin, risk_level,
-                decision="denied", reason=reason,
+                provider_name,
+                model_name,
+                tool_origin,
+                risk_level,
+                decision="denied",
+                reason=reason,
             )
             await self._publish_tool_complete(
                 function_name, tool_call_id, False, 0.0, denied_audit, error=result_content
@@ -578,13 +597,27 @@ class Agent:
 
         # Execute
         return await self._run_tool(
-            tool, tool_call_id, function_name, arguments,
-            provider_name, model_name, tool_origin, risk_level,
+            tool,
+            tool_call_id,
+            function_name,
+            arguments,
+            provider_name,
+            model_name,
+            tool_origin,
+            risk_level,
         )
 
-    async def _run_tool(self, tool, tool_call_id: str, function_name: str,
-                        arguments: dict, provider_name: str, model_name: str,
-                        tool_origin: str, risk_level: str) -> tuple[str, str, str]:
+    async def _run_tool(
+        self,
+        tool,
+        tool_call_id: str,
+        function_name: str,
+        arguments: dict,
+        provider_name: str,
+        model_name: str,
+        tool_origin: str,
+        risk_level: str,
+    ) -> tuple[str, str, str]:
         """Execute tool and handle result/error/exception."""
         allowed_audit = self._make_audit_data(
             provider_name, model_name, tool_origin, risk_level, decision="allowed"
@@ -597,7 +630,9 @@ class Agent:
 
             if result.success:
                 result_content = result.content
-                result_content, blocked, block_reason = self._filter_sensitive_output(result_content)
+                result_content, blocked, block_reason = self._filter_sensitive_output(
+                    result_content
+                )
                 if blocked:
                     result_content = f"⚠️ 敏感内容已脱敏 ({block_reason}):\n{result_content}"
                 if not self.quiet:
@@ -607,21 +642,35 @@ class Agent:
                     logger.info("Tool %s OK (%.1fs): %s", function_name, elapsed, preview)
 
                 success_audit = self._make_audit_data(
-                    provider_name, model_name, tool_origin, risk_level,
-                    decision="allowed", sensitive_blocked=blocked,
+                    provider_name,
+                    model_name,
+                    tool_origin,
+                    risk_level,
+                    decision="allowed",
+                    sensitive_blocked=blocked,
                 )
                 await self._publish_tool_complete(
-                    function_name, tool_call_id, not blocked, elapsed,
-                    success_audit, result=result_content,
+                    function_name,
+                    tool_call_id,
+                    not blocked,
+                    elapsed,
+                    success_audit,
+                    result=result_content,
                     error=block_reason if blocked else "",
                 )
             else:
                 result_content = f"错误: {result.error}"
                 if not self.quiet:
-                    logger.warning("Tool %s failed (%.1fs): %s", function_name, elapsed, result.error)
+                    logger.warning(
+                        "Tool %s failed (%.1fs): %s", function_name, elapsed, result.error
+                    )
                 await self._publish_tool_complete(
-                    function_name, tool_call_id, False, elapsed,
-                    allowed_audit, error=result.error or "",
+                    function_name,
+                    tool_call_id,
+                    False,
+                    elapsed,
+                    allowed_audit,
+                    error=result.error or "",
                 )
 
         except Exception as e:
@@ -630,8 +679,12 @@ class Agent:
             if not self.quiet:
                 logger.error("Tool %s exception: %s", function_name, e)
             await self._publish_tool_complete(
-                function_name, tool_call_id, False, elapsed,
-                allowed_audit, error=str(e),
+                function_name,
+                tool_call_id,
+                False,
+                elapsed,
+                allowed_audit,
+                error=str(e),
             )
 
         return (tool_call_id, function_name, result_content)
@@ -773,10 +826,13 @@ class Agent:
         # High-entropy strings assigned to secret-like variable names.
         # Requires: variable name containing secret/password/api_key AND
         # a value of 16+ non-whitespace chars (avoids matching short/placeholder values).
-        (re.compile(
-            r'(?i)(?:api[_-]?key|secret[_-]?key|api[_-]?secret|password|passwd|private[_-]?key)'
-            r'\s*[:=]\s*["\']?([A-Za-z0-9+/=_\-]{16,})["\']?'
-        ), "检测到疑似凭据赋值"),
+        (
+            re.compile(
+                r"(?i)(?:api[_-]?key|secret[_-]?key|api[_-]?secret|password|passwd|private[_-]?key)"
+                r'\s*[:=]\s*["\']?([A-Za-z0-9+/=_\-]{16,})["\']?'
+            ),
+            "检测到疑似凭据赋值",
+        ),
     ]
 
     def _filter_sensitive_output(self, output: str) -> tuple[str, bool, str]:

@@ -4,15 +4,16 @@ Base classes and generic handlers for the Commands module.
 
 from typing import Callable, Optional
 
+
 class CommandsBase:
     """
     Base mixin for command definitions.
     Defines the shape expected by the dynamic `Commands` class.
     """
-    
+
     # Aliases should be merged by the main class, subclasses can define their own ALIASES
     ALIASES = {}
-    
+
     def _discover_commands(self) -> dict[str, Callable]:
         """发现所有 cmd_ 前缀的方法"""
         commands = {}

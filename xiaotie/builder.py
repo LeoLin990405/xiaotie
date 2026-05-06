@@ -29,7 +29,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import yaml
 
-from .agent import Agent, AgentConfig
+from .agent import Agent
 from .llm import LLMClient
 from .tools import Tool
 
@@ -397,13 +397,24 @@ def create_agent(
     Returns:
         配置好的 Agent 实例
     """
-    builder = AgentBuilder(name).with_llm(provider=provider, model=model).with_system_prompt(system_prompt)
+    builder = (
+        AgentBuilder(name)
+        .with_llm(provider=provider, model=model)
+        .with_system_prompt(system_prompt)
+    )
 
     if tools:
         builder.with_tools(tools)
 
     # 应用其他配置
-    config_keys = ["max_steps", "token_limit", "stream", "enable_thinking", "parallel_tools", "workspace_dir"]
+    config_keys = [
+        "max_steps",
+        "token_limit",
+        "stream",
+        "enable_thinking",
+        "parallel_tools",
+        "workspace_dir",
+    ]
     config_kwargs = {k: v for k, v in kwargs.items() if k in config_keys}
     if config_kwargs:
         builder.with_config(**config_kwargs)

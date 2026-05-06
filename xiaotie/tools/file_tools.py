@@ -81,7 +81,10 @@ class ReadTool(Tool):
         try:
             resolved = file_path.resolve()
             workspace_resolved = self.workspace_dir.resolve()
-            if not (resolved == workspace_resolved or str(resolved).startswith(str(workspace_resolved) + "/")):
+            if not (
+                resolved == workspace_resolved
+                or str(resolved).startswith(str(workspace_resolved) + "/")
+            ):
                 return f"Access denied: path {resolved} is outside workspace {workspace_resolved}"
         except (OSError, ValueError) as e:
             return f"Invalid path: {e}"
@@ -149,7 +152,10 @@ class WriteTool(Tool):
         try:
             resolved = file_path.resolve()
             workspace_resolved = self.workspace_dir.resolve()
-            if not (resolved == workspace_resolved or str(resolved).startswith(str(workspace_resolved) + "/")):
+            if not (
+                resolved == workspace_resolved
+                or str(resolved).startswith(str(workspace_resolved) + "/")
+            ):
                 return f"Access denied: path {resolved} is outside workspace {workspace_resolved}"
         except (OSError, ValueError) as e:
             return f"Invalid path: {e}"
@@ -217,7 +223,10 @@ class EditTool(Tool):
         try:
             resolved = file_path.resolve()
             workspace_resolved = self.workspace_dir.resolve()
-            if not (resolved == workspace_resolved or str(resolved).startswith(str(workspace_resolved) + "/")):
+            if not (
+                resolved == workspace_resolved
+                or str(resolved).startswith(str(workspace_resolved) + "/")
+            ):
                 return f"Access denied: path {resolved} is outside workspace {workspace_resolved}"
         except (OSError, ValueError) as e:
             return f"Invalid path: {e}"

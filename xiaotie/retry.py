@@ -18,8 +18,10 @@ from typing import Callable, List, Optional, Type, TypeVar
 
 T = TypeVar("T")
 
+
 class ErrorCategory(Enum):
     """错误分类"""
+
     RETRYABLE = "retryable"
     NON_RETRYABLE = "non_retryable"
     RATE_LIMIT = "rate_limit"
@@ -29,52 +31,70 @@ class ErrorCategory(Enum):
     CLIENT = "client"
     UNKNOWN = "unknown"
 
+
 class BackoffStrategy(Enum):
     """退避策略"""
+
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
     FIBONACCI = "fibonacci"
     CONSTANT = "constant"
 
+
 # 常见错误类型
 class RetryableError(Exception):
     """可重试错误基类"""
+
     pass
+
 
 class RateLimitError(RetryableError):
     """速率限制错误"""
+
     def __init__(self, message: str = "请求频率超限", retry_after: Optional[float] = None):
         super().__init__(message)
         self.retry_after = retry_after
 
+
 class TimeoutError(RetryableError):
     """超时错误"""
+
     pass
+
 
 class ServerError(RetryableError):
     """服务器错误 (5xx)"""
+
     def __init__(self, message: str = "服务器错误", status_code: int = 500):
         super().__init__(message)
         self.status_code = status_code
 
+
 class AuthenticationError(Exception):
     """认证错误 (不可重试)"""
+
     pass
+
 
 class InvalidRequestError(Exception):
     """无效请求错误 (不可重试)"""
+
     pass
+
 
 class RetryExhaustedError(Exception):
     """重试耗尽异常"""
+
     def __init__(self, last_exception: Exception, attempts: int):
         self.last_exception = last_exception
         self.attempts = attempts
         super().__init__(f"重试 {attempts} 次后失败: {last_exception}")
 
+
 @dataclass
 class RetryConfig:
     """重试配置"""
+
     enabled: bool = True
     max_retries: int = 3
     backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL
@@ -82,13 +102,13 @@ class RetryConfig:
     max_delay: float = 60.0  # 最大延迟（秒）
     exponential_base: float = 2.0
     jitter: bool = True  # 是否添加随机抖动
-    retryable_exceptions: tuple[Type[Exception], ...] = field(
-        default_factory=lambda: (Exception,)
-    )
+    retryable_exceptions: tuple[Type[Exception], ...] = field(default_factory=lambda: (Exception,))
 
     def should_retry(self, error: Exception) -> bool:
         """判断是否应该重试"""
-        return self.enabled and any(isinstance(error, err_type) for err_type in self.retryable_exceptions)
+        return self.enabled and any(
+            isinstance(error, err_type) for err_type in self.retryable_exceptions
+        )
 
     def calculate_delay(self, attempt: int) -> float:
         """计算退避延迟"""
@@ -112,9 +132,11 @@ class RetryConfig:
 
         return delay
 
+
 @dataclass
 class RetryState:
     """重试状态"""
+
     attempt: int = 0
     total_delay: float = 0.0
     errors: List[Exception] = field(default_factory=list)
@@ -124,12 +146,16 @@ class RetryState:
     def elapsed_time(self) -> float:
         return time.time() - self.start_time
 
+
 class CircuitBreakerOpen(Exception):
     """断路器打开异常"""
+
     pass
+
 
 class CircuitBreaker:
     """断路器"""
+
     class State(Enum):
         CLOSED = "closed"
         OPEN = "open"
@@ -154,7 +180,10 @@ class CircuitBreaker:
     @property
     def state(self) -> State:
         if self._state == self.State.OPEN:
-            if self._last_failure_time and time.time() - self._last_failure_time >= self.recovery_timeout:
+            if (
+                self._last_failure_time
+                and time.time() - self._last_failure_time >= self.recovery_timeout
+            ):
                 self._state = self.State.HALF_OPEN
                 self._half_open_calls = 0
         return self._state
@@ -195,12 +224,14 @@ class CircuitBreaker:
         self._last_failure_time = None
         self._half_open_calls = 0
 
+
 def async_retry(
-    config: RetryConfig, 
+    config: RetryConfig,
     on_retry: Callable[[Exception, int], None] | None = None,
-    circuit_breaker: CircuitBreaker | None = None
+    circuit_breaker: CircuitBreaker | None = None,
 ):
     """异步重试装饰器，集成断路器模式"""
+
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -212,7 +243,7 @@ def async_retry(
                     if circuit_breaker:
                         circuit_breaker.record_success()
                     return result
-                except Exception as e:
+                except Exception:
                     if circuit_breaker:
                         circuit_breaker.record_failure()
                     raise
@@ -247,4 +278,5 @@ def async_retry(
             raise RetryExhaustedError(last_exception, config.max_retries + 1)
 
         return wrapper
+
     return decorator

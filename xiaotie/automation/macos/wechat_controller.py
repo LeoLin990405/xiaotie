@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
 
@@ -21,6 +20,7 @@ WECHAT_PROCESS_NAME = "WeChat"
 
 class WeChatState(Enum):
     """微信运行状态"""
+
     NOT_RUNNING = "not_running"
     RUNNING = "running"
     LOGGED_IN = "logged_in"
@@ -30,6 +30,7 @@ class WeChatState(Enum):
 @dataclass
 class WeChatConfig:
     """微信控制器配置"""
+
     bundle_id: str = WECHAT_BUNDLE_ID
     process_name: str = WECHAT_PROCESS_NAME
     launch_timeout: int = 10
@@ -64,7 +65,9 @@ class WeChatController:
     async def _run_applescript(self, script: str) -> str:
         """异步执行AppleScript并返回输出"""
         proc = await asyncio.create_subprocess_exec(
-            "osascript", "-e", script,
+            "osascript",
+            "-e",
+            script,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -316,10 +319,12 @@ end tell'''
             截图文件路径
         """
         import os
+
         os.makedirs(self.config.screenshot_dir, exist_ok=True)
 
         if not filename:
             import time
+
             filename = f"wechat_{int(time.time())}.png"
 
         filepath = os.path.join(self.config.screenshot_dir, filename)
@@ -333,9 +338,7 @@ tell application "System Events"
 end tell'''
         try:
             window_id = await self._run_applescript(script)
-            await self._run_shell(
-                "screencapture", "-l", window_id, filepath
-            )
+            await self._run_shell("screencapture", "-l", window_id, filepath)
         except RuntimeError:
             # 回退到全屏截图
             await self._run_shell("screencapture", "-x", filepath)
@@ -373,10 +376,12 @@ end tell'''
             for line in result.strip().split("\n"):
                 if "|" in line:
                     parts = line.split("|", 1)
-                    elements.append({
-                        "role": parts[0],
-                        "description": parts[1] if len(parts) > 1 else "",
-                    })
+                    elements.append(
+                        {
+                            "role": parts[0],
+                            "description": parts[1] if len(parts) > 1 else "",
+                        }
+                    )
             return elements
         except RuntimeError:
             return []

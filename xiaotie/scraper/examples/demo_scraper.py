@@ -25,9 +25,7 @@ class DemoScraper(BaseScraper):
         """解析 HN 首页，提取标题列表"""
         import re
 
-        titles = re.findall(
-            r'class="titleline"[^>]*><a[^>]*>([^<]+)</a>', html
-        )
+        titles = re.findall(r'class="titleline"[^>]*><a[^>]*>([^<]+)</a>', html)
         return {
             "url": url,
             "title_count": len(titles),

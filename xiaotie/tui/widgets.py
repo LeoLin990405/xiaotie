@@ -608,7 +608,7 @@ class StatusLine(Static):
         if self.thinking:
             modes.append("󰔚 思考")
         text.append(" ".join(modes) if modes else "󰏫 串行", style="magenta")
-        
+
         # 主题
         text.append(" │ ", style="dim")
         text.append(f"󰏘 {get_theme_display_name(self.theme_name)}", style="blue")

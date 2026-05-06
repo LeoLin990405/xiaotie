@@ -23,20 +23,20 @@ API 调用工具模块
     ))
 """
 
+import json
+import ssl
+import threading
+import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any, List, Callable, Union
-import json
-import time
-import threading
-from urllib.parse import urljoin, urlencode
 from http.client import HTTPConnection, HTTPSConnection
-from urllib.parse import urlparse
-import ssl
+from typing import Any, Callable, Dict, List, Optional, Union
+from urllib.parse import urlencode, urljoin, urlparse
 
 
 class AuthType(Enum):
     """认证类型"""
+
     NONE = "none"
     BEARER = "bearer"
     BASIC = "basic"
@@ -46,6 +46,7 @@ class AuthType(Enum):
 
 class HTTPMethod(Enum):
     """HTTP 方法"""
+
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -58,6 +59,7 @@ class HTTPMethod(Enum):
 @dataclass
 class AuthConfig:
     """认证配置"""
+
     type: str = "none"
     token: Optional[str] = None  # Bearer 令牌
     username: Optional[str] = None  # Basic 认证用户名
@@ -74,6 +76,7 @@ class AuthConfig:
             return {"Authorization": f"Bearer {self.token}"}
         elif auth_type == AuthType.BASIC:
             import base64
+
             credentials = f"{self.username}:{self.password}"
             encoded = base64.b64encode(credentials.encode()).decode()
             return {"Authorization": f"Basic {encoded}"}
@@ -87,6 +90,7 @@ class AuthConfig:
 @dataclass
 class APIConfig:
     """API 配置"""
+
     base_url: str = ""
     auth: Optional[Dict[str, Any]] = None
     timeout: float = 30.0
@@ -110,6 +114,7 @@ class APIConfig:
 @dataclass
 class APIResponse:
     """API 响应"""
+
     success: bool
     status_code: int = 0
     headers: Dict[str, str] = field(default_factory=dict)
@@ -136,7 +141,7 @@ class APIResponse:
         if isinstance(self.body, str):
             return self.body
         if isinstance(self.body, bytes):
-            return self.body.decode('utf-8', errors='replace')
+            return self.body.decode("utf-8", errors="replace")
         return str(self.body) if self.body else ""
 
     def to_dict(self) -> Dict[str, Any]:
@@ -152,21 +157,25 @@ class APIResponse:
 
 class APIError(Exception):
     """API 错误基类"""
+
     pass
 
 
 class RateLimitError(APIError):
     """速率限制错误"""
+
     pass
 
 
 class TimeoutError(APIError):
     """超时错误"""
+
     pass
 
 
 class AuthenticationError(APIError):
     """认证错误"""
+
     pass
 
 
@@ -258,10 +267,10 @@ class HTTPClient:
             request_body = None
             if body is not None:
                 if isinstance(body, dict):
-                    request_body = json.dumps(body).encode('utf-8')
+                    request_body = json.dumps(body).encode("utf-8")
                     request_headers["Content-Type"] = "application/json"
                 elif isinstance(body, str):
-                    request_body = body.encode('utf-8')
+                    request_body = body.encode("utf-8")
                 else:
                     request_body = body
 
@@ -283,11 +292,11 @@ class HTTPClient:
             content_type = response_headers.get("Content-Type", "")
             if "application/json" in content_type:
                 try:
-                    parsed_body = json.loads(raw_body.decode('utf-8'))
+                    parsed_body = json.loads(raw_body.decode("utf-8"))
                 except json.JSONDecodeError:
-                    parsed_body = raw_body.decode('utf-8', errors='replace')
+                    parsed_body = raw_body.decode("utf-8", errors="replace")
             else:
-                parsed_body = raw_body.decode('utf-8', errors='replace')
+                parsed_body = raw_body.decode("utf-8", errors="replace")
 
             conn.close()
 

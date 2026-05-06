@@ -19,8 +19,6 @@ import os
 import sys
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from .agent import AgentConfig, AgentRuntime
 from .banner import VERSION, print_banner, print_ready, print_status
 from .commands import Commands
@@ -32,26 +30,25 @@ from .plugins import PluginManager
 from .retry import RetryConfig
 from .session import SessionManager
 from .tools import (
+    EXTENDED_TOOLS,
     AutomationTool,
     BashTool,
     CalculatorTool,
     CharlesProxyTool,
     CodeAnalysisTool,
     EditTool,
-    EXTENDED_TOOLS,
     GitTool,
-    NetworkTool,
-    ProcessManagerTool,
     ProxyServerTool,
     PythonTool,
     ReadTool,
     ScraperTool,
-    SystemInfoTool,
     TelegramTool,
     WebFetchTool,
     WebSearchTool,
     WriteTool,
 )
+
+logger = logging.getLogger(__name__)
 
 # MCP 客户端管理器 (全局，用于清理)
 _mcp_manager = None
@@ -152,37 +149,45 @@ def create_tools(config: Config, workspace: Path) -> list:
 
     # Charles 代理抓包工具
     if config.tools.enable_charles:
-        tools.append(CharlesProxyTool(
-            charles_path=config.tools.charles_path,
-            proxy_port=config.tools.charles_proxy_port,
-        ))
+        tools.append(
+            CharlesProxyTool(
+                charles_path=config.tools.charles_path,
+                proxy_port=config.tools.charles_proxy_port,
+            )
+        )
 
     # 内置代理服务器工具（基于 mitmproxy）
     if config.tools.enable_proxy:
-        tools.append(ProxyServerTool(
-            proxy_port=config.tools.proxy.port,
-            enable_https=config.tools.proxy.enable_https,
-            cert_path=config.tools.proxy.cert_path,
-            storage_path=config.tools.proxy.storage_path,
-        ))
+        tools.append(
+            ProxyServerTool(
+                proxy_port=config.tools.proxy.port,
+                enable_https=config.tools.proxy.enable_https,
+                cert_path=config.tools.proxy.cert_path,
+                storage_path=config.tools.proxy.storage_path,
+            )
+        )
 
     # 爬虫工具
     if config.tools.enable_scraper:
-        tools.append(ScraperTool(
-            scraper_dir=config.tools.scraper.scraper_dir,
-            max_workers=config.tools.scraper.max_workers,
-            request_delay=config.tools.scraper.request_delay,
-            num_runs=config.tools.scraper.num_runs,
-            stability_threshold=config.tools.scraper.stability_threshold,
-        ))
+        tools.append(
+            ScraperTool(
+                scraper_dir=config.tools.scraper.scraper_dir,
+                max_workers=config.tools.scraper.max_workers,
+                request_delay=config.tools.scraper.request_delay,
+                num_runs=config.tools.scraper.num_runs,
+                stability_threshold=config.tools.scraper.stability_threshold,
+            )
+        )
 
     # macOS 自动化工具
     if config.tools.enable_automation:
-        tools.append(AutomationTool(
-            wechat_bundle_id=config.tools.automation.wechat_bundle_id,
-            screenshot_dir=config.tools.automation.screenshot_dir,
-            applescript_timeout=config.tools.automation.applescript_timeout,
-        ))
+        tools.append(
+            AutomationTool(
+                wechat_bundle_id=config.tools.automation.wechat_bundle_id,
+                screenshot_dir=config.tools.automation.screenshot_dir,
+                applescript_timeout=config.tools.automation.applescript_timeout,
+            )
+        )
 
     if config.tools.enable_telegram and config.tools.telegram.bot_token:
         tools.append(
@@ -293,6 +298,7 @@ async def _setup_agent(
     # 集成 ContextEngine (token 预算管理)
     try:
         from xiaotie.context_engine import ContextEngine
+
         context_engine = ContextEngine(token_budget=agent_config.token_limit)
         runtime.set_context_engine(context_engine)
         logger.debug("ContextEngine 已集成 (budget=%d)", agent_config.token_limit)
@@ -302,6 +308,7 @@ async def _setup_agent(
     # 集成 RepoMapEngine (代码导航)
     try:
         from xiaotie.repomap_v2 import RepoMapEngine
+
         repomap_engine = RepoMapEngine(workspace_dir=str(workspace))
         runtime.set_repomap_engine(repomap_engine)
         logger.debug("RepoMapEngine 已集成 (workspace=%s)", workspace)

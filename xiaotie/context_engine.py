@@ -31,7 +31,6 @@ except ImportError:
 
 from .schema import Message
 
-
 # ---------------------------------------------------------------------------
 # Data types
 # ---------------------------------------------------------------------------
@@ -93,7 +92,6 @@ class ContextBundle:
         """
         # Gather non-conversation context to prepend to system prompt
         supplements: list[str] = []
-        conversation_msgs: list[Message] = []
 
         for block in self.blocks:
             if block.priority in (
@@ -116,8 +114,7 @@ class ContextBundle:
         conv_blocks = [
             b
             for b in self.blocks
-            if b.priority
-            in (BlockPriority.CONVERSATION_RECENT, BlockPriority.CONVERSATION_OLD)
+            if b.priority in (BlockPriority.CONVERSATION_RECENT, BlockPriority.CONVERSATION_OLD)
         ]
         for block in conv_blocks:
             # Convention: label encodes "role:..." for conversation blocks
@@ -243,7 +240,6 @@ class ContextEngine:
 
         # 2. Repo map
         if repo_map:
-            repo_tokens = self._counter.count(repo_map)
             repo_limit = cat_budgets.get("repo_map", int(effective_budget * 0.15))
             trimmed_repo = self._trim_to_budget(repo_map, repo_limit)
             trimmed_tokens = self._counter.count(trimmed_repo)
@@ -260,9 +256,7 @@ class ContextEngine:
         # 3. Memory
         if memory_chunks:
             mem_limit = cat_budgets.get("memory", int(effective_budget * 0.15))
-            mem_content, mem_tokens = self._build_memory_context(
-                memory_chunks, mem_limit
-            )
+            mem_content, mem_tokens = self._build_memory_context(memory_chunks, mem_limit)
             if mem_content:
                 blocks.append(
                     ContextBlock(
@@ -291,12 +285,8 @@ class ContextEngine:
 
         # 5. Conversation history (split into recent and old)
         if conversation:
-            conv_limit = cat_budgets.get(
-                "conversation", int(effective_budget * 0.50)
-            )
-            conv_blocks, conv_tokens = self._build_conversation_blocks(
-                conversation, conv_limit
-            )
+            conv_limit = cat_budgets.get("conversation", int(effective_budget * 0.50))
+            conv_blocks, conv_tokens = self._build_conversation_blocks(conversation, conv_limit)
             blocks.extend(conv_blocks)
             budget.conversation = conv_tokens
 
@@ -308,9 +298,7 @@ class ContextEngine:
 
         return ContextBundle(blocks=blocks, token_usage=budget)
 
-    async def compact(
-        self, conversation: List[Message], target_tokens: int
-    ) -> List[Message]:
+    async def compact(self, conversation: List[Message], target_tokens: int) -> List[Message]:
         """Compact conversation history to fit within target_tokens.
 
         Strategy: keep system message and last N messages verbatim,
@@ -351,18 +339,14 @@ class ContextEngine:
             for m in old_messages:
                 content_str = str(m.content)[:200]
                 summary_parts.append(f"[{m.role}]: {content_str}")
-            summary_text = "[Earlier conversation summary]\n" + "\n".join(
-                summary_parts[-10:]
-            )
+            summary_text = "[Earlier conversation summary]\n" + "\n".join(summary_parts[-10:])
             result.append(Message(role="assistant", content=summary_text))
 
         # Add recent messages
         result.extend(remaining[-keep_count:])
         return result
 
-    def _build_memory_context(
-        self, chunks: list, limit: int
-    ) -> tuple[str, int]:
+    def _build_memory_context(self, chunks: list, limit: int) -> tuple[str, int]:
         """Build memory context string from chunks, fitting within limit."""
         parts: list[str] = []
         total_tokens = 0
@@ -463,9 +447,7 @@ class ContextEngine:
 
         return trimmed + "\n... (trimmed)"
 
-    def _fit_to_budget(
-        self, blocks: List[ContextBlock], budget: int
-    ) -> List[ContextBlock]:
+    def _fit_to_budget(self, blocks: List[ContextBlock], budget: int) -> List[ContextBlock]:
         """Remove lowest-priority blocks until total fits within budget."""
         total = sum(b.token_count for b in blocks)
         if total <= budget:
@@ -483,9 +465,7 @@ class ContextEngine:
 
         return [b for b in blocks if id(b) not in to_remove]
 
-    def _recalculate_budget(
-        self, blocks: List[ContextBlock], total_budget: int
-    ) -> TokenBudget:
+    def _recalculate_budget(self, blocks: List[ContextBlock], total_budget: int) -> TokenBudget:
         """Recalculate budget totals from current blocks."""
         budget = TokenBudget(total=total_budget)
         for block in blocks:

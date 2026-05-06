@@ -4,9 +4,10 @@ Workspace mapping and visualization commands Mixin.
 
 from .base import CommandsBase
 
+
 class WorkspaceCommandsMixin(CommandsBase):
     """Workspace related commands like tree, map, find"""
-    
+
     def cmd_tree(self, args: str) -> tuple[bool, str]:
         """显示项目目录结构"""
         from xiaotie.repomap import RepoMap

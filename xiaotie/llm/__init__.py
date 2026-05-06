@@ -1,8 +1,10 @@
-"""LLM 模块"""
+"""LLM 模块
 
-from .anthropic_client import AnthropicClient
+Provider SDKs are imported lazily so core runtime tests can import the LLM
+facade without requiring every optional provider package to be installed.
+"""
+
 from .base import LLMClientBase
-from .openai_client import OpenAIClient
 from .providers import (
     PROVIDER_CONFIGS,
     ProviderCapability,
@@ -13,6 +15,19 @@ from .providers import (
     print_capability_matrix,
 )
 from .wrapper import LLMClient, LLMProvider
+
+
+def __getattr__(name: str):
+    if name == "AnthropicClient":
+        from .anthropic_client import AnthropicClient
+
+        return AnthropicClient
+    if name == "OpenAIClient":
+        from .openai_client import OpenAIClient
+
+        return OpenAIClient
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Base

@@ -17,13 +17,11 @@
     print(t("hello", name="World"))  # 你好, World
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Callable
 import json
-import os
-from pathlib import Path
 import threading
-
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
 
 # 内置翻译
 BUILTIN_TRANSLATIONS = {
@@ -41,7 +39,6 @@ BUILTIN_TRANSLATIONS = {
         "warning": "Warning",
         "info": "Info",
         "success": "Success",
-
         # 状态
         "loading": "Loading...",
         "processing": "Processing...",
@@ -50,7 +47,6 @@ BUILTIN_TRANSLATIONS = {
         "pending": "Pending",
         "running": "Running",
         "stopped": "Stopped",
-
         # 操作
         "save": "Save",
         "load": "Load",
@@ -65,7 +61,6 @@ BUILTIN_TRANSLATIONS = {
         "retry": "Retry",
         "submit": "Submit",
         "reset": "Reset",
-
         # 消息
         "not_found": "{item} not found",
         "already_exists": "{item} already exists",
@@ -75,7 +70,6 @@ BUILTIN_TRANSLATIONS = {
         "confirm_delete": "Are you sure you want to delete {item}?",
         "no_results": "No results found",
         "items_found": "{count} items found",
-
         # Agent 相关
         "agent_started": "Agent started",
         "agent_stopped": "Agent stopped",
@@ -83,7 +77,6 @@ BUILTIN_TRANSLATIONS = {
         "generating": "Generating response...",
         "tool_calling": "Calling tool: {tool}",
         "tool_result": "Tool result received",
-
         # 错误
         "connection_error": "Connection error: {reason}",
         "timeout_error": "Request timed out",
@@ -105,7 +98,6 @@ BUILTIN_TRANSLATIONS = {
         "warning": "警告",
         "info": "信息",
         "success": "成功",
-
         # 状态
         "loading": "加载中...",
         "processing": "处理中...",
@@ -114,7 +106,6 @@ BUILTIN_TRANSLATIONS = {
         "pending": "等待中",
         "running": "运行中",
         "stopped": "已停止",
-
         # 操作
         "save": "保存",
         "load": "加载",
@@ -129,7 +120,6 @@ BUILTIN_TRANSLATIONS = {
         "retry": "重试",
         "submit": "提交",
         "reset": "重置",
-
         # 消息
         "not_found": "未找到 {item}",
         "already_exists": "{item} 已存在",
@@ -139,7 +129,6 @@ BUILTIN_TRANSLATIONS = {
         "confirm_delete": "确定要删除 {item} 吗？",
         "no_results": "未找到结果",
         "items_found": "找到 {count} 个项目",
-
         # Agent 相关
         "agent_started": "Agent 已启动",
         "agent_stopped": "Agent 已停止",
@@ -147,7 +136,6 @@ BUILTIN_TRANSLATIONS = {
         "generating": "生成响应中...",
         "tool_calling": "调用工具: {tool}",
         "tool_result": "工具结果已返回",
-
         # 错误
         "connection_error": "连接错误: {reason}",
         "timeout_error": "请求超时",
@@ -161,6 +149,7 @@ BUILTIN_TRANSLATIONS = {
 @dataclass
 class I18nConfig:
     """国际化配置"""
+
     default_language: str = "en"
     fallback_language: str = "en"
     translations_dir: Optional[str] = None
@@ -169,6 +158,7 @@ class I18nConfig:
 
 class TranslationNotFoundError(Exception):
     """翻译未找到错误"""
+
     pass
 
 
@@ -224,7 +214,7 @@ class I18n:
         for file_path in path.glob("*.json"):
             lang = file_path.stem
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     translations = json.load(f)
                     if lang in self._translations:
                         self._translations[lang].update(translations)
@@ -236,10 +226,11 @@ class I18n:
     def _auto_detect_language(self):
         """自动检测系统语言"""
         import locale
+
         try:
             lang, _ = locale.getdefaultlocale()
             if lang:
-                lang_code = lang.split('_')[0].lower()
+                lang_code = lang.split("_")[0].lower()
                 if lang_code in self._translations:
                     self._current_language = lang_code
         except Exception:

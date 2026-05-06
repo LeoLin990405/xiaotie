@@ -91,8 +91,12 @@ class ProxyServerTool(Tool):
                 "action": {
                     "type": "string",
                     "enum": [
-                        "start", "stop", "status",
-                        "export", "analyze", "filter_miniapp",
+                        "start",
+                        "stop",
+                        "status",
+                        "export",
+                        "analyze",
+                        "filter_miniapp",
                     ],
                     "description": (
                         "操作类型：start-启动代理，stop-停止代理，"
@@ -208,7 +212,7 @@ class ProxyServerTool(Tool):
 
         if self._storage and self._storage.count > 0:
             stats = self._storage.get_stats()
-            lines.append(f"\n存储统计:")
+            lines.append("\n存储统计:")
             lines.append(f"- 存储记录: {stats['total']} 条")
             lines.append(f"- 总响应大小: {stats.get('total_response_size_kb', 0)} KB")
 

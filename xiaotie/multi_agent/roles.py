@@ -88,7 +88,7 @@ def create_default_roles() -> dict[AgentRole, RoleConfig]:
                 "python",
             ],
             system_prompt_prefix=(
-                "你是一个专注于代码探索和搜索的 Agent。" "你只能读取和分析代码，不能修改任何文件。"
+                "你是一个专注于代码探索和搜索的 Agent。你只能读取和分析代码，不能修改任何文件。"
             ),
             max_iterations=10,
             can_spawn_agents=False,
@@ -111,7 +111,7 @@ def create_default_roles() -> dict[AgentRole, RoleConfig]:
                 "bash",
             ],
             system_prompt_prefix=(
-                "你是一个代码分析专家。" "你的任务是深入理解代码结构、依赖关系和潜在问题。"
+                "你是一个代码分析专家。你的任务是深入理解代码结构、依赖关系和潜在问题。"
             ),
             max_iterations=15,
             can_spawn_agents=False,

@@ -16,18 +16,19 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # 占位符模式
-_SECRET_PATTERN = re.compile(r'\$\{secret:([^}]+)\}')
-_ENV_PATTERN = re.compile(r'\$\{env:([^}]+)\}')
+_SECRET_PATTERN = re.compile(r"\$\{secret:([^}]+)\}")
+_ENV_PATTERN = re.compile(r"\$\{env:([^}]+)\}")
 
 # API key 模式 (用于自动迁移检测)
-_API_KEY_FIELDS = {'api_key', 'apikey', 'api_secret', 'token', 'secret_key'}
-_API_KEY_VALUE_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]{20,}$')
+_API_KEY_FIELDS = {"api_key", "apikey", "api_secret", "token", "secret_key"}
+_API_KEY_VALUE_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]{20,}$")
 
 
 def _keyring_available() -> bool:
     """检查 keyring 是否可用"""
     try:
         import keyring
+
         # 测试是否能访问后端
         keyring.get_keyring()
         return True
@@ -64,6 +65,7 @@ class SecretManager:
         if self._has_keyring:
             try:
                 import keyring
+
                 value = keyring.get_password(self.SERVICE_NAME, key)
                 if value is not None:
                     return value
@@ -95,6 +97,7 @@ class SecretManager:
                 return False
             try:
                 import keyring
+
                 keyring.set_password(self.SERVICE_NAME, key, value)
                 logger.info(f"密钥 [{key}] 已存储到 keyring")
                 return True
@@ -123,6 +126,7 @@ class SecretManager:
         if self._has_keyring:
             try:
                 import keyring
+
                 keyring.delete_password(self.SERVICE_NAME, key)
                 deleted = True
                 logger.info(f"密钥 [{key}] 已从 keyring 删除")
@@ -148,8 +152,12 @@ class SecretManager:
 
         # keyring 无法枚举，但我们可以检查已知的常见 key
         known_keys = [
-            "api_key", "zhipu_api_key", "openai_api_key",
-            "github_token", "telegram_token", "proxy_password",
+            "api_key",
+            "zhipu_api_key",
+            "openai_api_key",
+            "github_token",
+            "telegram_token",
+            "proxy_password",
         ]
 
         for key in known_keys:
@@ -160,13 +168,16 @@ class SecretManager:
             if self._has_keyring:
                 try:
                     import keyring
+
                     value = keyring.get_password(self.SERVICE_NAME, key)
                     if value:
-                        keys.append({
-                            "key": key,
-                            "source": "keyring",
-                            "masked_value": _mask_value(value),
-                        })
+                        keys.append(
+                            {
+                                "key": key,
+                                "source": "keyring",
+                                "masked_value": _mask_value(value),
+                            }
+                        )
                         seen.add(key)
                         continue
                 except Exception:
@@ -176,11 +187,13 @@ class SecretManager:
             for env_key in [f"XIAOTIE_{key.upper()}", key.upper()]:
                 value = os.environ.get(env_key)
                 if value:
-                    keys.append({
-                        "key": key,
-                        "source": f"env:{env_key}",
-                        "masked_value": _mask_value(value),
-                    })
+                    keys.append(
+                        {
+                            "key": key,
+                            "source": f"env:{env_key}",
+                            "masked_value": _mask_value(value),
+                        }
+                    )
                     seen.add(key)
                     break
 
@@ -231,7 +244,7 @@ class SecretManager:
             if not isinstance(value, str):
                 continue
             # 跳过已经是占位符的
-            if value.startswith('${'):
+            if value.startswith("${"):
                 continue
             # 检查是否是 API key 字段
             key_lower = key.lower()
@@ -239,7 +252,7 @@ class SecretManager:
             is_secret_value = _API_KEY_VALUE_PATTERN.match(value) and value != "YOUR_API_KEY_HERE"
 
             if is_secret_field and is_secret_value:
-                secret_name = key_lower.replace('-', '_')
+                secret_name = key_lower.replace("-", "_")
                 if self.set(secret_name, value):
                     config[key] = f"${{secret:{secret_name}}}"
                     migrated.append(key)
@@ -247,7 +260,7 @@ class SecretManager:
                     logger.info(f"已迁移 [{key}] → keyring (secret:{secret_name})")
 
         if modified:
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
             logger.info(f"配置文件已更新: {config_path}")
 
@@ -263,6 +276,7 @@ def _mask_value(value: str) -> str:
 
 def _resolve_value(value: str, manager: SecretManager) -> str:
     """解析单个字符串中的占位符"""
+
     def replace_secret(m):
         key = m.group(1)
         resolved = manager.get(key)
@@ -294,8 +308,10 @@ def _resolve_dict(d: dict, manager: SecretManager) -> dict:
             result[k] = _resolve_dict(v, manager)
         elif isinstance(v, list):
             result[k] = [
-                _resolve_value(item, manager) if isinstance(item, str)
-                else _resolve_dict(item, manager) if isinstance(item, dict)
+                _resolve_value(item, manager)
+                if isinstance(item, str)
+                else _resolve_dict(item, manager)
+                if isinstance(item, dict)
                 else item
                 for item in v
             ]
@@ -311,6 +327,7 @@ _secret_manager: Optional[SecretManager] = None
 def get_secret_manager() -> SecretManager:
     """获取全局 SecretManager 实例"""
     global _secret_manager
-    if _secret_manager is None:
+    has_keyring = _keyring_available()
+    if _secret_manager is None or _secret_manager._has_keyring != has_keyring:
         _secret_manager = SecretManager()
     return _secret_manager

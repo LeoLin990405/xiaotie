@@ -13,8 +13,8 @@ import asyncio
 import logging
 import time
 import uuid
-from enum import Enum
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Optional
 
 from xiaotie.events import (
@@ -31,7 +31,7 @@ from xiaotie.telemetry import AgentTelemetry
 from xiaotie.tools import Tool
 
 from .config import AgentConfig
-from .executor import ToolExecutor, ToolResult
+from .executor import ToolExecutor
 from .response import ResponseHandler
 from .state import _session_state
 
@@ -40,16 +40,18 @@ logger = logging.getLogger(__name__)
 
 class RuntimeState(Enum):
     """Agent 运行时状态"""
+
     IDLE = "idle"
-    THINKING = "thinking"       # 等待 LLM 响应
-    ACTING = "acting"           # 执行工具调用
-    OBSERVING = "observing"     # 处理工具结果
-    REFLECTING = "reflecting"   # 检查是否需要继续
+    THINKING = "thinking"  # 等待 LLM 响应
+    ACTING = "acting"  # 执行工具调用
+    OBSERVING = "observing"  # 处理工具结果
+    REFLECTING = "reflecting"  # 检查是否需要继续
 
 
 @dataclass
 class RuntimeStats:
     """运行时统计"""
+
     steps: int = 0
     total_tool_calls: int = 0
     total_llm_calls: int = 0
@@ -205,10 +207,12 @@ class AgentRuntime:
         try:
             # 添加用户消息
             self.messages.append(Message(role="user", content=prompt))
-            await self._publish_event(AgentStartEvent(
-                user_input=prompt,
-                data={"message_count": len(self.messages)},
-            ))
+            await self._publish_event(
+                AgentStartEvent(
+                    user_input=prompt,
+                    data={"message_count": len(self.messages)},
+                )
+            )
 
             return await self._loop()
         finally:
@@ -262,8 +266,9 @@ class AgentRuntime:
     def _extract_mentioned_files(self) -> list[str]:
         """从对话历史中提取提到的文件路径"""
         import re
+
         files = set()
-        pattern = re.compile(r'[\w./\\-]+\.(?:py|js|ts|go|rs|java|c|cpp|h)')
+        pattern = re.compile(r"[\w./\\-]+\.(?:py|js|ts|go|rs|java|c|cpp|h)")
         for msg in self.messages:
             if msg.content:
                 matches = pattern.findall(msg.content)
@@ -283,9 +288,12 @@ class AgentRuntime:
                 self._transition(RuntimeState.IDLE)
                 return "⚠️ 任务已取消"
 
-            await self._publish_event(AgentStepEvent(
-                step=step + 1, total_steps=self.config.max_steps,
-            ))
+            await self._publish_event(
+                AgentStepEvent(
+                    step=step + 1,
+                    total_steps=self.config.max_steps,
+                )
+            )
 
             # Token 管理
             self.messages = await self.response_handler.maybe_summarize(self.messages)
@@ -295,7 +303,6 @@ class AgentRuntime:
 
             # 调用 LLM
             tool_schemas = [t.to_schema() for t in self.executor.tools.values()]
-            llm_start = time.perf_counter()
             try:
                 response = await self.response_handler.generate(
                     messages=context_messages,
@@ -311,19 +318,23 @@ class AgentRuntime:
             self._stats.total_llm_calls += 1
 
             # 添加 assistant 消息
-            self.messages.append(Message(
-                role="assistant",
-                content=response.content,
-                thinking=response.thinking,
-                tool_calls=response.tool_calls,
-            ))
+            self.messages.append(
+                Message(
+                    role="assistant",
+                    content=response.content,
+                    thinking=response.thinking,
+                    tool_calls=response.tool_calls,
+                )
+            )
 
             # 无工具调用 → 完成
             if not response.tool_calls:
-                await self._publish_event(Event(
-                    type=EventType.AGENT_COMPLETE,
-                    data={"content": response.content},
-                ))
+                await self._publish_event(
+                    Event(
+                        type=EventType.AGENT_COMPLETE,
+                        data={"content": response.content},
+                    )
+                )
                 self.telemetry.record_run_end("success")
                 self._transition(RuntimeState.IDLE)
                 return response.content
@@ -339,12 +350,14 @@ class AgentRuntime:
             # === OBSERVING ===
             self._transition(RuntimeState.OBSERVING)
             for tr in tool_results:
-                self.messages.append(Message(
-                    role="tool",
-                    content=tr.content,
-                    tool_call_id=tr.tool_call_id,
-                    name=tr.function_name,
-                ))
+                self.messages.append(
+                    Message(
+                        role="tool",
+                        content=tr.content,
+                        tool_call_id=tr.tool_call_id,
+                        name=tr.function_name,
+                    )
+                )
 
             # === REFLECTING ===
             self._transition(RuntimeState.REFLECTING)
@@ -379,26 +392,34 @@ class AgentRuntime:
             stream=self.config.stream,
         )
 
-        self.messages.append(Message(
-            role="assistant",
-            content=response.content,
-            thinking=response.thinking,
-            tool_calls=response.tool_calls,
-        ))
+        self.messages.append(
+            Message(
+                role="assistant",
+                content=response.content,
+                thinking=response.thinking,
+                tool_calls=response.tool_calls,
+            )
+        )
 
         if not response.tool_calls:
             self._transition(RuntimeState.IDLE)
             return RuntimeState.IDLE, response.content
 
         self._transition(RuntimeState.ACTING)
-        results = await self.executor.execute(response.tool_calls, parallel=self.config.parallel_tools)
+        results = await self.executor.execute(
+            response.tool_calls, parallel=self.config.parallel_tools
+        )
 
         self._transition(RuntimeState.OBSERVING)
         for tr in results:
-            self.messages.append(Message(
-                role="tool", content=tr.content,
-                tool_call_id=tr.tool_call_id, name=tr.function_name,
-            ))
+            self.messages.append(
+                Message(
+                    role="tool",
+                    content=tr.content,
+                    tool_call_id=tr.tool_call_id,
+                    name=tr.function_name,
+                )
+            )
 
         self._transition(RuntimeState.REFLECTING)
         return RuntimeState.REFLECTING, response.content
@@ -485,7 +506,9 @@ class AgentRuntime:
 
     def reset(self):
         """重置运行时"""
-        system_msg = self.messages[0] if self.messages and self.messages[0].role == "system" else None
+        system_msg = (
+            self.messages[0] if self.messages and self.messages[0].role == "system" else None
+        )
         self.messages = [system_msg] if system_msg else []
         self._state = RuntimeState.IDLE
         self._cancelled = False

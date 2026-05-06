@@ -127,7 +127,9 @@ class TelegramTool(Tool):
                 user_id = int(kwargs["telegram_user_id"])
                 app_user_id = str(kwargs["app_user_id"])
                 self.service.register_user(user_id, app_user_id)
-                return ToolResult(success=True, content=f"已绑定 Telegram 用户 {user_id} -> {app_user_id}")
+                return ToolResult(
+                    success=True, content=f"已绑定 Telegram 用户 {user_id} -> {app_user_id}"
+                )
             return ToolResult(success=False, content=f"不支持的 action: {action}")
         except Exception as exc:
             return ToolResult(success=False, content=f"Telegram 操作失败: {exc}")

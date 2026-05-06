@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from anthropic import AsyncAnthropic
 
@@ -157,7 +157,11 @@ class AnthropicClient(LLMClientBase):
         api_tools = self._convert_tools(tools) if tools else None
 
         if self.retry_config.enabled:
-            retry_decorator = async_retry(config=self.retry_config, on_retry=self.retry_callback, circuit_breaker=self.circuit_breaker)
+            retry_decorator = async_retry(
+                config=self.retry_config,
+                on_retry=self.retry_callback,
+                circuit_breaker=self.circuit_breaker,
+            )
             api_call = retry_decorator(self._make_api_request)
             response = await api_call(system, api_messages, api_tools)
         else:
@@ -204,7 +208,10 @@ class AnthropicClient(LLMClientBase):
                     text_content += event.delta.text
                     if on_content:
                         on_content(event.delta.text)
-                elif event.type == "content_block_delta" and getattr(event.delta, "type", "") == "thinking_delta":
+                elif (
+                    event.type == "content_block_delta"
+                    and getattr(event.delta, "type", "") == "thinking_delta"
+                ):
                     thinking_content += event.delta.thinking
                     if on_thinking:
                         on_thinking(event.delta.thinking)
@@ -224,15 +231,16 @@ class AnthropicClient(LLMClientBase):
                             )
                         )
                         tool_call_builder = None
-            
+
             final_message = await stream.get_final_message()
-            
+
             usage = None
             if hasattr(final_message, "usage"):
                 usage = TokenUsage(
                     input_tokens=final_message.usage.input_tokens,
                     output_tokens=final_message.usage.output_tokens,
-                    total_tokens=final_message.usage.input_tokens + final_message.usage.output_tokens,
+                    total_tokens=final_message.usage.input_tokens
+                    + final_message.usage.output_tokens,
                 )
 
             return LLMResponse(
@@ -242,4 +250,3 @@ class AnthropicClient(LLMClientBase):
                 finish_reason=final_message.stop_reason or "stop",
                 usage=usage,
             )
-

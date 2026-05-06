@@ -15,7 +15,7 @@ import weakref
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Set
+from typing import Any, Dict, Generic, List, Optional, Set, TypeVar
 
 
 class EventType(Enum):

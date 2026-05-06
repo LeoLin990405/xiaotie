@@ -30,17 +30,18 @@
     print(result.rows)
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple
-import sqlite3
 import re
+import sqlite3
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class DatabaseDriver(Enum):
     """数据库驱动类型"""
+
     SQLITE = "sqlite"
     POSTGRESQL = "postgresql"
     MYSQL = "mysql"
@@ -48,6 +49,7 @@ class DatabaseDriver(Enum):
 
 class QueryType(Enum):
     """查询类型"""
+
     SELECT = "select"
     INSERT = "insert"
     UPDATE = "update"
@@ -59,6 +61,7 @@ class QueryType(Enum):
 @dataclass
 class DatabaseConfig:
     """数据库配置"""
+
     driver: str = "sqlite"
     host: str = "localhost"
     port: int = 5432
@@ -90,6 +93,7 @@ class DatabaseConfig:
 @dataclass
 class QueryResult:
     """查询结果"""
+
     success: bool
     rows: List[Dict[str, Any]] = field(default_factory=list)
     columns: List[str] = field(default_factory=list)
@@ -116,6 +120,7 @@ class QueryResult:
 
 class DatabaseError(Exception):
     """数据库错误基类"""
+
     pass
 
 
@@ -136,8 +141,16 @@ class SQLValidator:
 
     # 始终危险的关键字（即使在可写模式下也禁止）
     ALWAYS_DANGEROUS = [
-        "DROP", "TRUNCATE", "GRANT", "REVOKE",
-        "EXEC", "EXECUTE", "XP_", "SP_", "SHUTDOWN", "KILL",
+        "DROP",
+        "TRUNCATE",
+        "GRANT",
+        "REVOKE",
+        "EXEC",
+        "EXECUTE",
+        "XP_",
+        "SP_",
+        "SHUTDOWN",
+        "KILL",
     ]
 
     # 只读模式下额外禁止的关键字
@@ -167,7 +180,7 @@ class SQLValidator:
 
         # 检查始终危险的关键字
         for keyword in self.ALWAYS_DANGEROUS:
-            if re.search(rf'\b{keyword}\b', sql_upper):
+            if re.search(rf"\b{keyword}\b", sql_upper):
                 return False, f"Dangerous keyword detected: {keyword}"
 
         # 只读模式检查
@@ -354,13 +367,9 @@ class DatabaseTool:
         """获取所有表"""
         driver = DatabaseDriver(self.config.driver)
         if driver == DatabaseDriver.SQLITE:
-            return self.query(
-                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-            )
+            return self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
         elif driver == DatabaseDriver.POSTGRESQL:
-            return self.query(
-                "SELECT tablename FROM pg_tables WHERE schemaname='public'"
-            )
+            return self.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")
         elif driver == DatabaseDriver.MYSQL:
             return self.query("SHOW TABLES")
         return QueryResult(success=False, error_message="未知的数据库驱动")
@@ -368,7 +377,7 @@ class DatabaseTool:
     def get_columns(self, table: str) -> QueryResult:
         """获取表的列信息"""
         # 验证表名（防止注入）
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table):
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
             return QueryResult(
                 success=False,
                 error_message="无效的表名",
@@ -381,11 +390,13 @@ class DatabaseTool:
             return self.query(
                 "SELECT column_name, data_type FROM information_schema.columns "
                 "WHERE table_name = ?",
-                [table]
+                [table],
             )
         return QueryResult(success=False, error_message="未知的数据库驱动")
 
-    def count(self, table: str, where: Optional[str] = None, params: Optional[List[Any]] = None) -> int:
+    def count(
+        self, table: str, where: Optional[str] = None, params: Optional[List[Any]] = None
+    ) -> int:
         """统计行数
 
         Args:
@@ -394,7 +405,7 @@ class DatabaseTool:
             params: Parameter values for the WHERE clause placeholders.
         """
         # 验证表名 (strict identifier check)
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table):
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
             return 0
 
         sql = f"SELECT COUNT(*) as cnt FROM {table}"
@@ -411,7 +422,7 @@ class DatabaseTool:
         return 0
 
 
-_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 def _validate_identifier(name: str, label: str = "identifier") -> None:

@@ -15,7 +15,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from .threading_utils import RateLimiter, SessionManager, SessionConfig
+from .threading_utils import RateLimiter, SessionConfig, SessionManager
 
 
 class ScrapeStatus(Enum):
@@ -153,9 +153,7 @@ class BaseScraper(ABC):
             max_connections=self.config.max_workers,
         )
         self._session_manager = SessionManager(self._session_config)
-        self._rate_limiter = RateLimiter(
-            self.config.rate_limit, self.config.rate_burst
-        )
+        self._rate_limiter = RateLimiter(self.config.rate_limit, self.config.rate_burst)
         self._progress: Optional[ProgressTracker] = None
         self._results: List[ScrapeResult] = []
         self._cancelled = False
@@ -180,9 +178,7 @@ class BaseScraper(ABC):
 
     async def validate(self, url: str, rounds: int = 3) -> ScrapeResult:
         """3次验证抓取：多次抓取同一URL，比较结果一致性"""
-        result = ScrapeResult(
-            url=url, started_at=datetime.now(), status=ScrapeStatus.VALIDATING
-        )
+        result = ScrapeResult(url=url, started_at=datetime.now(), status=ScrapeStatus.VALIDATING)
         hashes: List[str] = []
 
         for i in range(rounds):
@@ -224,13 +220,9 @@ class BaseScraper(ABC):
 
     async def scrape(self, url: str) -> ScrapeResult:
         """抓取单个 URL（带验证）"""
-        return await self.validate(
-            url, rounds=self.config.validation_rounds
-        )
+        return await self.validate(url, rounds=self.config.validation_rounds)
 
-    async def scrape_many(
-        self, urls: List[str]
-    ) -> List[ScrapeResult]:
+    async def scrape_many(self, urls: List[str]) -> List[ScrapeResult]:
         """并发抓取多个 URL"""
         self._progress = ProgressTracker(total=len(urls))
         self._results = []
@@ -245,11 +237,7 @@ class BaseScraper(ABC):
                 try:
                     result = await self.scrape(url)
                     self._results.append(result)
-                    status = (
-                        "completed"
-                        if result.status == ScrapeStatus.COMPLETED
-                        else "failed"
-                    )
+                    status = "completed" if result.status == ScrapeStatus.COMPLETED else "failed"
                     self._progress.update(status)
                 except Exception:
                     self._progress.update("failed")

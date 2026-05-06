@@ -4,9 +4,10 @@ Custom commands management Mixin.
 
 from .base import CommandsBase
 
+
 class CustomCommandsMixin(CommandsBase):
     """Custom user & project commands like commands, run, cmd-*"""
-    
+
     def cmd_commands(self, args: str) -> tuple[bool, str]:
         """列出所有自定义命令"""
         commands = self.custom_cmd_mgr.list_commands()
@@ -185,11 +186,7 @@ class CustomCommandsMixin(CommandsBase):
             pm.auto_approve_low_risk = True
             pm.auto_approve_medium_risk = True
             pm.require_double_confirm_high_risk = False
-            return True, (
-                "🔓 已切换到宽松模式\n"
-                "  • 低/中风险: 自动批准\n"
-                "  • 高风险: 单次确认"
-            )
+            return True, ("🔓 已切换到宽松模式\n  • 低/中风险: 自动批准\n  • 高风险: 单次确认")
         else:
             # status
             stats = pm.get_stats()

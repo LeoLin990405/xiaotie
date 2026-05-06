@@ -9,9 +9,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
-import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -86,7 +84,9 @@ class ConfigValidator:
         self._required.add(path)
         return self
 
-    def add_rule(self, path: str, rule: Callable[[Any], bool], message: str = "") -> "ConfigValidator":
+    def add_rule(
+        self, path: str, rule: Callable[[Any], bool], message: str = ""
+    ) -> "ConfigValidator":
         """添加验证规则"""
         if path not in self._rules:
             self._rules[path] = []
@@ -323,7 +323,9 @@ class ConfigManager:
         self._validator = validator
         return self
 
-    def on_change(self, callback: Callable[[ConfigSnapshot, ConfigSnapshot], None]) -> "ConfigManager":
+    def on_change(
+        self, callback: Callable[[ConfigSnapshot, ConfigSnapshot], None]
+    ) -> "ConfigManager":
         """注册变更回调（接收旧配置和新配置）"""
         self._change_callbacks.append(callback)
         return self

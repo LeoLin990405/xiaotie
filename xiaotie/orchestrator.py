@@ -26,16 +26,17 @@ Agent 编排模块
     results = await parallel.run("查找相关代码")
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional, Dict, Any, List, Callable, Union, Awaitable
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 
 class ExecutionMode(Enum):
     """执行模式"""
+
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
     CONDITIONAL = "conditional"
@@ -43,6 +44,7 @@ class ExecutionMode(Enum):
 
 class StepStatus(Enum):
     """步骤状态"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -53,6 +55,7 @@ class StepStatus(Enum):
 @dataclass
 class StepResult:
     """步骤执行结果"""
+
     name: str
     status: StepStatus
     output: Any = None
@@ -78,6 +81,7 @@ class StepResult:
 @dataclass
 class WorkflowResult:
     """工作流执行结果"""
+
     success: bool
     steps: List[StepResult] = field(default_factory=list)
     final_output: Any = None
@@ -103,11 +107,13 @@ class WorkflowResult:
 
 class OrchestrationError(Exception):
     """编排错误"""
+
     pass
 
 
 class StepExecutionError(OrchestrationError):
     """步骤执行错误"""
+
     def __init__(self, step_name: str, message: str):
         self.step_name = step_name
         super().__init__(f"Step '{step_name}' failed: {message}")
@@ -340,11 +346,13 @@ class Parallel(Workflow):
         step_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                step_results.append(StepResult(
-                    name=self.steps[i].name,
-                    status=StepStatus.FAILED,
-                    error=str(result),
-                ))
+                step_results.append(
+                    StepResult(
+                        name=self.steps[i].name,
+                        status=StepStatus.FAILED,
+                        error=str(result),
+                    )
+                )
             else:
                 step_results.append(result)
                 self._notify_callbacks(result)

@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import tiktoken
+
     _HAS_TIKTOKEN = True
 except ImportError:
     _HAS_TIKTOKEN = False
@@ -98,12 +99,12 @@ class ResponseHandler:
         if self._encoding is None:
             new_chars = sum(
                 len(str(msg.content)) + len(str(msg.thinking or ""))
-                for msg in messages[self._cached_message_count:]
+                for msg in messages[self._cached_message_count :]
             )
             self._cached_token_count += new_chars // 4
         else:
             new_tokens = 0
-            for msg in messages[self._cached_message_count:]:
+            for msg in messages[self._cached_message_count :]:
                 if isinstance(msg.content, str):
                     new_tokens += len(self._encoding.encode(msg.content))
                 if msg.thinking:
@@ -141,11 +142,13 @@ class ResponseHandler:
             self.api_total_tokens = response.usage.total_tokens
             self.api_input_tokens = response.usage.input_tokens
             self.api_output_tokens = response.usage.output_tokens
-            await self._publish_event(TokenUpdateEvent(
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens,
-                total_tokens=response.usage.total_tokens,
-            ))
+            await self._publish_event(
+                TokenUpdateEvent(
+                    input_tokens=response.usage.input_tokens,
+                    output_tokens=response.usage.output_tokens,
+                    total_tokens=response.usage.total_tokens,
+                )
+            )
 
         return response
 
@@ -189,7 +192,9 @@ class ResponseHandler:
                 summary_response = await self.llm.generate(
                     [Message(role="user", content=summary_prompt)]
                 )
-                new_messages.append(Message(role="assistant", content=f"[历史摘要]\n{summary_response.content}"))
+                new_messages.append(
+                    Message(role="assistant", content=f"[历史摘要]\n{summary_response.content}")
+                )
             except Exception as e:
                 logger.warning("摘要生成失败: %s", e)
 

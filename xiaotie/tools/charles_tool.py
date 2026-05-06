@@ -183,8 +183,12 @@ class CharlesProxyTool(Tool):
                 "action": {
                     "type": "string",
                     "enum": [
-                        "start", "stop", "export", "status",
-                        "analyze", "filter_miniapp",
+                        "start",
+                        "stop",
+                        "export",
+                        "status",
+                        "analyze",
+                        "filter_miniapp",
                     ],
                     "description": (
                         "操作类型：start-启动代理，stop-停止代理，"
@@ -305,7 +309,10 @@ class CharlesProxyTool(Tool):
             except Exception as exc:
                 last_err = exc
                 logger.warning(
-                    "重试 %d/%d 失败: %s", attempt, retries, exc,
+                    "重试 %d/%d 失败: %s",
+                    attempt,
+                    retries,
+                    exc,
                 )
                 if attempt < retries:
                     await asyncio.sleep(self.RETRY_DELAY)
@@ -479,7 +486,6 @@ class CharlesProxyTool(Tool):
         Raises:
             RuntimeError: AppleScript 执行失败时抛出。
         """
-        fmt_menu = "JSON Session File" if fmt == "json" else "HAR"
         script = f'''
         tell application "Charles"
             activate
@@ -501,7 +507,9 @@ class CharlesProxyTool(Tool):
         end tell
         '''
         proc = await asyncio.create_subprocess_exec(
-            "osascript", "-e", script,
+            "osascript",
+            "-e",
+            script,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -532,7 +540,7 @@ class CharlesProxyTool(Tool):
         """
         is_running = self.charles_process and self.charles_process.poll() is None
 
-        lines = [f"Charles 代理状态:"]
+        lines = ["Charles 代理状态:"]
         lines.append(f"- 运行状态: {'运行中' if is_running else '未运行'}")
         if is_running:
             lines.append(f"- 代理端口: {self.proxy_port}")
@@ -588,7 +596,11 @@ class CharlesProxyTool(Tool):
             path = parsed.path if parsed else entry.get("path", "/")
             method = entry.get("method", "GET")
             status = entry.get("status") or entry.get("responseCode", 0)
-            size = entry.get("sizes", {}).get("response", 0) if isinstance(entry.get("sizes"), dict) else 0
+            size = (
+                entry.get("sizes", {}).get("response", 0)
+                if isinstance(entry.get("sizes"), dict)
+                else 0
+            )
 
             domain_counter[domain] += 1
             method_counter[method] += 1
@@ -599,7 +611,7 @@ class CharlesProxyTool(Tool):
         unique_endpoints = sorted(set(endpoints))
 
         report_lines = [
-            f"=== Charles 会话分析报告 ===",
+            "=== Charles 会话分析报告 ===",
             f"文件: {session_path.name}",
             f"总请求数: {len(entries)}",
             f"唯一端点数: {len(unique_endpoints)}",
@@ -666,13 +678,15 @@ class CharlesProxyTool(Tool):
             miniapp_entries.append(entry)
 
             parsed = urlparse(url) if url.startswith("http") else None
-            api_calls.append({
-                "method": entry.get("method", "GET"),
-                "domain": parsed.netloc if parsed else entry.get("host", ""),
-                "path": parsed.path if parsed else entry.get("path", "/"),
-                "status": entry.get("status") or entry.get("responseCode", 0),
-                "url": url,
-            })
+            api_calls.append(
+                {
+                    "method": entry.get("method", "GET"),
+                    "domain": parsed.netloc if parsed else entry.get("host", ""),
+                    "path": parsed.path if parsed else entry.get("path", "/"),
+                    "status": entry.get("status") or entry.get("responseCode", 0),
+                    "url": url,
+                }
+            )
 
         if not miniapp_entries:
             return ToolResult(
@@ -681,7 +695,7 @@ class CharlesProxyTool(Tool):
             )
 
         lines = [
-            f"=== 微信小程序请求过滤结果 ===",
+            "=== 微信小程序请求过滤结果 ===",
             f"小程序请求数: {len(miniapp_entries)} / {len(entries)} 总请求",
             "",
         ]
@@ -780,10 +794,7 @@ class CharlesProxyTool(Tool):
             匹配域名的请求条目列表。
         """
         entries = CharlesProxyTool._extract_entries(data)
-        return [
-            e for e in entries
-            if domain in (e.get("url") or e.get("host", ""))
-        ]
+        return [e for e in entries if domain in (e.get("url") or e.get("host", ""))]
 
     # ------------------------------------------------------------------
     # System proxy helpers (cross-platform)
@@ -806,11 +817,13 @@ class CharlesProxyTool(Tool):
                 for svc in services:
                     subprocess.run(
                         ["networksetup", "-setwebproxy", svc, "127.0.0.1", str(port)],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
                     subprocess.run(
                         ["networksetup", "-setsecurewebproxy", svc, "127.0.0.1", str(port)],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
             elif system == "Linux":
                 os.environ["http_proxy"] = f"http://127.0.0.1:{port}"
@@ -834,11 +847,13 @@ class CharlesProxyTool(Tool):
                 for svc in services:
                     subprocess.run(
                         ["networksetup", "-setwebproxystate", svc, "off"],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
                     subprocess.run(
                         ["networksetup", "-setsecurewebproxystate", svc, "off"],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                     )
             elif system == "Linux":
                 os.environ.pop("http_proxy", None)
@@ -859,9 +874,7 @@ class CharlesProxyTool(Tool):
         """
         result = subprocess.run(
             ["networksetup", "-listallnetworkservices"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
-        return [
-            s for s in result.stdout.split("\n")[1:]
-            if s and not s.startswith("*")
-        ]
+        return [s for s in result.stdout.split("\n")[1:] if s and not s.startswith("*")]

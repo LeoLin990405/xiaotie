@@ -4,9 +4,10 @@ System and Agent operations commands Mixin.
 
 from .base import CommandsBase
 
+
 class SystemCommandsMixin(CommandsBase):
     """System related commands like help, quit, list, config"""
-    
+
     ALIASES = {
         "?": "help",
         "h": "help",
@@ -17,7 +18,7 @@ class SystemCommandsMixin(CommandsBase):
         "t": "tools",
         "tok": "tokens",
     }
-    
+
     def cmd_help(self, args: str) -> tuple[bool, str]:
         """显示帮助信息"""
         lines = ["\\n📖 可用命令:\\n"]
@@ -41,12 +42,12 @@ class SystemCommandsMixin(CommandsBase):
         if hasattr(self, "on_quit") and self.on_quit:
             self.on_quit()
         return False, "\\n👋 再见！"
-        
+
     def cmd_clear(self, args: str) -> tuple[bool, str]:
         """清屏"""
         print("\\033[2J\\033[H", end="")
         return True, ""
-        
+
     def cmd_tools(self, args: str) -> tuple[bool, str]:
         """显示可用工具"""
         lines = ["\\n🔧 可用工具:\\n"]
@@ -54,7 +55,7 @@ class SystemCommandsMixin(CommandsBase):
             desc = tool.description[:60] + "..." if len(tool.description) > 60 else tool.description
             lines.append(f"  • {name}: {desc}")
         return True, "\\n".join(lines)
-        
+
     def cmd_tokens(self, args: str) -> tuple[bool, str]:
         """显示 Token 使用情况"""
         estimated = self.agent._estimate_tokens()
@@ -69,7 +70,7 @@ class SystemCommandsMixin(CommandsBase):
             f"  使用率: {max(estimated, api_total) / limit * 100:.1f}%",
         ]
         return True, "\\n".join(lines)
-        
+
     def cmd_model(self, args: str) -> tuple[bool, str]:
         """显示或切换模型 (用法: /model [模型名])"""
         if not args:
@@ -81,9 +82,9 @@ class SystemCommandsMixin(CommandsBase):
             self.agent.llm._client.model = new_model
         if hasattr(self.agent, "config") and hasattr(self.agent.config, "llm"):
             self.agent.config.llm.model = new_model
-            
+
         return True, f"✅ 已切换到模型: {new_model}"
-        
+
     def cmd_config(self, args: str) -> tuple[bool, str]:
         """显示当前配置"""
         lines = [
@@ -102,7 +103,7 @@ class SystemCommandsMixin(CommandsBase):
             "    /parallel - 切换并行工具",
         ]
         return True, "\\n".join(lines)
-        
+
     def cmd_status(self, args: str) -> tuple[bool, str]:
         """显示系统状态"""
         import platform
@@ -120,7 +121,7 @@ class SystemCommandsMixin(CommandsBase):
             "  会话:",
             f"    当前会话: {self.session_mgr.current_session if hasattr(self, 'session_mgr') and self.session_mgr.current_session else '未保存'}",
         ]
-        
+
         if hasattr(self, "session_mgr"):
             lines.append(f"    保存会话数: {len(self.session_mgr.list_sessions())}")
 
@@ -133,7 +134,7 @@ class SystemCommandsMixin(CommandsBase):
 
 class AgentOpsMixin(CommandsBase):
     """Commands related to agent manipulation like undo, retry, stream, parallel, etc"""
-    
+
     def cmd_stream(self, args: str) -> tuple[bool, str]:
         """切换流式输出"""
         self.agent.stream = not self.agent.stream
@@ -152,13 +153,14 @@ class AgentOpsMixin(CommandsBase):
         self.agent.config.parallel_tools = self.agent.parallel_tools
         status = "开启" if self.agent.parallel_tools else "关闭"
         return True, f"✅ 工具并行执行已{status}"
-        
+
     def cmd_copy(self, args: str) -> tuple[bool, str]:
         """复制最后一条回复到剪贴板"""
         for msg in reversed(self.agent.messages):
             if msg.role == "assistant" and msg.content:
                 try:
                     import subprocess
+
                     # macOS
                     process = subprocess.Popen(
                         ["pbcopy"],
@@ -179,7 +181,7 @@ class AgentOpsMixin(CommandsBase):
                         return True, "❌ 无法访问剪贴板"
 
         return True, "❌ 没有可复制的回复"
-        
+
     def cmd_undo(self, args: str) -> tuple[bool, str]:
         """撤销最后一轮对话"""
         user_idx = -1
@@ -195,7 +197,7 @@ class AgentOpsMixin(CommandsBase):
         self.agent.messages = self.agent.messages[:user_idx]
 
         return True, f"✅ 已撤销 {removed} 条消息"
-        
+
     def cmd_retry(self, args: str) -> tuple[bool, str]:
         """重试最后一次请求"""
         for i in range(len(self.agent.messages) - 1, -1, -1):

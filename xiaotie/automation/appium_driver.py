@@ -5,17 +5,18 @@ Appium驱动封装
 """
 
 import asyncio
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from typing import Optional
+
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
 from appium.options.ios import XCUITestOptions
-from appium.webdriver.common.appiumby import AppiumBy
 
 
 @dataclass
 class AppiumConfig:
     """Appium配置"""
+
     platform: str = "Android"  # Android 或 iOS
     device_name: str = "emulator-5554"
     platform_version: str = "11"
@@ -62,8 +63,7 @@ class AppiumDriver:
         # 在线程池中启动（Appium是同步的）
         loop = asyncio.get_event_loop()
         self.driver = await loop.run_in_executor(
-            None,
-            lambda: webdriver.Remote(self.config.appium_server, options=options)
+            None, lambda: webdriver.Remote(self.config.appium_server, options=options)
         )
 
     async def stop(self) -> None:
@@ -79,10 +79,7 @@ class AppiumDriver:
             raise RuntimeError("Driver not started")
 
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.driver.find_element(by, value)
-        )
+        return await loop.run_in_executor(None, lambda: self.driver.find_element(by, value))
 
     async def find_elements(self, by: str, value: str):
         """查找多个元素"""
@@ -90,10 +87,7 @@ class AppiumDriver:
             raise RuntimeError("Driver not started")
 
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.driver.find_elements(by, value)
-        )
+        return await loop.run_in_executor(None, lambda: self.driver.find_elements(by, value))
 
     async def click(self, by: str, value: str) -> None:
         """点击元素"""
@@ -113,15 +107,16 @@ class AppiumDriver:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: element.text)
 
-    async def swipe(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500) -> None:
+    async def swipe(
+        self, start_x: int, start_y: int, end_x: int, end_y: int, duration: int = 500
+    ) -> None:
         """滑动屏幕"""
         if not self.driver:
             raise RuntimeError("Driver not started")
 
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
-            None,
-            lambda: self.driver.swipe(start_x, start_y, end_x, end_y, duration)
+            None, lambda: self.driver.swipe(start_x, start_y, end_x, end_y, duration)
         )
 
     async def tap(self, x: int, y: int) -> None:
@@ -130,10 +125,7 @@ class AppiumDriver:
             raise RuntimeError("Driver not started")
 
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None,
-            lambda: self.driver.tap([(x, y)])
-        )
+        await loop.run_in_executor(None, lambda: self.driver.tap([(x, y)]))
 
     async def get_page_source(self) -> str:
         """获取页面源码"""
@@ -149,10 +141,7 @@ class AppiumDriver:
             raise RuntimeError("Driver not started")
 
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None,
-            lambda: self.driver.save_screenshot(filename)
-        )
+        await loop.run_in_executor(None, lambda: self.driver.save_screenshot(filename))
 
     async def __aenter__(self):
         """上下文管理器入口"""
