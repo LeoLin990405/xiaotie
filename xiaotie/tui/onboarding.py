@@ -174,7 +174,7 @@ class WelcomeStep(Static):
         with Vertical(classes="welcome-features"):
             yield Static("✨ 功能特点:", classes="feature-item")
             yield Static("  󰦛 内置工具系统 (读写文件、执行命令)", classes="feature-item")
-            yield Static("  󰚩 多 LLM Provider 支持", classes="feature-item")
+            yield Static("  󰚩 MIMO-only 模型边界", classes="feature-item")
             yield Static("  󰠮 深度思考模式", classes="feature-item")
             yield Static("  󰕇 并行工具执行", classes="feature-item")
             yield Static("  󰏘 现代化 TUI 界面", classes="feature-item")
@@ -232,7 +232,7 @@ class ProviderSelectStep(Static):
         self.selected_provider: Optional[ProviderSetup] = None
 
     def compose(self) -> ComposeResult:
-        yield Static("󰚩 选择 LLM Provider", classes="step-title")
+        yield Static("󰚩 选择 MIMO 模型入口", classes="step-title")
 
         with Vertical(classes="provider-list"):
             for provider in SUPPORTED_PROVIDERS:

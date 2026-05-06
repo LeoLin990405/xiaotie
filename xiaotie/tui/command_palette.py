@@ -423,7 +423,7 @@ class CommandPalette(ModalScreen):
 
 
 class QuickModelSelector(ModalScreen):
-    """快速模型选择器 - 集成 Provider 系统"""
+    """快速模型选择器 - MIMO-only"""
 
     BINDINGS = [
         Binding("escape", "dismiss", "关闭"),
@@ -525,7 +525,7 @@ class QuickModelSelector(ModalScreen):
         self._update_list("")
 
     def _load_models(self) -> None:
-        """从 Provider 系统加载模型"""
+        """从 MIMO registry 加载模型"""
         try:
             from ..llm.providers import PROVIDER_CONFIGS
         except ImportError:

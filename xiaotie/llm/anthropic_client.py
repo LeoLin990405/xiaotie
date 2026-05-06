@@ -1,4 +1,4 @@
-"""Anthropic LLM 客户端"""
+"""Internal Anthropic-compatible transport used by MIMO."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from .base import LLMClientBase
 
 
 class AnthropicClient(LLMClientBase):
-    """Anthropic Claude 客户端"""
+    """Internal Anthropic-compatible message transport."""
 
     def __init__(
         self,

@@ -56,9 +56,9 @@ class LLMClient:
             if not api_key:
                 api_key = os.environ.get(self.provider_config.api_key_env, "")
 
-        from .anthropic_client import AnthropicClient
+        from .mimo_client import MimoClient
 
-        self._client: LLMClientBase = AnthropicClient(
+        self._client: LLMClientBase = MimoClient(
             api_key=api_key or "",
             api_base=api_base or "",
             model=model or MIMO_DEFAULT_MODEL,

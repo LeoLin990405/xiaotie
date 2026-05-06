@@ -1,532 +1,254 @@
 <div align="center">
 
 ```
- ▄███▄     小铁 XiaoTie v3.0
- █ ⚙ █    MIMO-only Agent · Durable Runtime · OS 沙箱
+ ▄███▄     XiaoTie v3
+ █ ⚙ █    MIMO-only Agent Runtime
  ▀███▀
 ```
 
-# 小铁 (XiaoTie)
+# 小铁 XiaoTie
 
-**MIMO-only AI Coding Agent runtime，内置 guardrail、trace、checkpoint、OS 沙箱、tree-sitter 代码导航和分层密钥管理。**
+**只面向 MIMO 的本地 Agent runtime。**
+
+小铁 v3 不再做多 provider 适配层。它把模型边界收束到 MIMO，把工程重点放回 Agent 运行时本身：状态机、guardrail、trace、checkpoint、工具权限、上下文预算、RepoMap 和沙箱执行。
 
 [![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/github/license/LeoLin990405/xiaotie?color=green)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/LeoLin990405/xiaotie?style=social)](https://github.com/LeoLin990405/xiaotie/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/LeoLin990405/xiaotie)](https://github.com/LeoLin990405/xiaotie/issues)
-[![Tests](https://img.shields.io/badge/Tests-1673%20unit%20passed-brightgreen)](https://github.com/LeoLin990405/xiaotie/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-62%25-yellow)](#项目统计)
 [![Version](https://img.shields.io/badge/Version-3.0.0-blue)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-1674%20unit%20passed-brightgreen)](#验证)
+[![Coverage](https://img.shields.io/badge/Coverage-62%25-yellow)](#验证)
+[![License](https://img.shields.io/github/license/LeoLin990405/xiaotie?color=green)](LICENSE)
 
-[English](./README_EN.md) · [变更日志](./CHANGELOG.md) · [API 参考](./docs/api-reference.md)
+[English](./README_EN.md)
 
 </div>
 
 ---
 
-## 功能截图
+## 当前定位
 
-### 交互式 CLI
+小铁是一个 coding-agent runtime，而不是模型聚合器。
 
-<div align="center">
-<img src="docs/images/cli-interactive.svg" alt="交互式 CLI 界面" width="750"/>
-</div>
-
-> 支持深度思考、流式输出、多工具并行执行、状态机实时展示。
-
-### 架构总览
-
-<div align="center">
-<img src="docs/images/architecture.svg" alt="v2.1 架构" width="750"/>
-</div>
-
-> 5 层架构: 交互层 → 编排层 (状态机) → 认知层 → 工具层 → 基础层
-
-### 密钥管理
-
-<div align="center">
-<img src="docs/images/secret-management.svg" alt="密钥管理" width="750"/>
-</div>
-
-> 分层密钥解析: System Keyring → 环境变量 → 配置 Fallback
-
-### CI/CD 流水线
-
-<div align="center">
-<img src="docs/images/ci-pipeline.svg" alt="CI/CD 流水线" width="750"/>
-</div>
-
-> Lint → Test (4 Python 版本) → Security Scan → Performance Gate
-
----
-
-## 特性
-
-### v3.0 亮点
-
-| 模块 | 说明 | 状态 |
-|------|------|------|
-| **AgentRuntime** | 状态机驱动 (IDLE→THINKING→ACTING→OBSERVING→REFLECTING)，已替代旧 Agent 循环 | ✅ 已接入 CLI/TUI |
-| **ToolExecutor** | 并行工具执行、权限检查、审计日志、敏感输出脱敏 | ✅ 完整集成 |
-| **ResponseHandler** | 流式/非流式统一处理、Token 预算管理、自动摘要 | ✅ 完整集成 |
-| **ContextEngine** | 基于优先级的 Token 预算上下文组装 (system/repo_map/memory/conversation) | ✅ 已接入 AgentRuntime |
-| **RepoMapEngine** | tree-sitter AST 解析 + NetworkX PageRank 代码导航 (支持 8 种语言) | ✅ 已接入 AgentRuntime |
-| **SandboxManager** | OS 级沙箱 (macOS Seatbelt / Linux Bubblewrap / Fallback rlimits) | ✅ 完整集成 |
-| **SecretManager** | 分层密钥管理 (keyring → 环境变量 → 配置 fallback)，`${secret:...}` 语法 | ✅ 已接入配置加载 |
-| **MIMO-only Boundary** | Provider、配置、Builder、CLI/TUI onboarding 固定为 MIMO | ✅ 已接入 |
-| **Trace + Checkpoint** | 运行时记录 guardrail、状态转移、完成/失败事件，并保存可恢复 checkpoint | ✅ 已接入 AgentRuntime |
-
-### v2.1 集成进展 (相比 v2.0)
-
-- ✅ **AgentRuntime 接入 CLI/TUI 主流程** — 替代旧 Agent 类，旧 API 标记 deprecated
-- ✅ **ContextEngine + RepoMap 接入 AgentRuntime** — LLM 调用前自动组装 token 预算上下文
-- ✅ **SecretManager 接入配置加载** — Config.load() 自动解析 `${secret:...}` / `${env:...}` 占位符
-- ✅ **`/secret` 命令注册** — 交互模式中直接管理密钥
-- ✅ **核心模块覆盖率 ≥ 90%** — runtime 97%, executor 90%, secrets 91%, context_engine 90%
-
-### 核心能力
-
-- Agent 执行循环 (状态机 + 传统模式兼容)
-- 流式输出，MIMO thinking 默认关闭，可显式开启
-- 会话管理、Token 自动摘要
-- 并行工具执行、优雅取消 (Ctrl+C)
-- TUI 模式 (Textual) 含首次运行引导向导、非交互模式 (JSON 输出)
-- MCP 协议支持 (连接外部 MCP 服务器)
-- 插件系统、自定义命令
-- MIMO-only Provider 边界，拒绝其他 AI provider
-- 多 Agent 协调 (Coordinator / Expert / Executor / Supervisor 角色)
-- 记忆系统 (短期/长期/情景/语义/工作记忆)
-- 语义搜索 (chromadb 向量存储)
-
-### 工具系统
-
-20+ 内置工具:
-
-| 类别 | 工具 |
-|------|------|
-| **文件与代码** | read_file, write_file, edit_file, code_analysis, python |
-| **系统操作** | bash, git, system_info, process_manager |
-| **Web & 网络** | web_search, web_fetch, network, proxy_server |
-| **高级功能** | scraper, semantic_search, telegram, macos_automation |
-
----
-
-## 快速开始
-
-### 安装
-
-```bash
-git clone https://github.com/LeoLin990405/xiaotie.git
-cd xiaotie
-
-# 基础安装
-pip install -e .
-
-# 安装所有功能
-pip install -e ".[all]"
-
-# 或按需安装
-pip install -e ".[tui]"        # TUI 界面 (含首次运行向导)
-pip install -e ".[repomap]"    # tree-sitter 代码导航
-pip install -e ".[secrets]"    # keyring 密钥管理
-pip install -e ".[search]"     # 语义搜索
-```
-
-### 配置 API Key
-
-**推荐方式: 使用 keyring (安全)**
-
-```bash
-# 存储密钥到系统 keyring
-xiaotie secret set api_key
-# 输入你的 API Key
-
-# 在 config.yaml 中引用
-# api_key: ${secret:api_key}
-```
-
-**快速方式: 环境变量**
-
-```bash
-export MIMO_API_KEY="your-key"
-```
-
-**TUI 首次运行向导 (最简单)**
-
-```bash
-pip install -e ".[tui]"
-xiaotie --tui
-# 引导向导会自动收集 API Key、模型、Provider 并生成配置
-```
-
-### 运行
-
-```bash
-# 交互式
-xiaotie
-
-# TUI 模式
-xiaotie --tui
-
-# 非交互模式
-xiaotie -p "帮我分析这段代码" -f json
-
-# 安静模式
-xiaotie -p "帮我重构这个函数" -q
-```
+| 决策 | v3 行为 |
+|------|---------|
+| 模型入口 | 只支持 `provider: mimo` |
+| 默认模型 | `mimo-v2-pro` |
+| 可选模型 | `mimo-v2-pro`, `mimo-v2-omni` |
+| API Key | `MIMO_API_KEY` 或 `${secret:api_key}` |
+| Thinking | 默认关闭，显式 `--thinking` 才开启 |
+| 多 provider | 拒绝 OpenAI/Anthropic/Gemini/DeepSeek/Qwen 等 provider 参数 |
 
 ---
 
 ## 架构
 
-### 5 层架构
-
 ```mermaid
-graph TB
-    subgraph "L5 交互层"
-        CLI["CLI (Rich)"]
-        TUI["TUI (Textual)"]
-        SDK["Python SDK"]
-    end
-
-    subgraph "L4 编排层"
-        RT["AgentRuntime (状态机)"]
-        TE["ToolExecutor"]
-        RH["ResponseHandler"]
-    end
-
-    subgraph "L3 认知层"
-        CTX["ContextEngine (Token 预算)"]
-        RM["RepoMapEngine (tree-sitter + PageRank)"]
-    end
-
-    subgraph "L2 工具层"
-        TOOLS["工具注册表 (20+ 工具)"]
-        MCP["MCP Gateway"]
-        PERM["权限管理"]
-    end
-
-    subgraph "L1 基础层"
-        LLM["LLM 客户端 (多 Provider)"]
-        SB["SandboxManager (OS 沙箱)"]
-        SM["SecretManager (密钥管理)"]
-        DB["SQLite 存储"]
-    end
-
-    CLI --> RT
-    TUI --> RT
-    SDK --> RT
-    RT --> TE
-    RT --> RH
-    RT --> CTX
-    RT --> RM
-    TE --> TOOLS
-    TE --> MCP
-    TE --> PERM
-    TOOLS --> SB
-    RH --> LLM
-    LLM --> SM
+graph TD
+    CLI["CLI / TUI / SDK"] --> RT["AgentRuntime"]
+    RT --> GR["MIMO-only Guardrail"]
+    RT --> TRACE["Trace Events"]
+    RT --> CKPT["Checkpoint Store"]
+    RT --> CTX["ContextEngine"]
+    RT --> MAP["RepoMapEngine"]
+    RT --> RESP["ResponseHandler"]
+    RT --> EXEC["ToolExecutor"]
+    RESP --> MIMO["MimoClient"]
+    MIMO --> API["MIMO Anthropic-compatible API"]
+    EXEC --> PERM["PermissionManager"]
+    EXEC --> TOOLS["Local Tools / MCP Tools"]
+    TOOLS --> SB["OS Sandbox"]
+    CTX --> MEM["Conversation / Memory Budget"]
+    MAP --> AST["tree-sitter + PageRank"]
 ```
 
-### AgentRuntime 状态机
+运行时核心在 [xiaotie/agent/runtime.py](/Users/leo/projects/xiaotie/xiaotie/agent/runtime.py)，v3 架构原语在 [xiaotie/agent/architecture.py](/Users/leo/projects/xiaotie/xiaotie/agent/architecture.py)。
 
+### Runtime Loop
+
+```text
+input_guardrail
+  -> thinking
+  -> acting
+  -> observing
+  -> reflecting
+  -> completed | failed | cancelled
 ```
-IDLE ──→ THINKING ──→ ACTING ──→ OBSERVING ──→ REFLECTING ──→ THINKING
-  ↑         │                                        │            (循环)
-  │         └── 无工具调用 ──→ IDLE (完成)             └── 取消 ──→ IDLE
-  └──────────────────────────────────────────────────────────────────┘
-```
+
+每次关键阶段都会生成结构化 `AgentTraceEvent`，并写入 `AgentCheckpoint`。这让后续接持久化、resume、human-in-the-loop 和可视化 trace 时有稳定的数据边界。
 
 ---
 
-## CLI 命令
+## 快速开始
 
-### 启动模式
+```bash
+git clone https://github.com/LeoLin990405/xiaotie.git
+cd xiaotie
+pip install -e ".[dev,tui,secrets,repomap]"
+```
 
-| 命令 | 说明 |
-|------|------|
-| `xiaotie` | 交互式 CLI |
-| `xiaotie --tui` | TUI 模式 (含引导向导) |
-| `xiaotie -p "问题"` | 非交互模式 |
-| `xiaotie -p "问题" -f json` | JSON 输出 |
-| `xiaotie -p "问题" -q` | 安静模式 |
+配置 MIMO key：
 
-### 交互命令
+```bash
+export MIMO_API_KEY="your-key"
+```
 
-| 命令 | 别名 | 说明 |
-|------|------|------|
-| `/help` | `/h` | 显示帮助 |
-| `/quit` | `/q` | 退出 |
-| `/reset` | `/r` | 重置对话 |
-| `/tools` | `/t` | 显示工具 |
-| `/save` | `/s` | 保存会话 |
-| `/load <id>` | `/l` | 加载会话 |
-| `/tokens` | `/tok` | Token 统计 |
-| `/compact` | | 压缩历史 |
-| `/map [tokens]` | | 代码库概览 (tree-sitter) |
-| `/find <关键词>` | | 搜索文件 |
-| `/tree [深度]` | | 目录结构 |
-| `/stream` | | 切换流式输出 |
-| `/think` | | 切换深度思考 |
-| `/parallel` | | 切换并行执行 |
-| `/secret` | `/sec` | 密钥管理 (set/get/list/delete/migrate) |
+或写入系统 keyring：
 
-### 密钥管理 CLI
+```bash
+xiaotie secret set api_key
+```
 
-| 命令 | 说明 |
-|------|------|
-| `xiaotie secret set <key>` | 存储密钥到 keyring |
-| `xiaotie secret get <key>` | 获取密钥 (掩码显示) |
-| `xiaotie secret list` | 列出所有密钥 |
-| `xiaotie secret delete <key>` | 删除密钥 |
-| `xiaotie secret migrate` | 迁移配置文件明文密钥到 keyring |
-
----
-
-## 配置
-
-### config/config.yaml
+最小配置：
 
 ```yaml
-# API 配置 (推荐使用 ${secret:...} 而非明文)
 api_key: ${secret:api_key}
 api_base: https://token-plan-sgp.xiaomimimo.com/anthropic
 model: mimo-v2-pro
 provider: mimo
 
-# Agent 配置
 max_steps: 50
 workspace_dir: ./workspace
+thinking_enabled: false
 
-# 重试
-retry:
-  enabled: true
-  max_retries: 3
-  initial_delay: 1.0
-
-# 工具
 tools:
   enable_file_tools: true
   enable_bash: true
-
-# MCP 配置
-mcp:
-  enabled: false
-  servers:
-    filesystem:
-      command: npx
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
-      enabled: true
+  enable_git: true
 ```
 
-### 密钥解析优先级
+运行：
 
-| 优先级 | 来源 | 安全性 | 说明 |
-|--------|------|--------|------|
-| 1 | System Keyring | 最高 | macOS Keychain / Linux Secret Service |
-| 2 | 环境变量 | 中 | `XIAOTIE_<KEY>` 或 `<KEY>` |
-| 3 | 配置文件 | 低 | 仅作 fallback，不推荐 |
-
-配置文件占位符语法:
-
-```yaml
-api_key: ${secret:api_key}         # 从 keyring/环境变量解析
-github_token: ${env:GITHUB_TOKEN}  # 仅从环境变量解析
+```bash
+xiaotie
+xiaotie --tui
+xiaotie -p "分析这个 repo 的结构" -f json
+xiaotie -p "重构这个函数" -q
 ```
 
 ---
 
-## 安全模型
-
-### OS 级沙箱
-
-| 平台 | 后端 | 隔离级别 |
-|------|------|---------|
-| macOS | Seatbelt (sandbox-exec) | 内核级 (deny network/write) |
-| Linux | Bubblewrap (bwrap) | 命名空间 + 文件系统隔离 |
-| 通用 | Fallback (rlimits) | 资源限制 (内存 512MB, CPU 300s) |
-
-### Capability 模型
-
-| Capability | 说明 | 示例工具 |
-|-----------|------|---------|
-| `READ_FS` | 读取工作区文件 | read_file, code_analysis |
-| `WRITE_FS` | 写入工作区文件 | write_file, edit_file |
-| `NETWORK` | 网络访问 | web_search, web_fetch |
-| `SUBPROCESS` | 子进程 | bash, python |
-| `DANGEROUS` | 系统级操作 | 需要明确批准 |
-
-### 权限系统
-
-- 工具调用前进行风险评估 (low/medium/high)
-- 低风险自动批准，高风险需要交互确认
-- 敏感输出自动脱敏 (AWS Key, GitHub Token, 私钥等)
-- 所有工具调用记录审计日志
-
----
-
-## 支持的 LLM
-
-| Provider | API Base | 推荐模型 |
-|----------|----------|---------|
-| MIMO | https://token-plan-sgp.xiaomimimo.com/anthropic | mimo-v2-pro / mimo-v2-omni |
-
----
-
-## 代码调用
-
-### AgentRuntime (推荐)
+## Python API
 
 ```python
 import asyncio
-from xiaotie.agent import AgentRuntime, AgentConfig
+
+from xiaotie.agent import AgentConfig, AgentRuntime
 from xiaotie.llm import LLMClient
-from xiaotie.tools import ReadTool, WriteTool, BashTool
+from xiaotie.tools import BashTool, ReadTool, WriteTool
+
 
 async def main():
     llm = LLMClient(
-        api_key="your-key",
-        api_base="https://token-plan-sgp.xiaomimimo.com/anthropic",
-        model="mimo-v2-pro",
         provider="mimo",
+        model="mimo-v2-pro",
     )
-    config = AgentConfig(max_steps=30, parallel_tools=True)
-    tools = [ReadTool(workspace_dir="."), WriteTool(workspace_dir="."), BashTool()]
 
-    runtime = AgentRuntime(llm, system_prompt="你是小铁", tools=tools, config=config)
+    runtime = AgentRuntime(
+        llm_client=llm,
+        system_prompt="你是小铁，一个谨慎的本地 coding agent。",
+        tools=[
+            ReadTool(workspace_dir="."),
+            WriteTool(workspace_dir="."),
+            BashTool(),
+        ],
+        config=AgentConfig(max_steps=30, stream=True),
+    )
 
-    # 可选: 集成 ContextEngine 和 RepoMap
-    from xiaotie.context_engine import ContextEngine
-    from xiaotie.repomap_v2 import RepoMapEngine
-    runtime.set_context_engine(ContextEngine(token_budget=100_000))
-    runtime.set_repomap_engine(RepoMapEngine(workspace_dir="."))
-
-    result = await runtime.run("帮我创建一个 hello.py")
+    result = await runtime.run("帮我整理这个项目的重构入口")
     print(result)
-    print(runtime.get_stats())
+    print(runtime.trace_events[-1])
+
 
 asyncio.run(main())
 ```
 
-### Agent (v1 兼容, 已标记 deprecated)
-
-```python
-from xiaotie.agent import Agent  # ⚠️ 将在 v3.0 移除
-from xiaotie.llm import LLMClient
-from xiaotie.tools import ReadTool, WriteTool, BashTool
-
-agent = Agent(
-    llm_client=LLMClient(...),
-    system_prompt="你是小铁",
-    tools=[ReadTool(), WriteTool(), BashTool()],
-    stream=True,
-    parallel_tools=True,
-)
-result = await agent.run("你好")
-```
-
 ---
 
-## 项目统计
+## 核心模块
 
-| 指标 | 数值 |
+| 模块 | 责任 |
 |------|------|
-| 源代码文件 | 140 个 Python 文件 |
-| 代码行数 | ~48,000 行 |
-| 测试用例 | 1,703 通过 / 15 跳过 |
-| 测试覆盖率 | 62% (核心模块 ≥ 90%) |
-| 内置工具 | 20+ |
-| LLM Provider | 8+ |
-| 支持语言 (RepoMap) | Python, JS, TS, Go, Rust, Java, C, C++ |
+| `xiaotie.llm` | 公开 MIMO-only facade，`LLMClient` 和 `MimoClient` |
+| `xiaotie.agent.architecture` | phase、trace event、checkpoint、guardrail 原语 |
+| `xiaotie.agent.runtime` | 状态机执行循环和 trace/checkpoint 接入 |
+| `xiaotie.agent.executor` | 工具执行、权限、审计、并行调用 |
+| `xiaotie.agent.response` | 流式响应、token 统计、摘要 |
+| `xiaotie.context_engine` | 上下文预算和消息组装 |
+| `xiaotie.repomap_v2` | tree-sitter AST + PageRank 代码地图 |
+| `xiaotie.permissions` | 风险评估、确认、敏感输出脱敏 |
+| `xiaotie.secrets` | keyring/env/config 分层密钥解析 |
+| `xiaotie.sandbox` | macOS Seatbelt / Linux Bubblewrap / rlimits |
 
 ---
 
-## 开发
+## CLI
 
-### 环境搭建
+| 命令 | 说明 |
+|------|------|
+| `xiaotie` | 交互式 CLI |
+| `xiaotie --tui` | Textual TUI |
+| `xiaotie -p "问题"` | 非交互执行 |
+| `xiaotie -p "问题" -f json` | JSON 输出 |
+| `xiaotie --thinking` | 显式启用 MIMO thinking |
+| `xiaotie secret set api_key` | 写入 MIMO key |
+| `xiaotie secret list` | 查看已存密钥 |
 
-```bash
-git clone https://github.com/LeoLin990405/xiaotie.git
-cd xiaotie
-pip install -e ".[dev,all]"
-
-# 安装 pre-commit hooks
-pre-commit install
-```
-
-### 常用命令
-
-```bash
-make test            # 运行测试
-make lint            # 代码检查
-make format          # 格式化
-make security-scan   # 安全扫描
-make benchmark       # 性能基准
-make ci-local        # 本地完整 CI
-```
-
-### CI/CD
-
-GitHub Actions 工作流:
-
-| 作业 | 触发条件 | 说明 |
-|------|---------|------|
-| **Lint** | push/PR | ruff lint + format check |
-| **Test** | push/PR | pytest × Python 3.10-3.12, 覆盖率 ≥60% |
-| **Security** | push/PR | bandit SAST + pip-audit |
-| **Performance** | push/PR | 基准测试回归检查 |
-| **Release** | tag v* | 构建 wheel/sdist, 发布 PyPI |
+交互命令包括 `/help`, `/tools`, `/map`, `/find`, `/tree`, `/tokens`, `/compact`, `/secret`, `/reset`, `/quit`。
 
 ---
 
-## 贡献指南
+## 验证
 
-欢迎贡献! 请遵循以下步骤:
+当前 v3 gate：
 
-1. Fork 本仓库
-2. 创建特性分支: `git checkout -b feature/amazing-feature`
-3. 安装开发依赖: `pip install -e ".[dev,all]"`
-4. 编写代码并添加测试
-5. 运行本地 CI: `make ci-local`
-6. 提交更改: `git commit -m "feat: add amazing feature"`
-7. 推送分支: `git push origin feature/amazing-feature`
-8. 创建 Pull Request
+```bash
+uv run --python 3.12 --extra dev ruff check xiaotie/ tests/unit/test_providers.py tests/unit/test_config.py tests/unit/test_builder.py tests/unit/test_runtime.py tests/unit/test_agent_architecture.py tests/unit/test_mimo_client.py
+uv run --python 3.12 --extra dev ruff format --check xiaotie/agent/architecture.py xiaotie/agent/runtime.py xiaotie/llm/mimo_client.py xiaotie/llm/providers.py xiaotie/llm/wrapper.py
+uv run --python 3.12 --extra dev python -m pytest tests/unit -q
+uv run --python 3.12 --extra dev python -m pytest tests/integration/test_core_business_smoke.py -v --tb=short -m smoke
+```
 
-### 代码规范
+最近一次结果：
 
-- 使用 `ruff` 进行代码检查和格式化
-- 新功能必须附带单元测试
-- 保持 API 向后兼容
-- 安全敏感代码必须通过 bandit 扫描
+| Gate | Result |
+|------|--------|
+| Unit tests | `1674 passed, 39 skipped` |
+| Smoke integration | `3 passed` |
+| Coverage | `62%` |
+
+---
+
+## 迁移说明
+
+v3 会拒绝这些旧配置：
+
+```yaml
+provider: openai
+provider: anthropic
+provider: gemini
+provider: deepseek
+provider: qwen
+```
+
+请统一改为：
+
+```yaml
+provider: mimo
+model: mimo-v2-pro
+api_key: ${secret:api_key}
+```
+
+旧 `Agent` 类仍保留兼容，但已 deprecated。新代码请使用 `AgentRuntime`。
 
 ---
 
 ## 路线图
 
-### v2.2 计划
-
-- [ ] Memory 系统接入 Agent 循环 (记忆自动存取)
-- [ ] 语义搜索自动集成为内置工具
-- [ ] 跨会话对话持久化
-- [ ] Web UI 前端
-- [ ] 更多 MCP 服务器预置
-
-### 未来方向
-
-- 多 Agent 协作自动编排
-- RAG 管线内置
-- 视觉模型原生支持 (截图理解)
-- VS Code / JetBrains 插件
-
----
-
-## 致谢
-
-- [MiniMax-AI/Mini-Agent](https://github.com/MiniMax-AI/Mini-Agent) - 核心架构灵感
-- [Aider](https://github.com/Aider-AI/aider) - RepoMap、命令系统设计
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - 状态机 Agent、OS 沙箱、ContextEngine
-- [Open Interpreter](https://github.com/openinterpreter/open-interpreter) - 流式处理模式
-- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) - MCP 协议集成
+- 持久化 checkpoint store
+- 可视化 trace timeline
+- resumable execution
+- human-in-the-loop 中断与恢复
+- MCP resource/prompt/tool 统一注册表
+- RepoMap 与 ContextEngine 的自动预算调优
 
 ## License
 
