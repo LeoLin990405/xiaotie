@@ -1,30 +1,26 @@
 """AgentRuntime 单元测试"""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from xiaotie.agent.config import AgentConfig
-from xiaotie.agent.runtime import AgentRuntime, RuntimeState, RuntimeStats
+from xiaotie.agent.runtime import AgentRuntime, RuntimeState
 from xiaotie.schema import FunctionCall, LLMResponse, Message, ToolCall, ToolResult
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_llm():
     llm = AsyncMock()
-    llm.provider = "test"
-    llm.model = "test-model"
-    llm.generate = AsyncMock(
-        return_value=LLMResponse(content="你好！", tool_calls=None)
-    )
-    llm.generate_stream = AsyncMock(
-        return_value=LLMResponse(content="你好！", tool_calls=None)
-    )
+    llm.provider = "mimo"
+    llm.model = "mimo-v2-pro"
+    llm.generate = AsyncMock(return_value=LLMResponse(content="你好！", tool_calls=None))
+    llm.generate_stream = AsyncMock(return_value=LLMResponse(content="你好！", tool_calls=None))
     return llm
 
 
@@ -42,9 +38,7 @@ def dummy_tool():
             "parameters": {"type": "object", "properties": {}},
         },
     }
-    tool.execute = AsyncMock(
-        return_value=ToolResult(success=True, content="ok")
-    )
+    tool.execute = AsyncMock(return_value=ToolResult(success=True, content="ok"))
     return tool
 
 
@@ -64,6 +58,7 @@ def runtime(mock_llm, dummy_tool):
 # RuntimeState enum
 # ---------------------------------------------------------------------------
 
+
 class TestRuntimeState:
     def test_enum_values(self):
         assert RuntimeState.IDLE.value == "idle"
@@ -79,6 +74,7 @@ class TestRuntimeState:
 # ---------------------------------------------------------------------------
 # State transitions
 # ---------------------------------------------------------------------------
+
 
 class TestTransitions:
     def test_valid_transitions_completeness(self, runtime):
@@ -149,6 +145,7 @@ class TestTransitions:
 # run() - direct completion (no tool calls)
 # ---------------------------------------------------------------------------
 
+
 class TestRunDirectCompletion:
     async def test_run_returns_content(self, runtime, mock_llm):
         result = await runtime.run("你好")
@@ -173,6 +170,7 @@ class TestRunDirectCompletion:
 # ---------------------------------------------------------------------------
 # run() - with tool calls then completion
 # ---------------------------------------------------------------------------
+
 
 class TestRunWithToolCalls:
     async def test_tool_call_then_complete(self, runtime, mock_llm, dummy_tool):
@@ -228,6 +226,7 @@ class TestRunWithToolCalls:
 # Cancel mechanism
 # ---------------------------------------------------------------------------
 
+
 class TestCancel:
     async def test_cancel_via_event(self, mock_llm, dummy_tool):
         config = AgentConfig(max_steps=10, stream=False, quiet=True)
@@ -280,6 +279,7 @@ class TestCancel:
 # Session lock
 # ---------------------------------------------------------------------------
 
+
 class TestSessionLock:
     async def test_busy_session_returns_warning(self, mock_llm, dummy_tool):
         config = AgentConfig(max_steps=5, stream=False, quiet=True)
@@ -292,6 +292,7 @@ class TestSessionLock:
         )
         # Manually acquire the session lock
         from xiaotie.agent.state import _session_state
+
         acquired = await _session_state.acquire("test-busy")
         assert acquired
         try:
@@ -305,6 +306,7 @@ class TestSessionLock:
 # step() - single step execution
 # ---------------------------------------------------------------------------
 
+
 class TestStep:
     async def test_step_no_tool_calls(self, runtime, mock_llm):
         state, content = await runtime.step("hello")
@@ -312,15 +314,17 @@ class TestStep:
         assert content == "你好！"
 
     async def test_step_with_tool_calls(self, runtime, mock_llm, dummy_tool):
-        mock_llm.generate = AsyncMock(return_value=LLMResponse(
-            content="thinking",
-            tool_calls=[
-                ToolCall(
-                    id="tc_step",
-                    function=FunctionCall(name="dummy", arguments={}),
-                )
-            ],
-        ))
+        mock_llm.generate = AsyncMock(
+            return_value=LLMResponse(
+                content="thinking",
+                tool_calls=[
+                    ToolCall(
+                        id="tc_step",
+                        function=FunctionCall(name="dummy", arguments={}),
+                    )
+                ],
+            )
+        )
         state, content = await runtime.step("do something")
         assert state == RuntimeState.REFLECTING
         assert dummy_tool.execute.call_count == 1
@@ -329,6 +333,7 @@ class TestStep:
 # ---------------------------------------------------------------------------
 # reset()
 # ---------------------------------------------------------------------------
+
 
 class TestReset:
     async def test_reset_clears_history(self, runtime):
@@ -359,6 +364,7 @@ class TestReset:
 # get_stats()
 # ---------------------------------------------------------------------------
 
+
 class TestGetStats:
     async def test_stats_after_run(self, runtime):
         await runtime.run("hi")
@@ -380,6 +386,7 @@ class TestGetStats:
 # ---------------------------------------------------------------------------
 # _build_context_messages() - ContextEngine + RepoMap integration
 # ---------------------------------------------------------------------------
+
 
 class TestBuildContextMessages:
     async def test_no_context_engine_returns_raw_messages(self, runtime):
@@ -422,7 +429,7 @@ class TestBuildContextMessages:
         runtime.set_repomap_engine(mock_repomap)
         runtime.messages.append(Message(role="user", content="show me the code"))
 
-        result = await runtime._build_context_messages()
+        await runtime._build_context_messages()
 
         mock_repomap.get_ranked_map.assert_called_once()
         compose_kwargs = mock_context.compose_context.call_args.kwargs
@@ -454,7 +461,7 @@ class TestBuildContextMessages:
         runtime.set_repomap_engine(mock_repomap)
         runtime.messages.append(Message(role="user", content="test"))
 
-        result = await runtime._build_context_messages()
+        await runtime._build_context_messages()
         compose_kwargs = mock_context.compose_context.call_args.kwargs
         assert compose_kwargs.get("repo_map") is None
 
@@ -463,9 +470,12 @@ class TestBuildContextMessages:
 # _extract_mentioned_files()
 # ---------------------------------------------------------------------------
 
+
 class TestExtractMentionedFiles:
     def test_extracts_python_files(self, runtime):
-        runtime.messages.append(Message(role="user", content="edit src/main.py and utils/helper.py"))
+        runtime.messages.append(
+            Message(role="user", content="edit src/main.py and utils/helper.py")
+        )
         files = runtime._extract_mentioned_files()
         assert "src/main.py" in files
         assert "utils/helper.py" in files
@@ -492,6 +502,7 @@ class TestExtractMentionedFiles:
 # ---------------------------------------------------------------------------
 # Compatibility shims
 # ---------------------------------------------------------------------------
+
 
 class TestCompatibilityShims:
     def test_tools_property(self, runtime):
@@ -531,12 +542,16 @@ class TestCompatibilityShims:
         assert runtime.api_output_tokens == 0
 
     def test_on_thinking_callback(self, runtime):
-        cb = lambda x: x
+        def cb(x):
+            return x
+
         runtime.on_thinking = cb
         assert runtime.response_handler.on_thinking is cb
 
     def test_on_content_callback(self, runtime):
-        cb = lambda x: x
+        def cb(x):
+            return x
+
         runtime.on_content = cb
         assert runtime.response_handler.on_content is cb
 
@@ -549,6 +564,7 @@ class TestCompatibilityShims:
 # ---------------------------------------------------------------------------
 # set_context_engine / set_repomap_engine
 # ---------------------------------------------------------------------------
+
 
 class TestOptionalEngines:
     def test_set_context_engine(self, runtime):

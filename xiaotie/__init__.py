@@ -1,11 +1,10 @@
 """
-小铁 (XiaoTie) - 轻量级 AI Agent 框架
+小铁 (XiaoTie) - MIMO-only Agent runtime
 
-基于 Mini-Agent 架构复现，参考 OpenCode 设计优化。
-支持多 LLM Provider、工具调用、事件驱动架构、MCP 协议。
+v3 只支持 MIMO provider，运行时内置 guardrail、trace、checkpoint 和 MCP-style 工具边界。
 """
 
-__version__ = "1.1.0"
+__version__ = "3.0.0"
 __author__ = "Leo"
 
 

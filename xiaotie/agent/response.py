@@ -53,7 +53,7 @@ class ResponseHandler:
         token_limit: int = 100000,
         summary_threshold: float = 0.8,
         summary_keep_recent: int = 5,
-        enable_thinking: bool = True,
+        enable_thinking: bool = False,
         quiet: bool = False,
     ):
         self.llm = llm

@@ -9,7 +9,7 @@ from xiaotie import AgentBuilder
 
 agent = (
     AgentBuilder("my-agent")
-    .with_llm(provider="anthropic", model="claude-sonnet-4")
+    .with_llm(provider="mimo", model="mimo-v2-pro")
     .with_tools([ReadTool(), WriteTool()])
     .with_system_prompt("You are a helpful assistant.")
     .with_hooks(on_tool_call=lambda t: print(f"Calling {t}"))
@@ -31,6 +31,7 @@ import yaml
 
 from .agent import Agent
 from .llm import LLMClient
+from .llm.providers import MIMO_DEFAULT_API_BASE, MIMO_DEFAULT_MODEL
 from .tools import Tool
 
 
@@ -55,8 +56,8 @@ class AgentSpec:
     name: str
     description: str = ""
     # LLM 配置
-    provider: str = "anthropic"
-    model: str = "claude-sonnet-4-20250514"
+    provider: str = "mimo"
+    model: str = MIMO_DEFAULT_MODEL
     api_key: Optional[str] = None
     api_base: Optional[str] = None
     # Agent 配置
@@ -64,7 +65,7 @@ class AgentSpec:
     max_steps: int = 50
     token_limit: int = 100000
     stream: bool = True
-    enable_thinking: bool = True
+    enable_thinking: bool = False
     parallel_tools: bool = True
     # 工具配置
     tools: List[str] = field(default_factory=list)
@@ -114,7 +115,7 @@ class AgentBuilder:
     ```python
     agent = (
         AgentBuilder("code-assistant")
-        .with_llm(provider="anthropic", model="claude-sonnet-4")
+        .with_llm(provider="mimo", model="mimo-v2-pro")
         .with_tools([ReadTool(), WriteTool(), BashTool()])
         .with_system_prompt("You are a coding assistant.")
         .with_config(max_steps=100, parallel_tools=True)
@@ -129,8 +130,8 @@ class AgentBuilder:
         self._name = name
         self._description = ""
         # LLM 配置
-        self._provider = "anthropic"
-        self._model = "claude-sonnet-4-20250514"
+        self._provider = "mimo"
+        self._model = MIMO_DEFAULT_MODEL
         self._api_key: Optional[str] = None
         self._api_base: Optional[str] = None
         # Agent 配置
@@ -138,7 +139,7 @@ class AgentBuilder:
         self._max_steps = 50
         self._token_limit = 100000
         self._stream = True
-        self._enable_thinking = True
+        self._enable_thinking = False
         self._parallel_tools = True
         self._workspace_dir = "."
         # 工具
@@ -170,7 +171,7 @@ class AgentBuilder:
         配置 LLM
 
         可以直接传入 LLMClient 实例，或者通过参数配置:
-        - provider: anthropic, openai, minimax 等
+        - provider: 固定为 mimo
         - model: 模型名称
         - api_key: API 密钥 (也可通过环境变量)
         - api_base: API 基础 URL
@@ -179,6 +180,8 @@ class AgentBuilder:
             self._llm_client = client
         else:
             if provider:
+                if provider.lower() != "mimo":
+                    raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider='mimo'")
                 self._provider = provider
             if model:
                 self._model = model
@@ -314,14 +317,7 @@ class AgentBuilder:
         # 从环境变量获取 API Key
         api_key = self._api_key
         if not api_key:
-            env_map = {
-                "anthropic": "ANTHROPIC_API_KEY",
-                "openai": "OPENAI_API_KEY",
-                "minimax": "MINIMAX_API_KEY",
-                "zhipu": "ZHIPU_API_KEY",
-            }
-            env_var = env_map.get(self._provider, f"{self._provider.upper()}_API_KEY")
-            api_key = os.environ.get(env_var)
+            api_key = os.environ.get("MIMO_API_KEY")
 
         if not api_key:
             raise ValueError(
@@ -332,13 +328,7 @@ class AgentBuilder:
         # 默认 API Base
         api_base = self._api_base
         if not api_base:
-            base_map = {
-                "anthropic": "https://api.anthropic.com",
-                "openai": "https://api.openai.com/v1",
-                "minimax": "https://api.minimax.io",
-                "zhipu": "https://open.bigmodel.cn/api/coding/paas/v4",
-            }
-            api_base = base_map.get(self._provider, "https://api.openai.com/v1")
+            api_base = MIMO_DEFAULT_API_BASE
 
         return LLMClient(
             api_key=api_key,
@@ -377,8 +367,8 @@ class AgentBuilder:
 
 def create_agent(
     name: str = "xiaotie-agent",
-    provider: str = "anthropic",
-    model: str = "claude-sonnet-4-20250514",
+    provider: str = "mimo",
+    model: str = MIMO_DEFAULT_MODEL,
     tools: Optional[List[Tool]] = None,
     system_prompt: str = "You are a helpful AI assistant.",
     **kwargs,

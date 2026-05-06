@@ -10,6 +10,8 @@ from typing import Dict, List, Optional
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
+from .llm.providers import MIMO_DEFAULT_API_BASE, MIMO_DEFAULT_MODEL, get_provider_config
+
 
 class RetryConfig(BaseModel):
     """重试配置"""
@@ -33,12 +35,19 @@ class LLMConfig(BaseModel):
     """LLM 配置"""
 
     api_key: str = ""
-    api_base: str = "https://api.anthropic.com"
-    model: str = "claude-sonnet-4-20250514"
-    provider: str = "anthropic"
+    api_base: str = MIMO_DEFAULT_API_BASE
+    model: str = MIMO_DEFAULT_MODEL
+    provider: str = "mimo"
     temperature: float = 0.7
     max_tokens: int = 4096
     retry: RetryConfig = Field(default_factory=RetryConfig)
+
+    @model_validator(mode="after")
+    def validate_mimo_only(self):
+        if self.provider.lower() != "mimo":
+            raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider: mimo")
+        self.provider = "mimo"
+        return self
 
 
 class AgentConfig(BaseModel):
@@ -47,7 +56,7 @@ class AgentConfig(BaseModel):
     max_steps: int = 50
     workspace_dir: str = "./workspace"
     system_prompt_path: str = "system_prompt.md"
-    thinking_enabled: bool = True
+    thinking_enabled: bool = False
     streaming_enabled: bool = True
     verbose: bool = False
     cache_config: CacheConfig = Field(default_factory=CacheConfig, alias="cache")
@@ -247,12 +256,12 @@ class Config(BaseModel):
         llm_data = data.get("llm", {})
         if not llm_data:
             api_key = data.get("api_key", "")
-            provider = data.get("provider", "anthropic")
+            provider = data.get("provider", "mimo")
             llm_data = {
                 "api_key": api_key,
                 "provider": provider,
-                "api_base": data.get("api_base", "https://api.anthropic.com"),
-                "model": data.get("model", "claude-sonnet-4-20250514"),
+                "api_base": data.get("api_base", MIMO_DEFAULT_API_BASE),
+                "model": data.get("model", MIMO_DEFAULT_MODEL),
                 "temperature": data.get("temperature", 0.7),
                 "max_tokens": data.get("max_tokens", 4096),
                 "retry": data.get("retry", {}),
@@ -266,7 +275,7 @@ class Config(BaseModel):
                 "max_steps": data.get("max_steps", 50),
                 "workspace_dir": data.get("workspace_dir", "./workspace"),
                 "system_prompt_path": data.get("system_prompt_path", "system_prompt.md"),
-                "thinking_enabled": data.get("thinking_enabled", True),
+                "thinking_enabled": data.get("thinking_enabled", False),
                 "streaming_enabled": data.get("streaming_enabled", True),
                 "verbose": data.get("verbose", False),
                 "cache": data.get("cache", {}),
@@ -274,17 +283,24 @@ class Config(BaseModel):
             data["agent"] = agent_data
 
         api_key = llm_data.get("api_key", "")
-        provider = llm_data.get("provider", "anthropic")
+        provider = llm_data.get("provider", "mimo").lower()
+        if provider != "mimo":
+            raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider: mimo")
+        llm_data["provider"] = "mimo"
+        provider_config = get_provider_config("mimo")
 
         # 如果 api_key 为空或是占位符，尝试从环境变量读取
         if not api_key or api_key in ("YOUR_API_KEY_HERE", "YOUR_API_KEY"):
-            env_key = "ANTHROPIC_API_KEY" if provider == "anthropic" else "OPENAI_API_KEY"
+            env_key = provider_config.api_key_env if provider_config else "MIMO_API_KEY"
             api_key = os.environ.get(env_key, "")
             if not api_key:
                 raise ValueError(
                     f"请设置 API key：在配置文件中设置 api_key，或设置环境变量 {env_key}"
                 )
             llm_data["api_key"] = api_key
+
+        llm_data.setdefault("api_base", MIMO_DEFAULT_API_BASE)
+        llm_data.setdefault("model", MIMO_DEFAULT_MODEL)
 
         return cls.model_validate(data)
 

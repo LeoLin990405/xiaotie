@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from .llm.providers import MIMO_DEFAULT_MODEL
+
 
 @dataclass
 class ProfileConfig:
@@ -25,8 +27,8 @@ class ProfileConfig:
     description: str = ""
 
     # LLM 配置
-    provider: str = "openai"
-    model: str = "gpt-4"
+    provider: str = "mimo"
+    model: str = MIMO_DEFAULT_MODEL
     api_key: Optional[str] = None
     api_base: Optional[str] = None
     temperature: float = 0.7
@@ -40,7 +42,7 @@ class ProfileConfig:
 
     # 功能开关
     stream: bool = True
-    enable_thinking: bool = True
+    enable_thinking: bool = False
     parallel_tools: bool = True
     auto_lint: bool = True
     auto_test: bool = False

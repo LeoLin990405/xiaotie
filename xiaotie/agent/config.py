@@ -8,7 +8,7 @@ class AgentConfig:
     max_steps: int = 50
     token_limit: int = 100000
     parallel_tools: bool = True
-    enable_thinking: bool = True
+    enable_thinking: bool = False
     stream: bool = True
     quiet: bool = False
     # 摘要配置

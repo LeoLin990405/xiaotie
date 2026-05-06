@@ -11,8 +11,8 @@ class TestAgentIntegration:
         """创建 Agent 配置"""
         return {
             "workspace_dir": workspace_dir,
-            "model": "test-model",
-            "provider": "openai",
+            "model": "mimo-v2-pro",
+            "provider": "mimo",
         }
 
     def test_agent_import(self):

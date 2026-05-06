@@ -175,7 +175,7 @@ class AnthropicClient(LLMClientBase):
         tools: list[Any] | None = None,
         on_thinking: Callable[[str], None] | None = None,
         on_content: Callable[[str], None] | None = None,
-        enable_thinking: bool = True,
+        enable_thinking: bool = False,
     ) -> LLMResponse:
         """流式生成响应"""
         system, api_messages = self._convert_messages(messages)

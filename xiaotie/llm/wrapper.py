@@ -1,4 +1,4 @@
-"""LLM 客户端统一包装器"""
+"""MIMO-only LLM client facade."""
 
 from __future__ import annotations
 
@@ -9,97 +9,63 @@ from typing import Any, Callable, Optional
 from ..retry import RetryConfig
 from ..schema import LLMResponse, Message
 from .base import LLMClientBase
-from .providers import PROVIDER_CONFIGS, ProviderConfig, get_provider_config
+from .providers import (
+    MIMO_DEFAULT_MODEL,
+    PROVIDER_CONFIGS,
+    ProviderConfig,
+    get_provider_config,
+)
 
 
 class LLMProvider(str, Enum):
     """LLM 提供商"""
 
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
-    GEMINI = "gemini"
-    DEEPSEEK = "deepseek"
-    QWEN = "qwen"
-    ZHIPU = "zhipu"
-    MINIMAX = "minimax"
-    OLLAMA = "ollama"
+    MIMO = "mimo"
 
 
 class LLMClient:
-    """统一 LLM 客户端入口"""
+    """统一 LLM 客户端入口。
 
-    # MiniMax API 域名
-    MINIMAX_DOMAINS = ("api.minimax.io", "api.minimaxi.com")
+    小铁 v3 有意只暴露 MIMO。底层 transport 复用 Anthropic-compatible
+    message API，但 provider 边界和配置面都固定为 `mimo`。
+    """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
         model: Optional[str] = None,
-        provider: LLMProvider | str = LLMProvider.ANTHROPIC,
+        provider: LLMProvider | str = LLMProvider.MIMO,
         retry_config: RetryConfig | None = None,
     ):
-        # 标准化 provider
         if isinstance(provider, str):
-            provider_str = provider.lower()
             try:
-                provider = LLMProvider(provider_str)
+                provider = LLMProvider(provider.lower())
             except ValueError:
-                # 尝试作为别名处理
-                provider = LLMProvider.OPENAI  # 默认使用 OpenAI 兼容
+                raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider: mimo") from None
+
+        if provider != LLMProvider.MIMO:
+            raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider: mimo")
 
         self.provider = provider
         self.provider_config = get_provider_config(provider.value)
 
-        # 从配置或参数获取值
         if self.provider_config:
             api_base = api_base or self.provider_config.api_base
             model = model or self.provider_config.default_model
             if not api_key:
                 api_key = os.environ.get(self.provider_config.api_key_env, "")
 
-        # 处理 MiniMax API 的特殊 URL
-        full_api_base = self._process_api_base(api_base or "", provider)
+        from .anthropic_client import AnthropicClient
 
-        # 根据 provider 创建对应客户端
-        self._client: LLMClientBase
-        if provider == LLMProvider.ANTHROPIC:
-            from .anthropic_client import AnthropicClient
-
-            self._client = AnthropicClient(
-                api_key=api_key or "",
-                api_base=full_api_base,
-                model=model or "claude-sonnet-4-20250514",
-                retry_config=retry_config,
-            )
-        else:
-            # 所有其他 provider 使用 OpenAI 兼容客户端
-            from .openai_client import OpenAIClient
-
-            self._client = OpenAIClient(
-                api_key=api_key or "",
-                api_base=full_api_base,
-                model=model or "gpt-4o",
-                retry_config=retry_config,
-            )
-
-        # 存储配置
-        self.model = model
-        self.api_base = full_api_base
-
-    def _process_api_base(self, api_base: str, provider: LLMProvider) -> str:
-        """处理 API base URL"""
-        is_minimax = any(domain in api_base for domain in self.MINIMAX_DOMAINS)
-
-        if is_minimax:
-            # MiniMax 需要根据 provider 添加正确的后缀
-            api_base = api_base.replace("/anthropic", "").replace("/v1", "")
-            if provider == LLMProvider.ANTHROPIC:
-                return f"{api_base}/anthropic"
-            else:
-                return f"{api_base}/v1"
-
-        return api_base
+        self._client: LLMClientBase = AnthropicClient(
+            api_key=api_key or "",
+            api_base=api_base or "",
+            model=model or MIMO_DEFAULT_MODEL,
+            retry_config=retry_config,
+        )
+        self.model = model or MIMO_DEFAULT_MODEL
+        self.api_base = api_base or ""
 
     @property
     def capabilities(self) -> list:
@@ -134,7 +100,7 @@ class LLMClient:
         tools: Optional[list[Any]] = None,
         on_thinking: Optional[Callable[[str], None]] = None,
         on_content: Optional[Callable[[str], None]] = None,
-        enable_thinking: bool = True,
+        enable_thinking: bool = False,
     ) -> LLMResponse:
         """流式生成响应"""
         return await self._client.generate_stream(
@@ -151,7 +117,7 @@ class LLMClient:
         """从 provider 名称创建客户端"""
         config = get_provider_config(provider)
         if not config:
-            raise ValueError(f"未知的 Provider: {provider}")
+            raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider: mimo")
 
         return cls(
             provider=provider,

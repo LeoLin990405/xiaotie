@@ -134,7 +134,7 @@ class TestAgentConfig:
         assert config.max_steps == 50
         assert config.token_limit == 100000
         assert config.parallel_tools is True
-        assert config.enable_thinking is True
+        assert config.enable_thinking is False
         assert config.stream is True
 
     def test_custom_config(self):

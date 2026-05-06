@@ -235,7 +235,7 @@ def load_system_prompt(config: Config) -> str:
 async def _setup_agent(
     config: Config,
     stream: bool = True,
-    thinking: bool = True,
+    thinking: bool = False,
     quiet: bool = False,
 ) -> tuple[AgentRuntime, PluginManager, list]:
     """Shared setup: workspace, tools, plugins, MCP, LLM client, AgentRuntime.
@@ -383,7 +383,7 @@ async def interactive_loop(
             break
 
 
-async def main_async(stream: bool = True, thinking: bool = True):
+async def main_async(stream: bool = True, thinking: bool = False):
     """异步主函数"""
     # 初始化显示
     display = Display()
@@ -401,9 +401,9 @@ async def main_async(stream: bool = True, thinking: bool = True):
         print(
             """
 api_key: YOUR_API_KEY
-api_base: https://api.anthropic.com
-model: claude-sonnet-4-20250514
-provider: anthropic
+api_base: https://token-plan-sgp.xiaomimimo.com/anthropic
+model: mimo-v2-pro
+provider: mimo
 """
         )
         sys.exit(1)
@@ -488,9 +488,17 @@ def main():
     )
     parser.add_argument(
         "--no-thinking",
-        action="store_true",
+        dest="thinking",
+        action="store_false",
         help="禁用深度思考",
     )
+    parser.add_argument(
+        "--thinking",
+        dest="thinking",
+        action="store_true",
+        help="启用深度思考",
+    )
+    parser.set_defaults(thinking=False)
     parser.add_argument(
         "-v",
         "--version",
@@ -520,7 +528,7 @@ def main():
                 output_format=args.format,
                 quiet=args.quiet,
                 stream=not args.no_stream,
-                thinking=not args.no_thinking,
+                thinking=args.thinking,
             )
         )
         return
@@ -529,7 +537,7 @@ def main():
     asyncio.run(
         main_async(
             stream=not args.no_stream,
-            thinking=not args.no_thinking,
+            thinking=args.thinking,
         )
     )
 
@@ -539,7 +547,7 @@ async def run_non_interactive(
     output_format: str = "text",
     quiet: bool = False,
     stream: bool = True,
-    thinking: bool = True,
+    thinking: bool = False,
 ):
     """非交互模式"""
     start_metrics_server(Display())

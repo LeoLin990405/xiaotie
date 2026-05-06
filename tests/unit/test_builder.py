@@ -4,7 +4,6 @@ AgentBuilder 单元测试
 
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,8 +18,8 @@ class TestAgentSpec:
         """测试默认值"""
         spec = AgentSpec(name="test-agent")
         assert spec.name == "test-agent"
-        assert spec.provider == "anthropic"
-        assert spec.model == "claude-sonnet-4-20250514"
+        assert spec.provider == "mimo"
+        assert spec.model == "mimo-v2-pro"
         assert spec.max_steps == 50
         assert spec.stream is True
 
@@ -28,30 +27,30 @@ class TestAgentSpec:
         """测试从字典创建"""
         data = {
             "name": "custom-agent",
-            "provider": "openai",
-            "model": "gpt-4o",
+            "provider": "mimo",
+            "model": "mimo-v2-omni",
             "max_steps": 100,
         }
         spec = AgentSpec.from_dict(data)
         assert spec.name == "custom-agent"
-        assert spec.provider == "openai"
-        assert spec.model == "gpt-4o"
+        assert spec.provider == "mimo"
+        assert spec.model == "mimo-v2-omni"
         assert spec.max_steps == 100
 
     def test_to_dict(self):
         """测试转换为字典"""
-        spec = AgentSpec(name="test", provider="openai")
+        spec = AgentSpec(name="test", provider="mimo")
         data = spec.to_dict()
         assert data["name"] == "test"
-        assert data["provider"] == "openai"
+        assert data["provider"] == "mimo"
 
     def test_yaml_roundtrip(self):
         """测试 YAML 读写"""
         spec = AgentSpec(
             name="yaml-test",
             description="Test agent",
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
         )
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
@@ -76,7 +75,10 @@ class TestAgentHooks:
 
     def test_custom_hooks(self):
         """测试自定义钩子"""
-        on_start = lambda: print("started")
+
+        def on_start():
+            print("started")
+
         hooks = AgentHooks(on_start=on_start)
         assert hooks.on_start is on_start
 
@@ -94,15 +96,15 @@ class TestAgentBuilder:
         builder = (
             AgentBuilder("fluent-test")
             .with_description("A test agent")
-            .with_llm(provider="openai", model="gpt-4o")
+            .with_llm(provider="mimo", model="mimo-v2-omni")
             .with_system_prompt("You are helpful.")
             .with_config(max_steps=100, stream=False)
         )
 
         assert builder._name == "fluent-test"
         assert builder._description == "A test agent"
-        assert builder._provider == "openai"
-        assert builder._model == "gpt-4o"
+        assert builder._provider == "mimo"
+        assert builder._model == "mimo-v2-omni"
         assert builder._system_prompt == "You are helpful."
         assert builder._max_steps == 100
         assert builder._stream is False
@@ -118,8 +120,12 @@ class TestAgentBuilder:
 
     def test_with_hooks(self):
         """测试添加钩子"""
-        on_start = lambda: None
-        on_complete = lambda x: None
+
+        def on_start():
+            return None
+
+        def on_complete(x):
+            return None
 
         builder = AgentBuilder("hook-test").with_hooks(on_start=on_start, on_complete=on_complete)
 
@@ -130,16 +136,16 @@ class TestAgentBuilder:
         """测试从 Spec 加载"""
         spec = AgentSpec(
             name="spec-agent",
-            provider="openai",
-            model="gpt-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             max_steps=200,
         )
 
         builder = AgentBuilder().from_spec(spec)
 
         assert builder._name == "spec-agent"
-        assert builder._provider == "openai"
-        assert builder._model == "gpt-4"
+        assert builder._provider == "mimo"
+        assert builder._model == "mimo-v2-pro"
         assert builder._max_steps == 200
 
     def test_to_spec(self):
@@ -147,7 +153,7 @@ class TestAgentBuilder:
         builder = (
             AgentBuilder("export-test")
             .with_description("Export test")
-            .with_llm(provider="anthropic", model="claude-3")
+            .with_llm(provider="mimo", model="mimo-v2-pro")
             .with_config(max_steps=75)
         )
 
@@ -155,8 +161,8 @@ class TestAgentBuilder:
 
         assert spec.name == "export-test"
         assert spec.description == "Export test"
-        assert spec.provider == "anthropic"
-        assert spec.model == "claude-3"
+        assert spec.provider == "mimo"
+        assert spec.model == "mimo-v2-pro"
         assert spec.max_steps == 75
 
     def test_with_system_prompt_file(self):
@@ -170,10 +176,10 @@ class TestAgentBuilder:
         assert builder._system_prompt == "You are a test assistant."
         os.unlink(f.name)
 
-    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch.dict(os.environ, {"MIMO_API_KEY": "test-key"})
     def test_build_with_env_key(self):
         """测试使用环境变量 API Key 构建"""
-        builder = AgentBuilder("env-test").with_llm(provider="anthropic", model="claude-3")
+        builder = AgentBuilder("env-test").with_llm(provider="mimo", model="mimo-v2-pro")
 
         # 不应该抛出异常
         llm_client = builder._create_llm_client()
@@ -183,10 +189,14 @@ class TestAgentBuilder:
         """测试没有 API Key 时抛出异常"""
         # 清除可能存在的环境变量
         with patch.dict(os.environ, {}, clear=True):
-            builder = AgentBuilder("no-key-test").with_llm(provider="anthropic")
+            builder = AgentBuilder("no-key-test").with_llm(provider="mimo")
 
             with pytest.raises(ValueError, match="API key not provided"):
                 builder._create_llm_client()
+
+    def test_reject_non_mimo_provider(self):
+        with pytest.raises(ValueError, match="MIMO"):
+            AgentBuilder("bad-provider").with_llm(provider="openai")
 
     def test_with_llm_client(self):
         """测试直接传入 LLM 客户端"""
@@ -200,20 +210,20 @@ class TestAgentBuilder:
 class TestCreateAgent:
     """create_agent 便捷函数测试"""
 
-    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch.dict(os.environ, {"MIMO_API_KEY": "test-key"})
     def test_create_agent_basic(self):
         """测试基本创建"""
         agent = create_agent(
             name="quick-agent",
-            provider="anthropic",
-            model="claude-3",
+            provider="mimo",
+            model="mimo-v2-pro",
             system_prompt="Hello",
         )
 
         assert agent is not None
         assert agent.config.stream is True
 
-    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    @patch.dict(os.environ, {"MIMO_API_KEY": "test-key"})
     def test_create_agent_with_config(self):
         """测试带配置创建"""
         agent = create_agent(

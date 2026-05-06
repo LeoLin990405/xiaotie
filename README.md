@@ -1,22 +1,22 @@
 <div align="center">
 
 ```
- ▄███▄     小铁 XiaoTie v2.1
- █ ⚙ █    状态机 Agent · tree-sitter RepoMap · OS 沙箱
+ ▄███▄     小铁 XiaoTie v3.0
+ █ ⚙ █    MIMO-only Agent · Durable Runtime · OS 沙箱
  ▀███▀
 ```
 
 # 小铁 (XiaoTie)
 
-**状态机驱动的 AI Coding Agent 框架，内置 OS 级沙箱、tree-sitter 代码导航和分层密钥管理。**
+**MIMO-only AI Coding Agent runtime，内置 guardrail、trace、checkpoint、OS 沙箱、tree-sitter 代码导航和分层密钥管理。**
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/LeoLin990405/xiaotie?color=green)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/LeoLin990405/xiaotie?style=social)](https://github.com/LeoLin990405/xiaotie/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/LeoLin990405/xiaotie)](https://github.com/LeoLin990405/xiaotie/issues)
-[![Tests](https://img.shields.io/badge/Tests-1703%20passed-brightgreen)](https://github.com/LeoLin990405/xiaotie/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-61%25-yellow)](#项目统计)
-[![Version](https://img.shields.io/badge/Version-2.1.0-blue)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-1673%20unit%20passed-brightgreen)](https://github.com/LeoLin990405/xiaotie/actions)
+[![Coverage](https://img.shields.io/badge/Coverage-62%25-yellow)](#项目统计)
+[![Version](https://img.shields.io/badge/Version-3.0.0-blue)](CHANGELOG.md)
 
 [English](./README_EN.md) · [变更日志](./CHANGELOG.md) · [API 参考](./docs/api-reference.md)
 
@@ -62,7 +62,7 @@
 
 ## 特性
 
-### v2.1 亮点
+### v3.0 亮点
 
 | 模块 | 说明 | 状态 |
 |------|------|------|
@@ -73,6 +73,8 @@
 | **RepoMapEngine** | tree-sitter AST 解析 + NetworkX PageRank 代码导航 (支持 8 种语言) | ✅ 已接入 AgentRuntime |
 | **SandboxManager** | OS 级沙箱 (macOS Seatbelt / Linux Bubblewrap / Fallback rlimits) | ✅ 完整集成 |
 | **SecretManager** | 分层密钥管理 (keyring → 环境变量 → 配置 fallback)，`${secret:...}` 语法 | ✅ 已接入配置加载 |
+| **MIMO-only Boundary** | Provider、配置、Builder、CLI/TUI onboarding 固定为 MIMO | ✅ 已接入 |
+| **Trace + Checkpoint** | 运行时记录 guardrail、状态转移、完成/失败事件，并保存可恢复 checkpoint | ✅ 已接入 AgentRuntime |
 
 ### v2.1 集成进展 (相比 v2.0)
 
@@ -85,13 +87,13 @@
 ### 核心能力
 
 - Agent 执行循环 (状态机 + 传统模式兼容)
-- 流式输出、深度思考 (thinking mode)
+- 流式输出，MIMO thinking 默认关闭，可显式开启
 - 会话管理、Token 自动摘要
 - 并行工具执行、优雅取消 (Ctrl+C)
 - TUI 模式 (Textual) 含首次运行引导向导、非交互模式 (JSON 输出)
 - MCP 协议支持 (连接外部 MCP 服务器)
 - 插件系统、自定义命令
-- 多 LLM 支持 (Anthropic / OpenAI / GLM / Gemini / DeepSeek / Qwen / MiniMax)
+- MIMO-only Provider 边界，拒绝其他 AI provider
 - 多 Agent 协调 (Coordinator / Expert / Executor / Supervisor 角色)
 - 记忆系统 (短期/长期/情景/语义/工作记忆)
 - 语义搜索 (chromadb 向量存储)
@@ -146,9 +148,7 @@ xiaotie secret set api_key
 **快速方式: 环境变量**
 
 ```bash
-export XIAOTIE_API_KEY="your-key"
-# 或
-export ZHIPU_API_KEY="your-key"
+export MIMO_API_KEY="your-key"
 ```
 
 **TUI 首次运行向导 (最简单)**
@@ -290,9 +290,9 @@ IDLE ──→ THINKING ──→ ACTING ──→ OBSERVING ──→ REFLECTIN
 ```yaml
 # API 配置 (推荐使用 ${secret:...} 而非明文)
 api_key: ${secret:api_key}
-api_base: https://open.bigmodel.cn/api/coding/paas/v4
-model: GLM-4.7
-provider: openai  # 使用 OpenAI 兼容协议
+api_base: https://token-plan-sgp.xiaomimimo.com/anthropic
+model: mimo-v2-pro
+provider: mimo
 
 # Agent 配置
 max_steps: 50
@@ -369,15 +369,7 @@ github_token: ${env:GITHUB_TOKEN}  # 仅从环境变量解析
 
 | Provider | API Base | 推荐模型 |
 |----------|----------|---------|
-| Anthropic | https://api.anthropic.com | Claude Sonnet 4 |
-| OpenAI | https://api.openai.com/v1 | GPT-4o |
-| 智谱 GLM | https://open.bigmodel.cn/api/coding/paas/v4 | GLM-4.7 (深度思考) |
-| Google Gemini | https://generativelanguage.googleapis.com | Gemini 2.5 Pro |
-| DeepSeek | https://api.deepseek.com | DeepSeek Chat/Coder |
-| Qwen | https://dashscope.aliyuncs.com | 通义千问 |
-| MiniMax | https://api.minimax.io | abab 系列 |
-| Ollama | http://localhost:11434 | 本地模型 |
-| 自定义 | 任意 URL | 任何 OpenAI 兼容 API |
+| MIMO | https://token-plan-sgp.xiaomimimo.com/anthropic | mimo-v2-pro / mimo-v2-omni |
 
 ---
 
@@ -394,9 +386,9 @@ from xiaotie.tools import ReadTool, WriteTool, BashTool
 async def main():
     llm = LLMClient(
         api_key="your-key",
-        api_base="https://api.anthropic.com",
-        model="claude-sonnet-4-20250514",
-        provider="anthropic",
+        api_base="https://token-plan-sgp.xiaomimimo.com/anthropic",
+        model="mimo-v2-pro",
+        provider="mimo",
     )
     config = AgentConfig(max_steps=30, parallel_tools=True)
     tools = [ReadTool(workspace_dir="."), WriteTool(workspace_dir="."), BashTool()]
@@ -442,7 +434,7 @@ result = await agent.run("你好")
 | 源代码文件 | 140 个 Python 文件 |
 | 代码行数 | ~48,000 行 |
 | 测试用例 | 1,703 通过 / 15 跳过 |
-| 测试覆盖率 | 61% (核心模块 ≥ 90%) |
+| 测试覆盖率 | 62% (核心模块 ≥ 90%) |
 | 内置工具 | 20+ |
 | LLM Provider | 8+ |
 | 支持语言 (RepoMap) | Python, JS, TS, Go, Rust, Java, C, C++ |
@@ -480,7 +472,7 @@ GitHub Actions 工作流:
 | 作业 | 触发条件 | 说明 |
 |------|---------|------|
 | **Lint** | push/PR | ruff lint + format check |
-| **Test** | push/PR | pytest × Python 3.9-3.12, 覆盖率 ≥60% |
+| **Test** | push/PR | pytest × Python 3.10-3.12, 覆盖率 ≥60% |
 | **Security** | push/PR | bandit SAST + pip-audit |
 | **Performance** | push/PR | 基准测试回归检查 |
 | **Release** | tag v* | 构建 wheel/sdist, 发布 PyPI |

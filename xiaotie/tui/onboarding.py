@@ -25,6 +25,8 @@ from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, ProgressBar, Static
 
+from xiaotie.llm.providers import MIMO_DEFAULT_API_BASE, MIMO_DEFAULT_MODEL
+
 
 @dataclass
 class ProviderSetup:
@@ -39,52 +41,16 @@ class ProviderSetup:
     test_endpoint: str
 
 
-# 支持的 Provider 列表
+# 小铁 v3 只支持 MIMO。
 SUPPORTED_PROVIDERS: List[ProviderSetup] = [
     ProviderSetup(
-        name="anthropic",
-        display_name="Anthropic Claude",
-        icon="󰚩",
-        api_key_env="ANTHROPIC_API_KEY",
-        api_key_hint="sk-ant-...",
-        default_model="claude-sonnet-4-20250514",
-        test_endpoint="https://api.anthropic.com/v1/messages",
-    ),
-    ProviderSetup(
-        name="openai",
-        display_name="OpenAI GPT",
-        icon="󰧑",
-        api_key_env="OPENAI_API_KEY",
-        api_key_hint="sk-...",
-        default_model="gpt-4o",
-        test_endpoint="https://api.openai.com/v1/models",
-    ),
-    ProviderSetup(
-        name="deepseek",
-        display_name="DeepSeek",
-        icon="󰊤",
-        api_key_env="DEEPSEEK_API_KEY",
-        api_key_hint="sk-...",
-        default_model="deepseek-chat",
-        test_endpoint="https://api.deepseek.com/v1/models",
-    ),
-    ProviderSetup(
-        name="qwen",
-        display_name="Qwen (通义千问)",
+        name="mimo",
+        display_name="Xiaomi MIMO",
         icon="󰮯",
-        api_key_env="DASHSCOPE_API_KEY",
-        api_key_hint="sk-...",
-        default_model="qwen-plus",
-        test_endpoint="https://dashscope.aliyuncs.com/compatible-mode/v1/models",
-    ),
-    ProviderSetup(
-        name="gemini",
-        display_name="Google Gemini",
-        icon="󰊭",
-        api_key_env="GOOGLE_API_KEY",
-        api_key_hint="AIza...",
-        default_model="gemini-2.0-flash",
-        test_endpoint="https://generativelanguage.googleapis.com/v1beta/models",
+        api_key_env="MIMO_API_KEY",
+        api_key_hint="tp-...",
+        default_model=MIMO_DEFAULT_MODEL,
+        test_endpoint=MIMO_DEFAULT_API_BASE,
     ),
 ]
 
@@ -135,12 +101,12 @@ def save_bootstrap_config(provider: str, model: str, api_key: str) -> Path:
             f'api_key: "{api_key}"',
             f'provider: "{provider}"',
             f'model: "{model}"',
-            'api_base: ""',
+            f'api_base: "{MIMO_DEFAULT_API_BASE}"',
             "temperature: 0.7",
             "max_tokens: 4096",
             "max_steps: 50",
             'workspace_dir: "./workspace"',
-            "thinking_enabled: true",
+            "thinking_enabled: false",
             "streaming_enabled: true",
             "verbose: false",
             "",

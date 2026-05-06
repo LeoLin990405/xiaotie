@@ -6,15 +6,14 @@ from pathlib import Path
 import pytest
 
 from xiaotie.testing import (
+    MOCK_RESPONSES,
     Cassette,
-    CassetteRecord,
     LLMCassette,
     MockLLMClient,
     MockLLMResponse,
     RecordedRequest,
     RecordedResponse,
     get_mock_response,
-    MOCK_RESPONSES,
 )
 
 
@@ -24,24 +23,24 @@ class TestRecordedRequest:
     def test_create_request(self):
         """测试创建请求"""
         request = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
-        assert request.provider == "anthropic"
-        assert request.model == "claude-sonnet-4"
+        assert request.provider == "mimo"
+        assert request.model == "mimo-v2-pro"
         assert len(request.messages) == 1
 
     def test_fingerprint_deterministic(self):
         """测试指纹是确定性的"""
         request1 = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         request2 = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         assert request1.fingerprint == request2.fingerprint
@@ -49,13 +48,13 @@ class TestRecordedRequest:
     def test_fingerprint_different_for_different_requests(self):
         """测试不同请求有不同指纹"""
         request1 = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         request2 = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hi"}],
         )
         assert request1.fingerprint != request2.fingerprint
@@ -63,8 +62,8 @@ class TestRecordedRequest:
     def test_timestamp_auto_generated(self):
         """测试时间戳自动生成"""
         request = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[],
         )
         assert request.timestamp != ""
@@ -77,11 +76,11 @@ class TestRecordedResponse:
         """测试创建响应"""
         response = RecordedResponse(
             content="Hello!",
-            model="claude-sonnet-4",
+            model="mimo-v2-pro",
             usage={"input_tokens": 10, "output_tokens": 5},
         )
         assert response.content == "Hello!"
-        assert response.model == "claude-sonnet-4"
+        assert response.model == "mimo-v2-pro"
         assert response.usage["input_tokens"] == 10
 
     def test_response_with_thinking(self):
@@ -114,8 +113,8 @@ class TestCassette:
         """测试添加记录"""
         cassette = Cassette(name="test")
         request = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         response = RecordedResponse(content="Hi!")
@@ -127,8 +126,8 @@ class TestCassette:
         """测试查找响应"""
         cassette = Cassette(name="test")
         request = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         response = RecordedResponse(content="Hi!")
@@ -143,8 +142,8 @@ class TestCassette:
         """测试查找不存在的响应"""
         cassette = Cassette(name="test")
         request = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         found = cassette.find_response(request)
@@ -158,8 +157,8 @@ class TestCassette:
             # 创建并保存
             cassette = Cassette(name="test")
             request = RecordedRequest(
-                provider="anthropic",
-                model="claude-sonnet-4",
+                provider="mimo",
+                model="mimo-v2-pro",
                 messages=[{"role": "user", "content": "Hello"}],
             )
             response = RecordedResponse(content="Hi!")
@@ -182,8 +181,8 @@ class TestCassette:
         """测试字典转换"""
         cassette = Cassette(name="test")
         request = RecordedRequest(
-            provider="anthropic",
-            model="claude-sonnet-4",
+            provider="mimo",
+            model="mimo-v2-pro",
             messages=[{"role": "user", "content": "Hello"}],
         )
         response = RecordedResponse(content="Hi!", thinking="Thinking...")
@@ -219,8 +218,8 @@ class TestLLMCassette:
 
             async with LLMCassette(path) as cassette:
                 request = RecordedRequest(
-                    provider="anthropic",
-                    model="claude-sonnet-4",
+                    provider="mimo",
+                    model="mimo-v2-pro",
                     messages=[{"role": "user", "content": "Hello"}],
                 )
                 response = RecordedResponse(content="Hi!")

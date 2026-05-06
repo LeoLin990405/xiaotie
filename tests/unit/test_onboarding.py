@@ -4,14 +4,10 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from xiaotie.tui.onboarding import (
-    ProviderSetup,
     SUPPORTED_PROVIDERS,
-    get_bootstrap_config_path,
+    ProviderSetup,
     get_config_path,
-    get_onboarding_state_path,
     has_any_api_key,
     is_first_run,
     load_onboarding_state,
@@ -50,14 +46,12 @@ class TestSupportedProviders:
     def test_has_essential_providers(self):
         """测试包含必要的 Provider"""
         names = [p.name for p in SUPPORTED_PROVIDERS]
-        essential = ["anthropic", "openai", "deepseek"]
-        for provider in essential:
-            assert provider in names, f"Missing essential provider: {provider}"
+        assert names == ["mimo"]
 
     def test_all_providers_have_required_fields(self):
         """测试所有 Provider 都有必要字段"""
         for provider in SUPPORTED_PROVIDERS:
-            assert provider.name, f"Provider missing name"
+            assert provider.name, "Provider missing name"
             assert provider.display_name, f"Provider {provider.name} missing display_name"
             assert provider.api_key_env, f"Provider {provider.name} missing api_key_env"
             assert provider.default_model, f"Provider {provider.name} missing default_model"
@@ -136,19 +130,9 @@ class TestHasAnyApiKey:
             # 使用 mock 更可靠
             pass
 
-    def test_has_anthropic_key(self):
-        """测试有 Anthropic API Key"""
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test"}):
-            assert has_any_api_key() is True
-
-    def test_has_openai_key(self):
-        """测试有 OpenAI API Key"""
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
-            assert has_any_api_key() is True
-
-    def test_has_deepseek_key(self):
-        """测试有 DeepSeek API Key"""
-        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-test"}):
+    def test_has_mimo_key(self):
+        """测试有 MIMO API Key"""
+        with patch.dict(os.environ, {"MIMO_API_KEY": "tp-test"}):
             assert has_any_api_key() is True
 
 
@@ -157,27 +141,39 @@ class TestShouldShowOnboarding:
 
     def test_show_when_first_run_and_no_key(self):
         """测试首次运行且无 API Key 时显示向导"""
-        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": False, "skipped": False}):
+        with patch(
+            "xiaotie.tui.onboarding.load_onboarding_state",
+            return_value={"completed": False, "skipped": False},
+        ):
             with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
                 with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
                     assert should_show_onboarding() is True
 
     def test_not_show_when_not_first_run(self):
         """测试非首次运行时不显示向导"""
-        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": False, "skipped": False}):
+        with patch(
+            "xiaotie.tui.onboarding.load_onboarding_state",
+            return_value={"completed": False, "skipped": False},
+        ):
             with patch("xiaotie.tui.onboarding.is_first_run", return_value=False):
                 with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
                     assert should_show_onboarding() is False
 
     def test_not_show_when_has_api_key(self):
         """测试有 API Key 时不显示向导"""
-        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": False, "skipped": False}):
+        with patch(
+            "xiaotie.tui.onboarding.load_onboarding_state",
+            return_value={"completed": False, "skipped": False},
+        ):
             with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
                 with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=True):
                     assert should_show_onboarding() is False
 
     def test_not_show_when_state_completed(self):
-        with patch("xiaotie.tui.onboarding.load_onboarding_state", return_value={"completed": True, "skipped": False}):
+        with patch(
+            "xiaotie.tui.onboarding.load_onboarding_state",
+            return_value={"completed": True, "skipped": False},
+        ):
             with patch("xiaotie.tui.onboarding.is_first_run", return_value=True):
                 with patch("xiaotie.tui.onboarding.has_any_api_key", return_value=False):
                     assert should_show_onboarding() is False
@@ -185,16 +181,20 @@ class TestShouldShowOnboarding:
 
 class TestOnboardingState:
     def test_save_and_load_state(self, monkeypatch, tmp_path):
-        monkeypatch.setattr("xiaotie.tui.onboarding.get_onboarding_state_path", lambda: tmp_path / "state.json")
+        monkeypatch.setattr(
+            "xiaotie.tui.onboarding.get_onboarding_state_path", lambda: tmp_path / "state.json"
+        )
         save_onboarding_state(completed=True, skipped=False)
         state = load_onboarding_state()
         assert state["completed"] is True
         assert state["skipped"] is False
 
     def test_save_bootstrap_config(self, monkeypatch, tmp_path):
-        monkeypatch.setattr("xiaotie.tui.onboarding.get_bootstrap_config_path", lambda: tmp_path / "config.yaml")
-        path = save_bootstrap_config("openai", "gpt-4o", "sk-test")
+        monkeypatch.setattr(
+            "xiaotie.tui.onboarding.get_bootstrap_config_path", lambda: tmp_path / "config.yaml"
+        )
+        path = save_bootstrap_config("mimo", "mimo-v2-pro", "tp-test")
         text = path.read_text(encoding="utf-8")
-        assert "provider: \"openai\"" in text
-        assert "model: \"gpt-4o\"" in text
-        assert "api_key: \"sk-test\"" in text
+        assert 'provider: "mimo"' in text
+        assert 'model: "mimo-v2-pro"' in text
+        assert 'api_key: "tp-test"' in text

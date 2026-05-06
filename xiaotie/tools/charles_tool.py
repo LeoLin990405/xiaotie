@@ -102,7 +102,7 @@ class CharlesProxyTool(Tool):
 
         # 在 Agent 中使用
         from xiaotie import create_agent
-        agent = create_agent(provider="anthropic", tools=[CharlesProxyTool()])
+        agent = create_agent(provider="mimo", tools=[CharlesProxyTool()])
         await agent.run("启动 Charles 代理")
 
         # 自定义 Charles 路径

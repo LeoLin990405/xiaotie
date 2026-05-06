@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xiaotie"
-version = "2.1.0"
-description = "小铁 - 轻量级 AI Agent 框架"
+version = "3.0.0"
+description = "小铁 - MIMO-only Agent runtime"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10,<3.13"
 authors = [
     { name = "Leo" }
 ]
-keywords = ["ai", "agent", "llm", "claude", "openai"]
+keywords = ["ai", "agent", "llm", "mimo"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

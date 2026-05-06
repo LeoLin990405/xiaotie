@@ -849,14 +849,8 @@ class ModelSelector(ScrollableContainer):
     """
 
     MODELS = [
-        ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
-        ("claude-opus-4-20250514", "Claude Opus 4"),
-        ("claude-3-5-sonnet-20241022", "Claude 3.5 Sonnet"),
-        ("gpt-4o", "GPT-4o"),
-        ("gpt-4o-mini", "GPT-4o Mini"),
-        ("GLM-4.7", "GLM-4.7"),
-        ("deepseek-chat", "DeepSeek Chat"),
-        ("deepseek-coder", "DeepSeek Coder"),
+        ("mimo-v2-pro", "MIMO v2 Pro"),
+        ("mimo-v2-omni", "MIMO v2 Omni"),
     ]
 
     def __init__(self, current_model: str = "", **kwargs):

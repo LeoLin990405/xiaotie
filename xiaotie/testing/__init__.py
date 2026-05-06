@@ -9,14 +9,14 @@ from xiaotie.testing import LLMCassette, mock_llm_response
 # 方式 1: 使用装饰器
 @mock_llm_response("fixtures/hello.yaml")
 async def test_hello():
-    client = LLMClient(provider="anthropic")
+    client = LLMClient(provider="mimo")
     response = await client.generate([Message(role="user", content="Hello")])
     assert "Hello" in response.content
 
 # 方式 2: 使用上下文管理器
 async def test_with_cassette():
     async with LLMCassette("fixtures/chat.yaml") as cassette:
-        client = LLMClient(provider="anthropic")
+        client = LLMClient(provider="mimo")
         response = await client.generate([Message(role="user", content="Hi")])
         # 响应会被录制或回放
 ```

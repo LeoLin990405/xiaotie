@@ -30,6 +30,13 @@ from xiaotie.schema import Message
 from xiaotie.telemetry import AgentTelemetry
 from xiaotie.tools import Tool
 
+from .architecture import (
+    AgentCheckpoint,
+    AgentTraceEvent,
+    InMemoryCheckpointStore,
+    MimoOnlyGuardrail,
+    RuntimePhase,
+)
 from .config import AgentConfig
 from .executor import ToolExecutor
 from .response import ResponseHandler
@@ -104,6 +111,8 @@ class AgentRuntime:
         self._stats = RuntimeStats()
         self._cancelled = False
         self.cancel_event: Optional[asyncio.Event] = None
+        self.trace_events: list[AgentTraceEvent] = []
+        self.checkpoints = InMemoryCheckpointStore()
 
         # 事件
         self._event_broker = get_event_broker()
@@ -121,6 +130,10 @@ class AgentRuntime:
 
         # 工具表
         tools_dict = {t.name: t for t in tools}
+
+        guardrail = MimoOnlyGuardrail.check(getattr(llm_client, "provider", "unknown"))
+        if not guardrail.allowed:
+            raise ValueError(guardrail.reason)
 
         # 组件
         self.executor = ToolExecutor(
@@ -175,7 +188,39 @@ class AgentRuntime:
         old = self._state
         self._state = new_state
         self._stats.state_transitions.append((old.value, new_state.value, time.time()))
+        if new_state != RuntimeState.IDLE:
+            self._record_architecture_event(
+                RuntimePhase(new_state.value),
+                name="runtime.transition",
+                data={"from": old.value, "to": new_state.value},
+            )
         logger.debug("状态转移: %s → %s", old.value, new_state.value)
+
+    def _record_architecture_event(
+        self,
+        phase: RuntimePhase,
+        name: str,
+        step: int = 0,
+        data: dict | None = None,
+    ) -> None:
+        event = AgentTraceEvent(
+            name=name,
+            phase=phase,
+            session_id=self.session_id,
+            step=step,
+            data=data or {},
+        )
+        self.trace_events.append(event)
+        self.checkpoints.save(
+            AgentCheckpoint(
+                checkpoint_id=event.event_id,
+                session_id=self.session_id,
+                phase=phase,
+                step=step,
+                message_roles=[m.role for m in self.messages],
+                data=event.data,
+            )
+        )
 
     def _check_cancelled(self) -> bool:
         if self._cancelled:
@@ -203,6 +248,7 @@ class AgentRuntime:
         self._cancelled = False
         self._stats = RuntimeStats(start_time=time.time())
         self.telemetry.record_run_start()
+        self._record_architecture_event(RuntimePhase.INPUT_GUARDRAIL, "guardrail.mimo_only")
 
         try:
             # 添加用户消息
@@ -285,6 +331,9 @@ class AgentRuntime:
 
             if self._check_cancelled():
                 self.telemetry.record_run_end("cancelled")
+                self._record_architecture_event(
+                    RuntimePhase.CANCELLED, "runtime.cancelled", step + 1
+                )
                 self._transition(RuntimeState.IDLE)
                 return "⚠️ 任务已取消"
 
@@ -312,6 +361,12 @@ class AgentRuntime:
             except Exception as e:
                 await self._publish_event(Event(type=EventType.AGENT_ERROR, data={"error": str(e)}))
                 self.telemetry.record_run_end("error")
+                self._record_architecture_event(
+                    RuntimePhase.FAILED,
+                    "model.call.failed",
+                    step + 1,
+                    {"error": str(e)},
+                )
                 self._transition(RuntimeState.IDLE)
                 return f"❌ LLM 调用失败: {e}"
 
@@ -336,6 +391,9 @@ class AgentRuntime:
                     )
                 )
                 self.telemetry.record_run_end("success")
+                self._record_architecture_event(
+                    RuntimePhase.COMPLETED, "runtime.completed", step + 1
+                )
                 self._transition(RuntimeState.IDLE)
                 return response.content
 
@@ -364,12 +422,16 @@ class AgentRuntime:
 
             if self._check_cancelled():
                 self.telemetry.record_run_end("cancelled")
+                self._record_architecture_event(
+                    RuntimePhase.CANCELLED, "runtime.cancelled", step + 1
+                )
                 self._transition(RuntimeState.IDLE)
                 return "⚠️ 任务已取消"
 
             # 继续下一轮 → THINKING (由循环顶部执行)
 
         self.telemetry.record_run_end("error")
+        self._record_architecture_event(RuntimePhase.FAILED, "runtime.max_steps")
         self._transition(RuntimeState.IDLE)
         return "⚠️ 达到最大步数限制"
 

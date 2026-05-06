@@ -1,14 +1,13 @@
 """profiles.py 单元测试"""
 
 import os
-import tempfile
 
 import pytest
 
 from xiaotie.profiles import (
+    PRESET_PROFILES,
     ProfileConfig,
     ProfileManager,
-    PRESET_PROFILES,
     create_preset_profiles,
 )
 
@@ -32,24 +31,24 @@ class TestProfileConfig:
     def test_defaults(self):
         cfg = ProfileConfig()
         assert cfg.name == "default"
-        assert cfg.provider == "openai"
-        assert cfg.model == "gpt-4"
+        assert cfg.provider == "mimo"
+        assert cfg.model == "mimo-v2-pro"
         assert cfg.temperature == 0.7
         assert cfg.max_tokens == 4096
         assert cfg.stream is True
-        assert cfg.enable_thinking is True
+        assert cfg.enable_thinking is False
         assert "bash" in cfg.enabled_tools
         assert cfg.disabled_tools == []
 
     def test_custom_values(self):
         cfg = ProfileConfig(
             name="test",
-            provider="anthropic",
-            model="claude-3",
+            provider="mimo",
+            model="mimo-v2-pro",
             temperature=0.3,
         )
         assert cfg.name == "test"
-        assert cfg.provider == "anthropic"
+        assert cfg.provider == "mimo"
         assert cfg.temperature == 0.3
 
 

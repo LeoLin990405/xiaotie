@@ -48,7 +48,7 @@ class LLMClientBase(ABC):
         tools: list[Any] | None = None,
         on_thinking: Optional[Callable[[str], None]] = None,
         on_content: Optional[Callable[[str], None]] = None,
-        enable_thinking: bool = True,
+        enable_thinking: bool = False,
     ) -> LLMResponse:
         """流式生成响应"""
         pass

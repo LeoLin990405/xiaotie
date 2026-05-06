@@ -62,7 +62,7 @@ class Agent:
         token_limit: int = 100000,
         workspace_dir: str = ".",
         stream: bool = True,
-        enable_thinking: bool = True,
+        enable_thinking: bool = False,
         quiet: bool = False,
         parallel_tools: bool = True,
         session_id: Optional[str] = None,
@@ -77,14 +77,14 @@ class Agent:
             token_limit: Token 上限，超过阈值时触发自动摘要。默认 100000。
             workspace_dir: 工作目录路径，文件操作的根目录。默认当前目录。
             stream: 是否启用流式输出。默认 True。
-            enable_thinking: 是否启用深度思考模式（GLM-4.7 等支持）。默认 True。
+            enable_thinking: 是否启用 MIMO thinking。默认 False。
             quiet: 安静模式，仅输出最终结果。默认 False。
             parallel_tools: 是否并行执行多个工具调用。默认 True。
             session_id: 会话 ID，用于并发控制。默认自动生成。
         """
         self.llm = llm_client
         warnings.warn(
-            "Agent class is deprecated, use AgentRuntime instead. Agent will be removed in v3.0.",
+            "Agent class is deprecated, use AgentRuntime instead. Agent will be removed in v4.0.",
             DeprecationWarning,
             stacklevel=2,
         )

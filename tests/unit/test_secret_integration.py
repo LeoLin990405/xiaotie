@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
-import pytest
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_keyring(storage: Optional[dict] = None):
     """Create a mock keyring with optional pre-loaded storage"""
@@ -31,6 +29,7 @@ def _make_mock_keyring(storage: Optional[dict] = None):
 # Config loading resolves ${secret:...}
 # ---------------------------------------------------------------------------
 
+
 class TestConfigSecretResolution:
     """Test that Config.from_yaml resolves secret placeholders"""
 
@@ -39,22 +38,27 @@ class TestConfigSecretResolution:
         mock_kr = _make_mock_keyring({"api_key": "sk-resolved-from-keyring"})
 
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "llm": {
-                "api_key": "${secret:api_key}",
-                "api_base": "https://api.example.com",
-                "model": "test-model",
-                "provider": "openai",
-            },
-            "agent": {
-                "max_steps": 10,
-                "workspace_dir": str(tmp_path),
-            },
-        }))
+        config_file.write_text(
+            yaml.dump(
+                {
+                    "llm": {
+                        "api_key": "${secret:api_key}",
+                        "api_base": "https://token-plan-sgp.xiaomimimo.com/anthropic",
+                        "model": "mimo-v2-pro",
+                        "provider": "mimo",
+                    },
+                    "agent": {
+                        "max_steps": 10,
+                        "workspace_dir": str(tmp_path),
+                    },
+                }
+            )
+        )
 
         with patch.dict(sys.modules, {"keyring": mock_kr}):
             with patch("xiaotie.secrets._keyring_available", return_value=True):
                 from xiaotie.config import Config
+
                 cfg = Config.from_yaml(config_file)
 
         assert cfg.llm.api_key == "sk-resolved-from-keyring"
@@ -62,22 +66,27 @@ class TestConfigSecretResolution:
     def test_resolve_env_in_config(self, tmp_path):
         """${env:MY_API_KEY} should be resolved from environment"""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "llm": {
-                "api_key": "${env:TEST_XIAOTIE_API_KEY}",
-                "api_base": "https://api.example.com",
-                "model": "test-model",
-                "provider": "openai",
-            },
-            "agent": {
-                "max_steps": 10,
-                "workspace_dir": str(tmp_path),
-            },
-        }))
+        config_file.write_text(
+            yaml.dump(
+                {
+                    "llm": {
+                        "api_key": "${env:TEST_XIAOTIE_API_KEY}",
+                        "api_base": "https://token-plan-sgp.xiaomimimo.com/anthropic",
+                        "model": "mimo-v2-pro",
+                        "provider": "mimo",
+                    },
+                    "agent": {
+                        "max_steps": 10,
+                        "workspace_dir": str(tmp_path),
+                    },
+                }
+            )
+        )
 
         with patch.dict(os.environ, {"TEST_XIAOTIE_API_KEY": "sk-from-env-var"}):
             with patch("xiaotie.secrets._keyring_available", return_value=False):
                 from xiaotie.config import Config
+
                 cfg = Config.from_yaml(config_file)
 
         assert cfg.llm.api_key == "sk-from-env-var"
@@ -85,21 +94,26 @@ class TestConfigSecretResolution:
     def test_graceful_fallback_when_secret_manager_fails(self, tmp_path):
         """If SecretManager raises, config loading should continue with raw values"""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "llm": {
-                "api_key": "raw-key-value",
-                "api_base": "https://api.example.com",
-                "model": "test-model",
-                "provider": "openai",
-            },
-            "agent": {
-                "max_steps": 10,
-                "workspace_dir": str(tmp_path),
-            },
-        }))
+        config_file.write_text(
+            yaml.dump(
+                {
+                    "llm": {
+                        "api_key": "raw-key-value",
+                        "api_base": "https://token-plan-sgp.xiaomimimo.com/anthropic",
+                        "model": "mimo-v2-pro",
+                        "provider": "mimo",
+                    },
+                    "agent": {
+                        "max_steps": 10,
+                        "workspace_dir": str(tmp_path),
+                    },
+                }
+            )
+        )
 
         with patch("xiaotie.secrets.get_secret_manager", side_effect=RuntimeError("boom")):
             from xiaotie.config import Config
+
             cfg = Config.from_yaml(config_file)
 
         assert cfg.llm.api_key == "raw-key-value"
@@ -107,22 +121,27 @@ class TestConfigSecretResolution:
     def test_unresolved_placeholder_stays_as_is(self, tmp_path):
         """If secret not found, placeholder stays in config value"""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "llm": {
-                "api_key": "${secret:nonexistent}",
-                "api_base": "https://api.example.com",
-                "model": "test-model",
-                "provider": "openai",
-            },
-            "agent": {
-                "max_steps": 10,
-                "workspace_dir": str(tmp_path),
-            },
-        }))
+        config_file.write_text(
+            yaml.dump(
+                {
+                    "llm": {
+                        "api_key": "${secret:nonexistent}",
+                        "api_base": "https://token-plan-sgp.xiaomimimo.com/anthropic",
+                        "model": "mimo-v2-pro",
+                        "provider": "mimo",
+                    },
+                    "agent": {
+                        "max_steps": 10,
+                        "workspace_dir": str(tmp_path),
+                    },
+                }
+            )
+        )
 
         # The placeholder stays unresolved since the secret doesn't exist
         with patch("xiaotie.secrets._keyring_available", return_value=False):
             from xiaotie.config import Config
+
             cfg = Config.from_yaml(config_file)
 
         # Unresolved placeholder remains as the api_key value
@@ -133,16 +152,19 @@ class TestConfigSecretResolution:
 # CLI command registration
 # ---------------------------------------------------------------------------
 
+
 class TestSecretCommandRegistration:
     """Test that SecretCommands is registered in the Commands mixin chain"""
 
     def test_secret_command_exists(self):
         """Commands class should have cmd_secret method"""
         from xiaotie.commands import Commands
+
         assert hasattr(Commands, "cmd_secret"), "cmd_secret not found in Commands"
 
     def test_secret_alias_exists(self):
         """SecretCommands should contribute 'sec' alias"""
         from xiaotie.commands.secret_cmd import SecretCommands
+
         assert "sec" in SecretCommands.ALIASES
         assert SecretCommands.ALIASES["sec"] == "secret"

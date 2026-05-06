@@ -70,7 +70,7 @@ def clear_lines(n: int) -> None:
 
 def print_banner(
     model: str = "claude-sonnet-4-20250514",
-    provider: str = "anthropic",
+    provider: str = "mimo",
     workspace: str = ".",
     animate: bool = True,
 ) -> None:

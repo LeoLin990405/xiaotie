@@ -496,14 +496,7 @@ class QuickModelSelector(ModalScreen):
 
     # Provider 图标映射
     PROVIDER_ICONS = {
-        "anthropic": "󰚩",
-        "openai": "󰧑",
-        "gemini": "󰊭",
-        "deepseek": "󰊤",
-        "qwen": "󰮯",
-        "zhipu": "󰮯",
-        "minimax": "󰮯",
-        "ollama": "󰆧",
+        "mimo": "󰮯",
     }
 
     def __init__(
@@ -538,11 +531,8 @@ class QuickModelSelector(ModalScreen):
         except ImportError:
             # 回退到默认列表
             self.models = [
-                ("anthropic", "claude-sonnet-4-20250514", "Claude Sonnet 4"),
-                ("anthropic", "claude-opus-4-20250514", "Claude Opus 4"),
-                ("openai", "gpt-4o", "GPT-4o"),
-                ("openai", "gpt-4o-mini", "GPT-4o Mini"),
-                ("deepseek", "deepseek-chat", "DeepSeek Chat"),
+                ("mimo", "mimo-v2-pro", "mimo-v2-pro"),
+                ("mimo", "mimo-v2-omni", "mimo-v2-omni"),
             ]
             return
 

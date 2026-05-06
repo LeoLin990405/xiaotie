@@ -66,9 +66,9 @@ def sample_config(workspace_dir):
     config_file = config_dir / "config.yaml"
     config_file.write_text('''
 api_key: test-api-key
-api_base: https://api.example.com
-model: test-model
-provider: openai
+api_base: https://token-plan-sgp.xiaomimimo.com/anthropic
+model: mimo-v2-pro
+provider: mimo
 ''')
     return str(config_file)
 
