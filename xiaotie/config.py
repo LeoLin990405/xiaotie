@@ -197,7 +197,9 @@ class Config(BaseModel):
             config_path = cls._find_config_file()
 
         if config_path is None or not Path(config_path).exists():
-            raise FileNotFoundError("配置文件未找到，请创建 config/config.yaml")
+            raise FileNotFoundError(
+                "配置文件未找到，请创建 config/config.yaml（可从 config/config.yaml.example 复制）"
+            )
 
         return cls.from_yaml(config_path)
 
@@ -285,7 +287,10 @@ class Config(BaseModel):
         api_key = llm_data.get("api_key", "")
         provider = llm_data.get("provider", "mimo").lower()
         if provider != "mimo":
-            raise ValueError("小铁 v3 只支持 MIMO provider，请设置 provider: mimo")
+            raise ValueError(
+                "小铁 v3 只支持 MIMO provider，请设置 provider: mimo，并参考 "
+                "config/config.yaml.example 更新旧配置"
+            )
         llm_data["provider"] = "mimo"
         provider_config = get_provider_config("mimo")
 

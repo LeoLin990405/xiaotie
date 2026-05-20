@@ -525,7 +525,7 @@ class QuickModelSelector(ModalScreen):
         self._update_list("")
 
     def _load_models(self) -> None:
-        """从 MIMO registry 加载模型"""
+        """从 MIMO registry 加载模型。"""
         try:
             from ..llm.providers import PROVIDER_CONFIGS
         except ImportError:
@@ -580,10 +580,10 @@ class QuickModelSelector(ModalScreen):
             model_list.mount(Static("无匹配模型", classes="no-results"))
             return
 
-        # 按 provider 分组
+        show_provider_headers = len({provider for provider, _, _ in self.filtered_models}) > 1
         current_provider = None
         for i, (provider, model, display) in enumerate(self.filtered_models):
-            if provider != current_provider:
+            if show_provider_headers and provider != current_provider:
                 current_provider = provider
                 icon = self.PROVIDER_ICONS.get(provider, "󰮯")
                 model_list.mount(Static(f"{icon} {provider.upper()}", classes="provider-header"))

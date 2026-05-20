@@ -139,7 +139,7 @@ class TestQuickModelSelectorTUI:
     @pytest.mark.asyncio
     async def test_selector_highlights_current(self):
         """测试高亮当前模型"""
-        current = "gpt-4o"
+        current = "mimo-v2-pro"
         app = DummyApp()
         async with app.run_test() as pilot:
             selector = QuickModelSelector(current_model=current)

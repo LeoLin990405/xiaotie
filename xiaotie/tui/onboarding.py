@@ -1,11 +1,11 @@
-"""首次启动向导模块
+"""首次启动向导模块。
 
 功能:
 - 检测首次启动
-- 引导用户配置 API Key
+- 引导用户配置 MIMO API Key
 - 选择默认模型
 - 测试连接
-- 生成配置文件
+- 生成 v3 配置文件
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from xiaotie.llm.providers import MIMO_DEFAULT_API_BASE, MIMO_DEFAULT_MODEL
 
 @dataclass
 class ProviderSetup:
-    """Provider 配置信息"""
+    """模型入口配置信息。"""
 
     name: str
     display_name: str
@@ -98,21 +98,25 @@ def save_bootstrap_config(provider: str, model: str, api_key: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     content = "\n".join(
         [
-            f'api_key: "{api_key}"',
-            f'provider: "{provider}"',
-            f'model: "{model}"',
-            f'api_base: "{MIMO_DEFAULT_API_BASE}"',
-            "temperature: 0.7",
-            "max_tokens: 4096",
-            "max_steps: 50",
-            'workspace_dir: "./workspace"',
-            "thinking_enabled: false",
-            "streaming_enabled: true",
-            "verbose: false",
+            "# XiaoTie v3 bootstrap config",
+            "llm:",
+            f'  api_key: "{api_key}"',
+            f'  provider: "{provider}"',
+            f'  model: "{model}"',
+            f'  api_base: "{MIMO_DEFAULT_API_BASE}"',
+            "  temperature: 0.7",
+            "  max_tokens: 4096",
+            "agent:",
+            "  max_steps: 50",
+            '  workspace_dir: "./workspace"',
+            "  thinking_enabled: false",
+            "  streaming_enabled: true",
+            "  verbose: false",
             "",
             "tools:",
             "  enable_file_tools: true",
             "  enable_bash: true",
+            "  enable_git: true",
             "  enable_web_tools: true",
             "  enable_code_analysis: true",
         ]
@@ -181,7 +185,7 @@ class WelcomeStep(Static):
 
 
 class ProviderSelectStep(Static):
-    """Provider 选择步骤"""
+    """模型入口选择步骤。"""
 
     DEFAULT_CSS = """
     ProviderSelectStep {
@@ -221,7 +225,7 @@ class ProviderSelectStep(Static):
     """
 
     class Selected(Message):
-        """Provider 选择事件"""
+        """模型入口选择事件。"""
 
         def __init__(self, provider: ProviderSetup):
             super().__init__()
@@ -470,7 +474,7 @@ class CompleteStep(Static):
         yield Static("🎉 配置完成!", classes="step-title")
 
         with Vertical(classes="config-summary"):
-            yield Static(f"Provider: {self.provider.display_name}", classes="config-item")
+            yield Static(f"模型服务: {self.provider.display_name}", classes="config-item")
             yield Static(f"模型: {self.provider.default_model}", classes="config-item")
             yield Static(f"API Key: {self.provider.api_key_env} ✓", classes="config-item")
 
@@ -603,7 +607,7 @@ class OnboardingWizard(ModalScreen):
         progress.update(total=len(self.steps), progress=1)
 
     def on_provider_select_step_selected(self, event: ProviderSelectStep.Selected) -> None:
-        """处理 Provider 选择"""
+        """处理模型入口选择"""
         self.selected_provider = event.provider
 
     def _next_step(self) -> None:
@@ -614,7 +618,7 @@ class OnboardingWizard(ModalScreen):
         # 验证当前步骤
         if current_step_name == "provider":
             if not self.selected_provider:
-                self._set_error("请先选择 Provider")
+                self._set_error("请先选择模型入口")
                 return  # 未选择 provider
 
         elif current_step_name == "apikey":

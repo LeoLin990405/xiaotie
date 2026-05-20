@@ -195,6 +195,9 @@ class TestOnboardingState:
         )
         path = save_bootstrap_config("mimo", "mimo-v2-pro", "tp-test")
         text = path.read_text(encoding="utf-8")
+        assert "llm:" in text
+        assert "agent:" in text
         assert 'provider: "mimo"' in text
         assert 'model: "mimo-v2-pro"' in text
         assert 'api_key: "tp-test"' in text
+        assert "enable_git: true" in text

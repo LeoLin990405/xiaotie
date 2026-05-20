@@ -83,6 +83,7 @@ input_guardrail
 git clone https://github.com/LeoLin990405/xiaotie.git
 cd xiaotie
 pip install -e ".[dev,tui,secrets,repomap]"
+cp config/config.yaml.example config/config.yaml
 ```
 
 配置 MIMO key：
@@ -100,20 +101,24 @@ xiaotie secret set api_key
 最小配置：
 
 ```yaml
-api_key: ${secret:api_key}
-api_base: https://token-plan-sgp.xiaomimimo.com/anthropic
-model: mimo-v2-pro
-provider: mimo
+llm:
+  api_key: ${secret:api_key}
+  api_base: https://token-plan-sgp.xiaomimimo.com/anthropic
+  model: mimo-v2-pro
+  provider: mimo
 
-max_steps: 50
-workspace_dir: ./workspace
-thinking_enabled: false
+agent:
+  max_steps: 50
+  workspace_dir: ./workspace
+  thinking_enabled: false
 
 tools:
   enable_file_tools: true
   enable_bash: true
   enable_git: true
 ```
+
+也可以直接复制并修改 `config/config.yaml.example`。
 
 运行：
 

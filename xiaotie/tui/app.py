@@ -1191,7 +1191,8 @@ class XiaoTieApp(App):
 
         def on_model(provider: str, model: str):
             self.model_name = model
-            self.show_toast("模型已切换", f"{provider} / {model}", variant="success")
+            detail = model if provider == "mimo" else f"{provider} / {model}"
+            self.show_toast("模型已切换", detail, variant="success")
 
         self.push_screen(QuickModelSelector(current_model=self.model_name, callback=on_model))
 
