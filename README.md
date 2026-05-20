@@ -86,6 +86,12 @@ pip install -e ".[dev,tui,secrets,repomap]"
 cp config/config.yaml.example config/config.yaml
 ```
 
+也可以一键初始化（会创建 `.venv`、安装依赖并生成 `config/config.yaml`）：
+
+```bash
+./scripts/setup_local.sh
+```
+
 配置 MIMO key：
 
 ```bash
