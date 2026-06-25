@@ -1,45 +1,51 @@
 <div align="center">
 
+[![English](https://img.shields.io/badge/Language-English-2ea44f?style=for-the-badge)](README.md) &nbsp; [![中文](https://img.shields.io/badge/语言-中文-555555?style=for-the-badge)](README.zh-CN.md)
+
 ```
  ▄███▄     XiaoTie v3
  █ ⚙ █    MIMO-only Agent Runtime
  ▀███▀
 ```
 
-# 小铁 XiaoTie
+# XiaoTie · 小铁
 
-**只面向 MIMO 的本地 Agent runtime。**
+### A MIMO-only local coding-agent runtime — state machine · guardrails · trace · checkpoints · sandbox
 
-小铁 v3 不再做多 provider 适配层。它把模型边界收束到 MIMO，把工程重点放回 Agent 运行时本身：状态机、guardrail、trace、checkpoint、工具权限、上下文预算、RepoMap 和沙箱执行。
-
-[![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-3.0.0-blue)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/Tests-1674%20unit%20passed-brightgreen)](#验证)
-[![Coverage](https://img.shields.io/badge/Coverage-62%25-yellow)](#验证)
-[![License](https://img.shields.io/github/license/LeoLin990405/xiaotie?color=green)](LICENSE)
-
-[English](./README_EN.md)
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10--3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Tests-1674%20passed-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Coverage-62%25-yellow?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/License-MIT-yellowgreen?style=for-the-badge" />
+</p>
 
 </div>
 
----
-
-## 当前定位
-
-小铁是一个 coding-agent runtime，而不是模型聚合器。
-
-| 决策 | v3 行为 |
-|------|---------|
-| 模型入口 | 只支持 `provider: mimo` |
-| 默认模型 | `mimo-v2-pro` |
-| 可选模型 | `mimo-v2-pro`, `mimo-v2-omni` |
-| API Key | `MIMO_API_KEY` 或 `${secret:api_key}` |
-| Thinking | 默认关闭，显式 `--thinking` 才开启 |
-| 多 provider | 拒绝 OpenAI/Anthropic/Gemini/DeepSeek/Qwen 等 provider 参数 |
+> XiaoTie v3 stopped being a multi-provider wrapper. It collapses the model boundary to a single `provider: mimo` and puts the engineering weight back on the agent runtime itself — state machine, guardrails, trace, checkpoints, tool permissions, context budget, RepoMap, sandboxed execution — not on adapter layers.
 
 ---
 
-## 架构
+## Overview
+
+XiaoTie is a **coding-agent runtime, not a model aggregator**. v3 fixes the model entry to MIMO and invests everything else into a clean, observable runtime: a phased state machine that emits structured trace events and checkpoints at every step, so persistence, resume, human-in-the-loop, and trace visualization all have a stable data boundary to build on.
+
+---
+
+## 1. Positioning
+
+| Decision | v3 behavior |
+|---|---|
+| Model entry | `provider: mimo` only |
+| Default model | `mimo-v2-pro` |
+| Optional models | `mimo-v2-pro`, `mimo-v2-omni` |
+| API key | `MIMO_API_KEY` or `${secret:api_key}` |
+| Thinking | off by default; opt in with `--thinking` |
+| Multi-provider | rejects OpenAI/Anthropic/Gemini/DeepSeek/Qwen provider params |
+
+---
+
+## 2. Architecture
 
 ```mermaid
 graph TD
@@ -60,9 +66,9 @@ graph TD
     MAP --> AST["tree-sitter + PageRank"]
 ```
 
-运行时核心在 [xiaotie/agent/runtime.py](/Users/leo/projects/xiaotie/xiaotie/agent/runtime.py)，v3 架构原语在 [xiaotie/agent/architecture.py](/Users/leo/projects/xiaotie/xiaotie/agent/architecture.py)。
+Runtime core: [`xiaotie/agent/runtime.py`](xiaotie/agent/runtime.py); v3 architecture primitives: [`xiaotie/agent/architecture.py`](xiaotie/agent/architecture.py).
 
-### Runtime Loop
+### Runtime loop
 
 ```text
 input_guardrail
@@ -73,11 +79,11 @@ input_guardrail
   -> completed | failed | cancelled
 ```
 
-每次关键阶段都会生成结构化 `AgentTraceEvent`，并写入 `AgentCheckpoint`。这让后续接持久化、resume、human-in-the-loop 和可视化 trace 时有稳定的数据边界。
+Every key phase emits a structured `AgentTraceEvent` and writes an `AgentCheckpoint`.
 
 ---
 
-## 快速开始
+## 3. Quick Start
 
 ```bash
 git clone https://github.com/LeoLin990405/xiaotie.git
@@ -85,19 +91,15 @@ cd xiaotie
 pip install -e ".[dev,tui,secrets,repomap]"
 ```
 
-配置 MIMO key：
+Configure the MIMO key (env or system keyring):
 
 ```bash
 export MIMO_API_KEY="your-key"
-```
-
-或写入系统 keyring：
-
-```bash
+# or
 xiaotie secret set api_key
 ```
 
-最小配置：
+Minimal config:
 
 ```yaml
 api_key: ${secret:api_key}
@@ -115,18 +117,18 @@ tools:
   enable_git: true
 ```
 
-运行：
+Run:
 
 ```bash
-xiaotie
-xiaotie --tui
-xiaotie -p "分析这个 repo 的结构" -f json
-xiaotie -p "重构这个函数" -q
+xiaotie                              # interactive CLI
+xiaotie --tui                        # Textual TUI
+xiaotie -p "analyze this repo" -f json
+xiaotie -p "refactor this function" -q
 ```
 
 ---
 
-## Python API
+## 4. Python API
 
 ```python
 import asyncio
@@ -137,23 +139,16 @@ from xiaotie.tools import BashTool, ReadTool, WriteTool
 
 
 async def main():
-    llm = LLMClient(
-        provider="mimo",
-        model="mimo-v2-pro",
-    )
+    llm = LLMClient(provider="mimo", model="mimo-v2-pro")
 
     runtime = AgentRuntime(
         llm_client=llm,
-        system_prompt="你是小铁，一个谨慎的本地 coding agent。",
-        tools=[
-            ReadTool(workspace_dir="."),
-            WriteTool(workspace_dir="."),
-            BashTool(),
-        ],
+        system_prompt="You are XiaoTie, a careful local coding agent.",
+        tools=[ReadTool(workspace_dir="."), WriteTool(workspace_dir="."), BashTool()],
         config=AgentConfig(max_steps=30, stream=True),
     )
 
-    result = await runtime.run("帮我整理这个项目的重构入口")
+    result = await runtime.run("Find the refactor entry points in this project")
     print(result)
     print(runtime.trace_events[-1])
 
@@ -163,73 +158,70 @@ asyncio.run(main())
 
 ---
 
-## 核心模块
+## 5. Core Modules
 
-| 模块 | 责任 |
-|------|------|
-| `xiaotie.llm` | 公开 MIMO-only facade，`LLMClient` 和 `MimoClient` |
-| `xiaotie.agent.architecture` | phase、trace event、checkpoint、guardrail 原语 |
-| `xiaotie.agent.runtime` | 状态机执行循环和 trace/checkpoint 接入 |
-| `xiaotie.agent.executor` | 工具执行、权限、审计、并行调用 |
-| `xiaotie.agent.response` | 流式响应、token 统计、摘要 |
-| `xiaotie.context_engine` | 上下文预算和消息组装 |
-| `xiaotie.repomap_v2` | tree-sitter AST + PageRank 代码地图 |
-| `xiaotie.permissions` | 风险评估、确认、敏感输出脱敏 |
-| `xiaotie.secrets` | keyring/env/config 分层密钥解析 |
+| Module | Responsibility |
+|---|---|
+| `xiaotie.llm` | MIMO-only facade — `LLMClient`, `MimoClient` |
+| `xiaotie.agent.architecture` | phase / trace event / checkpoint / guardrail primitives |
+| `xiaotie.agent.runtime` | state-machine execution loop + trace/checkpoint hooks |
+| `xiaotie.agent.executor` | tool execution, permissions, audit, parallel calls |
+| `xiaotie.agent.response` | streaming response, token stats, summarization |
+| `xiaotie.context_engine` | context budget + message assembly |
+| `xiaotie.repomap_v2` | tree-sitter AST + PageRank code map |
+| `xiaotie.permissions` | risk assessment, confirmation, sensitive-output redaction |
+| `xiaotie.secrets` | keyring/env/config layered secret resolution |
 | `xiaotie.sandbox` | macOS Seatbelt / Linux Bubblewrap / rlimits |
 
 ---
 
-## CLI
+## 6. CLI
 
-| 命令 | 说明 |
-|------|------|
-| `xiaotie` | 交互式 CLI |
+| Command | Description |
+|---|---|
+| `xiaotie` | interactive CLI |
 | `xiaotie --tui` | Textual TUI |
-| `xiaotie -p "问题"` | 非交互执行 |
-| `xiaotie -p "问题" -f json` | JSON 输出 |
-| `xiaotie --thinking` | 显式启用 MIMO thinking |
-| `xiaotie secret set api_key` | 写入 MIMO key |
-| `xiaotie secret list` | 查看已存密钥 |
+| `xiaotie -p "<q>"` | non-interactive run |
+| `xiaotie -p "<q>" -f json` | JSON output |
+| `xiaotie --thinking` | explicitly enable MIMO thinking |
+| `xiaotie secret set api_key` | store the MIMO key |
+| `xiaotie secret list` | list stored secrets |
 
-交互命令包括 `/help`, `/tools`, `/map`, `/find`, `/tree`, `/tokens`, `/compact`, `/secret`, `/reset`, `/quit`。
+Interactive commands: `/help` `/tools` `/map` `/find` `/tree` `/tokens` `/compact` `/secret` `/reset` `/quit`.
 
 ---
 
-## 验证
-
-当前 v3 gate：
+## 7. Verification
 
 ```bash
-uv run --python 3.12 --extra dev ruff check xiaotie/ tests/unit/test_providers.py tests/unit/test_config.py tests/unit/test_builder.py tests/unit/test_runtime.py tests/unit/test_agent_architecture.py tests/unit/test_mimo_client.py
-uv run --python 3.12 --extra dev ruff format --check xiaotie/agent/architecture.py xiaotie/agent/runtime.py xiaotie/llm/mimo_client.py xiaotie/llm/providers.py xiaotie/llm/wrapper.py
+uv run --python 3.12 --extra dev ruff check xiaotie/ tests/unit/
 uv run --python 3.12 --extra dev python -m pytest tests/unit -q
 uv run --python 3.12 --extra dev python -m pytest tests/integration/test_core_business_smoke.py -v --tb=short -m smoke
 ```
 
-最近一次结果：
+Latest local result:
 
 | Gate | Result |
-|------|--------|
+|---|---|
 | Unit tests | `1674 passed, 39 skipped` |
 | Smoke integration | `3 passed` |
 | Coverage | `62%` |
 
 ---
 
-## 迁移说明
+## 8. Migration
 
-v3 会拒绝这些旧配置：
+v3 rejects these legacy provider configs:
 
 ```yaml
-provider: openai
-provider: anthropic
-provider: gemini
-provider: deepseek
-provider: qwen
+provider: openai      # rejected
+provider: anthropic   # rejected
+provider: gemini      # rejected
+provider: deepseek    # rejected
+provider: qwen        # rejected
 ```
 
-请统一改为：
+Use:
 
 ```yaml
 provider: mimo
@@ -237,19 +229,21 @@ model: mimo-v2-pro
 api_key: ${secret:api_key}
 ```
 
-旧 `Agent` 类仍保留兼容，但已 deprecated。新代码请使用 `AgentRuntime`。
+The old `Agent` class is kept for compatibility but deprecated — new code should use `AgentRuntime`.
 
 ---
 
-## 路线图
+## Roadmap
 
-- 持久化 checkpoint store
-- 可视化 trace timeline
-- resumable execution
-- human-in-the-loop 中断与恢复
-- MCP resource/prompt/tool 统一注册表
-- RepoMap 与 ContextEngine 的自动预算调优
+- Persistent checkpoint store
+- Trace timeline visualization
+- Resumable execution
+- Human-in-the-loop interrupt & resume
+- Unified MCP resource/prompt/tool registry
+- Auto budget tuning for RepoMap × ContextEngine
+
+---
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © 2026 Leo Lin
